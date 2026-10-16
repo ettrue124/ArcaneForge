@@ -1,0 +1,229 @@
+CURRENT HANDOFF UPDATE — OCTOBER 8, 2026
+This update supersedes the historical October 3 notes below.
+
+Read analysis/gameplay-audit-2026-10-07.md and
+analysis/action-inventory/adapter-coverage.md for the deployed implementation,
+passed checks and remaining limitations. Native Arena startup, local deck
+building, AI matchmaking, MatchDoor transport and interactive battles now exist.
+The server has been restarted with token identity/rendering/action support,
+cleanup discard handling, native counterspell stack targets, multi-attacker
+blocking, serialized controller actions and player energy/poison counters.
+
+Current service ports: HTTP 8787, FrontDoor TLS 9445, MatchDoor TLS 9444.
+Use Launch-Server.bat / Start-PrivateServer.ps1. Recheck process ownership before
+restarting services; old process IDs below are obsolete. Do not print local
+passwords, JWTs, bearer tokens or private-key passwords.
+
+All 63 Python tests and protocol self-tests passed. Real Forge tests passed for
+Treasure/Food/Insect tokens and sacrifice effects, counterspells, multi-blocking,
+X/fight spells, scry, modes, divided damage and trample allocation. Arena was
+observed at a native Commander opening hand, but live Treasure rendering and
+four-player visuals have not been verified. Full official-server animation
+parity and BO3 sideboarding are not finished.
+
+The user's preference remains: work directly, do not use agents.
+
+--- HISTORICAL NOTES; DO NOT USE THESE AS CURRENT IMPLEMENTATION STATUS ---
+
+MTG ARENA PRIVATE SERVER — CODING AGENT HANDOFF
+Updated: October 3, 2026
+Workspace: C:\Users\ettru\Downloads\project
+Shell: Windows PowerShell. No Git repository at workspace root.
+
+USER OBJECTIVE AND PREFERENCES
+Build a local private server for the installed Windows MTG Arena client. The user
+wants to import and create decks using Arena's default deck builder, then play
+their own deck against an AI INSIDE ARENA'S MATCH SCREEN. They explicitly chose
+Arena's match screen over opening Forge's game window. Use Forge for card rules
+and AI. They want implementation and actual testing, not a plan or simulated
+success. They explicitly said "dont use agents": work directly, no subagents.
+
+HONEST CURRENT STATUS
+This is NOT a complete playable Arena private server. Local accounts, catalogue,
+deck APIs, several stock-client startup/deck adapters, and real Forge simulation
+exist. The newly added interactive Forge controller is tested independently.
+Arena AI matchmaking, MatchDoor authentication/connect and complete interactive
+GRE translation are still missing. No actual playable Arena match was verified.
+Do not describe AI-vs-AI simulation or the bridge test as Arena gameplay.
+
+INSTALLED CLIENT / LOCAL SETUP
+Game: C:\Program Files\Wizards of the Coast\MTGA\MTGA.exe
+Observed version: 2026.63.10.14403.1326110; Unity 6000.3.14f1.
+Client catalogue: 0.1.14403.1326110, Data 2026.63.0.270 / GRP 270.1318799.
+services.conf under MTGA_Data\StreamingAssets selects local WAS/account HTTP
+127.0.0.1:8787, FrontDoor localhost:9443, MatchDoor localhost:9444.
+Use existing scripts/configuration rather than overwrite installation blindly:
+Start-PrivateServer.ps1, Enable-LocalClient.ps1, Restore-OfficialClient.ps1,
+Start-LocalServer.ps1, Start-ProtocolHost.ps1, configuration-state.json.
+
+Runtime check at handoff: 8787 listening on PID 37272, 9443 on PID 38500;
+no 9444 listener observed. Executable/command line for PID 38500 were unavailable,
+so which FrontDoor build is live is UNKNOWN. Recheck before taking action.
+
+PROJECT COMPONENTS
+server/: Python ThreadingHTTPServer on loopback, SQLite users/cards/decks/queue/
+challenges/matches. Bearer authentication and participant/ownership checks exist.
+server/storage.py: human queue pairing, match deck snapshots, constructed >=60
+card baseline. Matches currently require two human user IDs and default to
+pending_engine. Design explicit AI identity/lifecycle rather than fake accounts.
+server/http.py: API and WAS/bootstrap adapters; /api/matches/{id}/simulate is
+participant-scoped AI-vs-AI simulation. /api/status honestly reports gameplay
+unavailable. server/ui.html: Arena Lab web interface, not Arena's native UI.
+server/engine.py: bounded correlated JSON-lines subprocess, locking, timeouts,
+stderr reader, process cleanup/restart. Use shell=False and hidden Windows launch.
+
+protocol-host/: .NET 10 C# host referencing installed generated client assemblies.
+Program.cs: TLS framing, auth bridge, schema export, tests. Startup.cs:
+authenticated startup and native deck CRUD command adapters. ForgeEncoder.cs:
+prototype Forge snapshot -> actual GRE full-state protobuf, hidden-hand/library
+masking and ID checks. This encoder alone cannot run a match. Match-mode requests
+currently return NotAuthorized / gameplay not implemented.
+
+engine-bridge/ForgeEngineMain.java: real Forge headless JSON-lines entry point.
+Existing ops status/cards/simulate; simulate uses AI for BOTH seats.
+engine-bridge/launch.json: absolute Java/classpath/cwd/env configuration.
+Setup-Forge.ps1: builds Forge and both bridge Java files.
+vendor/forge: Forge source at verified commit
+d50cedc565bfbcedab333c67507dc0f5aef00386. Java 17 and Maven available.
+Isolated Forge profile: data/forge-profile.
+data/catalogue.json: 20,128 primary non-token client cards; previously resolved
+20,093 names in Forge, 695 flagged, 19,406 preliminarily simulation eligible,
+35 unresolved. Reject unsupported digital/rebalanced cards; do not silently strip
+A- prefixes or substitute cards. Printing/face/token identity needs richer mapping.
+
+LATEST IMPLEMENTATION — INTERACTIVE FORGE (WRITTEN AND COMPILED)
+Added engine-bridge/ForgeInteractiveSession.java (GPL-3.0-or-later): embeds
+HostedMatch, ProtocolGuiGame and IRemote with a real LobbyPlayerHuman versus
+LobbyPlayerAi. It keeps blocking prompts pending until explicitly answered.
+ForgeEngineMain now exposes INTERNAL DEVELOPMENT operations:
+  interactiveStart: decks=[human deck, AI deck], each with name/cards(name,quantity)
+  interactivePoll: bounded event batch plus diagnostic human state
+  interactiveAnswer: eventId + answer
+  interactiveAction: type + eventId (except concede), instanceId for selectCard
+  interactiveClose
+Supported answers: boolean confirm/showConfirmDialog; indexed showOptionDialog/
+getAbilityToPlay; bounded distinct indices for getChoices; string showInputDialog.
+Other prompt types explicitly reject as unavailable. Supported controller actions:
+ok, cancel, concede, selectCard from own hand/public battlefield. Card instance
+namespace is 1000 + Forge ID. Button event IDs reject stale/repeated actions.
+One interactive game per subprocess; simulations refused while it exists.
+status exposes humanPrompts=true but arenaPlayable=false. No HTTP route or Arena
+MatchDoor adapter was added for these operations.
+
+Test added: engine-bridge/test_interactive.py. Passed after latest changes:
+"PASS: real Forge human prompts and explicit controller actions against AI"
+It starts human-vs-AI with 60 Plains per deck, explicitly selects a land, verifies
+a card on human battlefield, passes, verifies turn >=3 after AI turn, concedes,
+closes engine. It does NOT launch Arena, prove spell/combat support, exercise every
+blocking prompt, or complete a normal game. Its script answers prompts for test
+purposes only; production must preserve user choices.
+
+Compile without rebuilding all Forge:
+  $forgeLaunch = Get-Content engine-bridge/launch.json -Raw | ConvertFrom-Json
+  & 'C:\Program Files\Java\jdk-17\bin\javac.exe' -encoding UTF-8 -cp $forgeLaunch.command[6] -d engine-bridge/build engine-bridge/ForgeEngineMain.java engine-bridge/ForgeInteractiveSession.java
+  python engine-bridge/test_interactive.py
+command[6] is the classpath; command[7] is the main class, NOT the classpath.
+
+INTERACTIVE BRIDGE LIMITATIONS TO ADDRESS
+Event descriptions are diagnostic and may contain internal Forge state. Keep
+inside the trusted local engine boundary; do NOT expose directly to a remote
+player. Implement explicit viewer-scoped serialization with card identities.
+Polling reads mutable Forge view state; review synchronization and capture on the
+game thread for production. Close schedules concession without awaiting full
+shutdown; prevent a new session/simulation from overlapping old game teardown.
+Only one global session exists. Add per-match process ownership/lifecycle.
+Generic choices do not cover ordering, damage assignment, entity choices,
+sideboarding, combat, mana, reveal/face-down knowledge, or full game results.
+Test message mentions prompts but the Plains game need not exercise a blocking
+sendAndWait prompt. Add meaningful coverage before claiming that path verified.
+
+ARENA PROTOCOL EVIDENCE / NEXT IMPLEMENTATION WORK
+Read analysis/protocol.md, analysis/forge-gre-mapping.md,
+analysis/forge-integration.md, analysis/interactive-forge-status.md.
+Some older documents have stale bootstrap/startup claims; use actual source and
+current test results as authority.
+Generated descriptors: analysis/schemas/arena-descriptor-set.pb/.json and
+commands.json; startup-schemas also exist. JSON descriptor file is one long line:
+parse it programmatically instead of rg printing its entire contents.
+Recovered client source research in .tools/:
+FrontDoorConnectionAWS.cs, MatchConnection.cs, MatchTcpConnection.cs,
+rules-audit-AwsEventServiceWrapper.cs and other decompiled files.
+
+FrontDoor JoinNewMatchQueue/event course handling is needed. Stock client expects
+PushNotification.MatchInfoV4 with endpoint host/port, controller fabric URI,
+matchId, player info and seats to enter a match.
+Match framing: TLS1.2, bounded length frames. Version4 protobuf header 04 21;
+ping/pong bodies four-byte tick counter. Preserve request/transaction correlation.
+ClientToMatchServiceMessage wraps requestId, type, timestamp, transactionId,
+payload bytes. Types: connect=1, GRE=2, GRE UI=3, authenticate=4, create room=5,
+echo=8. AuthenticateRequest includes clientId, clientAuthToken, playerName,
+playFabSessionTicket, inactivityTimeoutMs, clientInfo. AuthenticateResponse:
+clientId/sessionId/inactivityTimeoutMs/screenName. Validate LOCAL credentials
+and match membership; never accept arbitrary client seat/match identifiers.
+ClientToMatchDoorConnectRequest: matchId, mcFabricUri, clientToGreMessageBytes.
+Output gameplay: MatchServiceToClientMessage.GreToClientEvent.GreToClientMessages.
+GRE response correlation uses respId/msgId plus gameStateId; guard stale inputs.
+ActionsAvailableReq/PerformActionResp need real legal Forge actions, targets,
+payments and abilities; action enum Cast1, Activate2, Play3, Activate_Mana4, Pass5.
+Snapshot encoder still lacks full pregame/game-over lifecycle, stack/ability/token
+objects, annotations, combat and richer card mapping. Do not fabricate legal moves.
+
+Useful upstream seam (already used):
+vendor/forge/forge-gui-desktop/src/test/java/forge/net/embedded/ProtocolGuiGameInProcessTest.java
+ProtocolGuiGameSingleThreadTest.java nearby.
+vendor/forge/forge-gui/src/main/java/forge/gamemodes/net/ProtocolGuiGame.java
+IRemote.java, ProtocolMethod.java; forge/gamemodes/match/HostedMatch.java.
+Run human controller actions on Forge EDT (FThreads.invokeInEdtLater), as upstream.
+
+PREVIOUS STARTUP BUG AND FIX
+User was stuck on "Requesting format data". Client log showed KeyNotFoundException
+'AllFilters' in CardFilters.SetMetadataProvider.LoadData. Decompiled evidence:
+.tools/set-metadata-provider.cs, set-metadata-core.cs, set-filter-utils.cs.
+analysis/startup-fixtures.json GetSets now includes SetGroups.AllFilters containing
+all 217 installed set codes, plus per-format groups from deckbuilder-formats.json;
+both JSON payload and protobufPayload corrected. SetDatas remains empty; do not
+invent official release metadata. Program.cs backend self-test now asserts a
+nonempty AllFilters group from typed GetSets response.
+Build protocol-host/bin/SetFiltersFix compiled with zero warnings/errors.
+Passed --was-backend-self-test http://127.0.0.1:8787 covering real WAS login/profile,
+TLS FD auth, graph/formats/sets/StartHook/collection, native deck create/rename/get/
+delete, invalid auth. Actual stock-client post-fix restart/retest was not verified.
+
+TLS / PROCESS CAUTIONS FROM SESSION
+Unity TLS intermittently failed with "Chain instance is empty". A separate local
+CA root + localhost leaf was generated; root installed CurrentUser and LocalMachine
+Root by user/admin, but this did not conclusively fix every observed TLS launch.
+Files: data/local-client/tls/localhost.pfx/.cer/.root.cer/.password/.metadata.json.
+Never print password, private keys, tokens, or account credentials.
+Root subject CN=Arena Local Development Root, thumbprint
+CE8913004151D3C750D369090C89F39BC4AED91F.
+Leaf SAN localhost/127.0.0.1, thumbprint
+3B433C07C1F7851FD036535D0185E6FAD303CE98.
+Root private signing key was not persisted. Certificate generation is in
+Program.cs Certificates.Export. Host uses SslStreamCertificateContext with root.
+configuration-state.json tracks original config and preference backups.
+Restore cleanup may not yet remove LocalMachine root; review when restoring.
+
+A previous automatic approval review rejected reading the TLS password then
+restarting FrontDoor (tool said "blocked by policy", no detailed reason). Do not
+bypass a rejection by repackaging the same action. Old PID38408 was stopped with
+an accepted separate command; user was asked to run Start-PrivateServer.ps1.
+At THIS handoff, 9443 is listening again on PID38500, origin/build unknown.
+
+TESTS AND UI
+tests/ includes storage/http/engine/forge integration/protocol integration/bootstrap/
+Arena adapters/snapshot/client preparation tests. Choose checks relevant to changes;
+do not assume all passed during the latest turn. Only Java compile + interactive
+test were rerun for the latest bridge work.
+Native UI previously used computer-use skill and @oai/sky via lazy node_repl tool.
+Skill: C:/Users/ettru/.codex/plugins/cache/openai-bundled/computer-use/26.930.21537/skills/computer-use/SKILL.md
+Read relevant instructions if using it. Observe current window before every input;
+do not reuse stale screenshots/window handles. mcp__cua_repl native APIs are disabled.
+Latest historical Arena screenshot was Connection Lost; current UI not inspected.
+
+SUCCESS CRITERIA
+Launch local services and actual Arena; log in locally; import/create a deck in
+Arena's native builder; select that owned deck; start AI matchmaking; reach Arena's
+match screen; play real card actions (land, spell, targets/payment, pass, combat),
+observe Forge AI actions and correct state/results. Report exactly what was observed
+and limitations. Current bridge success is an intermediate milestone only.

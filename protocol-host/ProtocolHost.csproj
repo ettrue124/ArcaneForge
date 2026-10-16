@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Google.Protobuf"><HintPath>../client-inspection/Google.Protobuf.dll</HintPath></Reference>
+    <Reference Include="Wizards.Arena.Models.Protobuf"><HintPath>../client-inspection/Wizards.Arena.Models.Protobuf.dll</HintPath></Reference>
+    <Reference Include="Wizards.Arena.Models"><HintPath>../client-inspection/Wizards.Arena.Models.dll</HintPath></Reference>
+    <Reference Include="Wizards.Arena.Enums"><HintPath>../client-inspection/Wizards.Arena.Enums.dll</HintPath></Reference>
+    <Reference Include="Wizards.MDN.GreProtobuf"><HintPath>../client-inspection/Wizards.MDN.GreProtobuf.dll</HintPath></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>../client-inspection/Newtonsoft.Json.dll</HintPath></Reference>
+    <Reference Include="System.Memory"><HintPath>../client-inspection/System.Memory.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>
