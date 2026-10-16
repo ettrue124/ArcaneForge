@@ -1,0 +1,289 @@
+{
+  "total": 60,
+  "lands": 26,
+  "missing": 0,
+  "cards": [
+    {
+      "name": "Llanowar Elves",
+      "requested": 4,
+      "owned": 4,
+      "set": "FDN"
+    },
+    {
+      "name": "Spyglass Siren",
+      "requested": 1,
+      "owned": 1,
+      "set": "LCI"
+    },
+    {
+      "name": "Bristly Bill, Spine Sower",
+      "requested": 1,
+      "owned": 1,
+      "set": "OTJ"
+    },
+    {
+      "name": "Tifa Lockhart",
+      "requested": 1,
+      "owned": 1,
+      "set": "FIN"
+    },
+    {
+      "name": "Ajani Resolute",
+      "requested": 1,
+      "owned": 1,
+      "set": "FRA"
+    },
+    {
+      "name": "Jace, Reality Sculptor",
+      "requested": 1,
+      "owned": 1,
+      "set": "FRA"
+    },
+    {
+      "name": "Oko, Lorwyn Liege",
+      "requested": 1,
+      "owned": 1,
+      "set": "ECL"
+    },
+    {
+      "name": "Way of the Healer",
+      "requested": 1,
+      "owned": 1,
+      "set": "FRA"
+    },
+    {
+      "name": "Carrot Cake",
+      "requested": 1,
+      "owned": 1,
+      "set": "BLB"
+    },
+    {
+      "name": "Alquist Proft, Master Sleuth",
+      "requested": 1,
+      "owned": 1,
+      "set": "MKM"
+    },
+    {
+      "name": "Sheltered by Ghosts",
+      "requested": 1,
+      "owned": 4,
+      "set": "DSK"
+    },
+    {
+      "name": "White Mage's Staff",
+      "requested": 1,
+      "owned": 1,
+      "set": "FIN"
+    },
+    {
+      "name": "Requisition Raid",
+      "requested": 1,
+      "owned": 2,
+      "set": "OTJ"
+    },
+    {
+      "name": "Pawpatch Formation",
+      "requested": 1,
+      "owned": 1,
+      "set": "BLB"
+    },
+    {
+      "name": "Deduce",
+      "requested": 1,
+      "owned": 1,
+      "set": "SOA"
+    },
+    {
+      "name": "Unsummon",
+      "requested": 1,
+      "owned": 4,
+      "set": "FRA"
+    },
+    {
+      "name": "An Offer You Can't Refuse",
+      "requested": 1,
+      "owned": 1,
+      "set": "FDN"
+    },
+    {
+      "name": "Banishing Betrayal",
+      "requested": 1,
+      "owned": 3,
+      "set": "SOS"
+    },
+    {
+      "name": "Bestial Incursion",
+      "requested": 1,
+      "owned": 1,
+      "set": "FRA"
+    },
+    {
+      "name": "Aang, the Last Airbender",
+      "requested": 1,
+      "owned": 1,
+      "set": "TLA"
+    },
+    {
+      "name": "Webstrike Elite",
+      "requested": 1,
+      "owned": 1,
+      "set": "DFT"
+    },
+    {
+      "name": "Burnished Hart",
+      "requested": 1,
+      "owned": 1,
+      "set": "FDN"
+    },
+    {
+      "name": "Ultron, Artificial Malevolence",
+      "requested": 1,
+      "owned": 3,
+      "set": "MSH"
+    },
+    {
+      "name": "Yenna, Redtooth Regent",
+      "requested": 1,
+      "owned": 1,
+      "set": "WOE"
+    },
+    {
+      "name": "Underwater Tunnel // Slimy Aquarium",
+      "requested": 1,
+      "owned": 1,
+      "set": "DSK"
+    },
+    {
+      "name": "Captain America's Shield",
+      "requested": 1,
+      "owned": 1,
+      "set": "MSH"
+    },
+    {
+      "name": "Wild Hypothesis",
+      "requested": 1,
+      "owned": 3,
+      "set": "SOS"
+    },
+    {
+      "name": "True Ancestry",
+      "requested": 1,
+      "owned": 2,
+      "set": "TLA"
+    },
+    {
+      "name": "Wary Thespian",
+      "requested": 1,
+      "owned": 4,
+      "set": "FDN"
+    },
+    {
+      "name": "Bejeweled Warg",
+      "requested": 1,
+      "owned": 1,
+      "set": "HOB"
+    },
+    {
+      "name": "Vanguard Seraph",
+      "requested": 1,
+      "owned": 2,
+      "set": "FDN"
+    },
+    {
+      "name": "Breeding Pool",
+      "requested": 1,
+      "owned": 1,
+      "set": "EOE"
+    },
+    {
+      "name": "Hallowed Fountain",
+      "requested": 1,
+      "owned": 1,
+      "set": "ECL"
+    },
+    {
+      "name": "Temple Garden",
+      "requested": 1,
+      "owned": 1,
+      "set": "ECL"
+    },
+    {
+      "name": "Fabled Passage",
+      "requested": 1,
+      "owned": 1,
+      "set": "ELD"
+    },
+    {
+      "name": "Capital City",
+      "requested": 2,
+      "owned": 2,
+      "set": "FIN"
+    },
+    {
+      "name": "Temple of Mystery",
+      "requested": 1,
+      "owned": 1,
+      "set": "FDN"
+    },
+    {
+      "name": "Temple of Plenty",
+      "requested": 1,
+      "owned": 1,
+      "set": "FDN"
+    },
+    {
+      "name": "Temple of Enlightenment",
+      "requested": 1,
+      "owned": 1,
+      "set": "FDN"
+    },
+    {
+      "name": "Abandoned Air Temple",
+      "requested": 1,
+      "owned": 1,
+      "set": "TLA"
+    },
+    {
+      "name": "Transformative Commons",
+      "requested": 2,
+      "owned": 2,
+      "set": "FRA"
+    },
+    {
+      "name": "Azorius Guildgate",
+      "requested": 2,
+      "owned": 4,
+      "set": "FDN"
+    },
+    {
+      "name": "Selesnya Guildgate",
+      "requested": 2,
+      "owned": 4,
+      "set": "FDN"
+    },
+    {
+      "name": "Simic Guildgate",
+      "requested": 2,
+      "owned": 4,
+      "set": "FDN"
+    },
+    {
+      "name": "Forest",
+      "requested": 4,
+      "owned": 35,
+      "set": "DFT"
+    },
+    {
+      "name": "Plains",
+      "requested": 2,
+      "owned": 35,
+      "set": "DFT"
+    },
+    {
+      "name": "Island",
+      "requested": 2,
+      "owned": 35,
+      "set": "DFT"
+    }
+  ]
+}

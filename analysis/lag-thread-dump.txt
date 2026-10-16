@@ -1,0 +1,366 @@
+25844:
+2026-10-15 19:25:18
+Full thread dump Java HotSpot(TM) 64-Bit Server VM (25.0.1+8-LTS-27 mixed mode, sharing):
+
+Threads class SMR info:
+_java_thread_list=0x00000228927b38b0, length=19, elements={
+0x00000228e6897190, 0x00000228f82880f0, 0x00000228f82888b0, 0x00000228f828a5e0,
+0x00000228f828d0d0, 0x00000228f82af460, 0x00000228f82b03c0, 0x00000228f82b3a70,
+0x00000228f82c08b0, 0x00000228f838fae0, 0x00000228f8399f50, 0x00000228f831d100,
+0x00000228fe62e6b0, 0x00000228906865b0, 0x00000228fdb617a0, 0x00000228feec3ff0,
+0x000002289177e1b0, 0x000002289177e980, 0x000002289159f180
+}
+
+"main" #3 [25088] prio=5 os_prio=0 cpu=15562.50ms elapsed=1497.04s tid=0x00000228e6897190 nid=25088 waiting for monitor entry  [0x000000e7cbdfe000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+	at com.google.common.eventbus.Subscriber$SynchronizedSubscriber.invokeSubscriberMethod(Subscriber.java:141)
+	- waiting to lock <0x0000000087e13748> (a com.google.common.eventbus.Subscriber$SynchronizedSubscriber)
+	at com.google.common.eventbus.Subscriber.lambda$dispatchEvent$0(Subscriber.java:71)
+	at com.google.common.eventbus.Subscriber$$Lambda/0x0000000009224ad0.run(Unknown Source)
+	at com.google.common.util.concurrent.DirectExecutor.execute(DirectExecutor.java:31)
+	at com.google.common.eventbus.Subscriber.dispatchEvent(Subscriber.java:68)
+	at com.google.common.eventbus.Dispatcher$PerThreadQueuedDispatcher.dispatch(Dispatcher.java:111)
+	at com.google.common.eventbus.EventBus.post(EventBus.java:267)
+	at forge.game.Game.fireEvent(Game.java:1031)
+	at forge.game.mana.ManaPool.removeMana(ManaPool.java:204)
+	at forge.game.mana.ManaPool.removeMana(ManaPool.java:193)
+	at forge.game.mana.ManaPool.tryPayCostWithMana(ManaPool.java:258)
+	at forge.game.mana.ManaPool.payManaCostFromPool(ManaPool.java:349)
+	at forge.ai.ComputerUtilMana.payManaCost(ComputerUtilMana.java:630)
+	at forge.ai.ComputerUtilMana.payManaCost(ComputerUtilMana.java:74)
+	at forge.ai.ComputerUtilMana.canPayManaCost(ComputerUtilMana.java:63)
+	at forge.ai.ComputerUtilMana.canPayManaCost(ComputerUtilMana.java:60)
+	at ForgeInteractiveSession.captureSnapshot(ForgeInteractiveSession.java:339)
+	at ForgeInteractiveSession.snapshot(ForgeInteractiveSession.java:259)
+	- locked <0x0000000087dfefb0> (a ForgeInteractiveSession)
+	at ForgeEngineMain.main(ForgeEngineMain.java:460)
+
+"Reference Handler" #15 [17196] daemon prio=10 os_prio=2 cpu=0.00ms elapsed=1497.02s tid=0x00000228f82880f0 nid=17196 waiting on condition  [0x000000e7cc5ff000]
+   java.lang.Thread.State: RUNNABLE
+	at java.lang.ref.Reference.waitForReferencePendingList(java.base@25.0.1/Native Method)
+	at java.lang.ref.Reference.processPendingReferences(java.base@25.0.1/Reference.java:246)
+	at java.lang.ref.Reference$ReferenceHandler.run(java.base@25.0.1/Reference.java:208)
+
+"Finalizer" #16 [10468] daemon prio=8 os_prio=1 cpu=0.00ms elapsed=1497.02s tid=0x00000228f82888b0 nid=10468 in Object.wait()  [0x000000e7cc6ff000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@25.0.1/Native Method)
+	- waiting on <0x00000000897b9f90> (a java.lang.ref.ReferenceQueue$Lock)
+	at java.lang.Object.wait(java.base@25.0.1/Object.java:389)
+	at java.lang.Object.wait(java.base@25.0.1/Object.java:351)
+	at java.lang.ref.ReferenceQueue.remove0(java.base@25.0.1/ReferenceQueue.java:137)
+	at java.lang.ref.ReferenceQueue.remove(java.base@25.0.1/ReferenceQueue.java:215)
+	- locked <0x00000000897b9f90> (a java.lang.ref.ReferenceQueue$Lock)
+	at java.lang.ref.Finalizer$FinalizerThread.run(java.base@25.0.1/Finalizer.java:165)
+
+"Signal Dispatcher" #17 [24712] daemon prio=9 os_prio=2 cpu=0.00ms elapsed=1497.02s tid=0x00000228f828a5e0 nid=24712 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Attach Listener" #18 [11580] daemon prio=5 os_prio=2 cpu=0.00ms elapsed=1497.02s tid=0x00000228f828d0d0 nid=11580 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Service Thread" #19 [38364] daemon prio=9 os_prio=0 cpu=31.25ms elapsed=1497.02s tid=0x00000228f82af460 nid=38364 runnable  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Monitor Deflation Thread" #20 [27808] daemon prio=9 os_prio=0 cpu=93.75ms elapsed=1497.02s tid=0x00000228f82b03c0 nid=27808 runnable  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"C2 CompilerThread0" #21 [12048] daemon prio=9 os_prio=2 cpu=27781.25ms elapsed=1497.02s tid=0x00000228f82b3a70 nid=12048 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+   No compile task
+
+"C1 CompilerThread0" #29 [8712] daemon prio=9 os_prio=2 cpu=1875.00ms elapsed=1497.02s tid=0x00000228f82c08b0 nid=8712 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+   No compile task
+
+"Notification Thread" #33 [22520] daemon prio=9 os_prio=0 cpu=0.00ms elapsed=1496.99s tid=0x00000228f838fae0 nid=22520 runnable  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Common-Cleaner" #34 [35240] daemon prio=8 os_prio=1 cpu=0.00ms elapsed=1496.98s tid=0x00000228f8399f50 nid=35240 in Object.wait()  [0x000000e7cceff000]
+   java.lang.Thread.State: TIMED_WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@25.0.1/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@25.0.1/Object.java:389)
+	at java.lang.ref.ReferenceQueue.remove0(java.base@25.0.1/ReferenceQueue.java:123)
+	at java.lang.ref.ReferenceQueue.remove(java.base@25.0.1/ReferenceQueue.java:201)
+	- locked <0x00000000897bafb0> (a java.lang.ref.ReferenceQueue$Lock)
+	at jdk.internal.ref.CleanerImpl.run(java.base@25.0.1/CleanerImpl.java:146)
+	at java.lang.Thread.runWith(java.base@25.0.1/Thread.java:1487)
+	at java.lang.Thread.run(java.base@25.0.1/Thread.java:1474)
+	at jdk.internal.misc.InnocuousThread.run(java.base@25.0.1/InnocuousThread.java:148)
+
+"Java Sound Event Dispatcher" #82 [28516] daemon prio=5 os_prio=0 cpu=93.75ms elapsed=1161.46s tid=0x00000228f831d100 nid=28516 in Object.wait()  [0x000000e7ce3ff000]
+   java.lang.Thread.State: TIMED_WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@25.0.1/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@25.0.1/Object.java:389)
+	at com.sun.media.sound.EventDispatcher.dispatchEvents(java.desktop@25.0.1/EventDispatcher.java:171)
+	- locked <0x0000000087a00070> (a com.sun.media.sound.EventDispatcher)
+	at com.sun.media.sound.EventDispatcher.run(java.desktop@25.0.1/EventDispatcher.java:212)
+	at java.lang.Thread.runWith(java.base@25.0.1/Thread.java:1487)
+	at java.lang.Thread.run(java.base@25.0.1/Thread.java:1474)
+
+"Game-0" #83 [12280] daemon prio=5 os_prio=0 cpu=2343.75ms elapsed=1161.38s tid=0x00000228fe62e6b0 nid=12280 waiting for monitor entry  [0x000000e7ce8fd000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+	at ForgeInteractiveSession.publish(ForgeInteractiveSession.java:125)
+	- waiting to lock <0x0000000087dfefb0> (a ForgeInteractiveSession)
+	at ForgeInteractiveSession.send(ForgeInteractiveSession.java:144)
+	at forge.gamemodes.net.GameProtocolSender.send(GameProtocolSender.java:14)
+	at forge.gamemodes.net.ProtocolGuiGame.handleGameEvents(ProtocolGuiGame.java:551)
+	at forge.gui.control.GameEventForwarder.flush(GameEventForwarder.java:58)
+	at forge.gui.control.GameEventForwarder.receiveGameEvent(GameEventForwarder.java:47)
+	at java.lang.invoke.DirectMethodHandle$Holder.invokeVirtual(java.base@25.0.1/DirectMethodHandle$Holder)
+	at java.lang.invoke.LambdaForm$MH/0x0000000009269c00.invoke(java.base@25.0.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@25.0.1/Invokers$Holder)
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invokeImpl(java.base@25.0.1/DirectMethodHandleAccessor.java:155)
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(java.base@25.0.1/DirectMethodHandleAccessor.java:104)
+	at java.lang.reflect.Method.invoke(java.base@25.0.1/Method.java:565)
+	at com.google.common.eventbus.Subscriber.invokeSubscriberMethod(Subscriber.java:85)
+	at com.google.common.eventbus.Subscriber$SynchronizedSubscriber.invokeSubscriberMethod(Subscriber.java:142)
+	- locked <0x0000000087e13748> (a com.google.common.eventbus.Subscriber$SynchronizedSubscriber)
+	at com.google.common.eventbus.Subscriber.lambda$dispatchEvent$0(Subscriber.java:71)
+	at com.google.common.eventbus.Subscriber$$Lambda/0x0000000009224ad0.run(Unknown Source)
+	at com.google.common.util.concurrent.DirectExecutor.execute(DirectExecutor.java:31)
+	at com.google.common.eventbus.Subscriber.dispatchEvent(Subscriber.java:68)
+	at com.google.common.eventbus.Dispatcher$PerThreadQueuedDispatcher.dispatch(Dispatcher.java:111)
+	at com.google.common.eventbus.EventBus.post(EventBus.java:267)
+	at forge.game.Game.fireEvent(Game.java:1031)
+	at forge.game.player.Player.removeChangedKeywords(Player.java:1008)
+	at forge.game.StaticEffect.remove(StaticEffect.java:209)
+	at forge.game.StaticEffect.remove(StaticEffect.java:177)
+	at forge.game.StaticEffects.clearStaticEffects(StaticEffects.java:47)
+	at forge.game.GameAction.checkStaticAbilities(GameAction.java:1108)
+	at forge.game.GameAction.checkStateEffects(GameAction.java:1674)
+	at forge.game.phase.PhaseHandler.checkStateBasedEffects(PhaseHandler.java:1166)
+	at forge.game.phase.PhaseHandler.mainLoopStep(PhaseHandler.java:1050)
+	at forge.game.phase.PhaseHandler.mainGameLoop(PhaseHandler.java:1035)
+	at forge.game.phase.PhaseHandler.startFirstTurn(PhaseHandler.java:1029)
+	at forge.game.GameAction.startGame(GameAction.java:2411)
+	at forge.game.Match.startGame(Match.java:92)
+	at forge.gamemodes.match.HostedMatch.lambda$startGame$0(HostedMatch.java:294)
+	at forge.gamemodes.match.HostedMatch$$Lambda/0x000000000917a918.run(Unknown Source)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(java.base@25.0.1/ThreadPoolExecutor.java:1090)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(java.base@25.0.1/ThreadPoolExecutor.java:614)
+	at java.lang.Thread.runWith(java.base@25.0.1/Thread.java:1487)
+	at java.lang.Thread.run(java.base@25.0.1/Thread.java:1474)
+
+"awaitNextInputTimer Game:1 Player:Player" #84 [36720] daemon prio=5 os_prio=0 cpu=0.00ms elapsed=1161.13s tid=0x00000228906865b0 nid=36720 in Object.wait()  [0x000000e7ceaff000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@25.0.1/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@25.0.1/Object.java:389)
+	at java.lang.Object.wait(java.base@25.0.1/Object.java:351)
+	at java.util.TimerThread.mainLoop(java.base@25.0.1/Timer.java:543)
+	- locked <0x000000008b50a2a8> (a java.util.TaskQueue)
+	at java.util.TimerThread.run(java.base@25.0.1/Timer.java:522)
+
+"Java2D Disposer" #91 [22608] daemon prio=10 os_prio=2 cpu=0.00ms elapsed=1161.00s tid=0x00000228fdb617a0 nid=22608 in Object.wait()  [0x000000e7cf5ff000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@25.0.1/Native Method)
+	- waiting on <0x0000000086000070> (a java.lang.ref.ReferenceQueue$Lock)
+	at java.lang.Object.wait(java.base@25.0.1/Object.java:389)
+	at java.lang.Object.wait(java.base@25.0.1/Object.java:351)
+	at java.lang.ref.ReferenceQueue.remove0(java.base@25.0.1/ReferenceQueue.java:137)
+	at java.lang.ref.ReferenceQueue.remove(java.base@25.0.1/ReferenceQueue.java:215)
+	- locked <0x0000000086000070> (a java.lang.ref.ReferenceQueue$Lock)
+	at sun.java2d.Disposer.run(java.desktop@25.0.1/Disposer.java:133)
+	at java.lang.Thread.runWith(java.base@25.0.1/Thread.java:1487)
+	at java.lang.Thread.run(java.base@25.0.1/Thread.java:1474)
+
+"AWT-Windows" #93 [38280] daemon prio=6 os_prio=0 cpu=0.00ms elapsed=1161.00s tid=0x00000228feec3ff0 nid=38280 runnable  [0x000000e7cf7ff000]
+   java.lang.Thread.State: RUNNABLE
+	at sun.awt.windows.WToolkit.eventLoop(java.desktop@25.0.1/Native Method)
+	at sun.awt.windows.WToolkit.run(java.desktop@25.0.1/WToolkit.java:272)
+	at java.lang.Thread.runWith(java.base@25.0.1/Thread.java:1487)
+	at java.lang.Thread.run(java.base@25.0.1/Thread.java:1474)
+
+"Delayed-0" #98 [19844] daemon prio=6 os_prio=0 cpu=0.00ms elapsed=1022.94s tid=0x000002289177e1b0 nid=19844 waiting on condition  [0x000000e7cbcff000]
+   java.lang.Thread.State: WAITING (parking)
+	at jdk.internal.misc.Unsafe.park(java.base@25.0.1/Native Method)
+	- parking to wait for  <0x0000000081d7cf30> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+	at java.util.concurrent.locks.LockSupport.park(java.base@25.0.1/LockSupport.java:369)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionNode.block(java.base@25.0.1/AbstractQueuedSynchronizer.java:520)
+	at java.util.concurrent.ForkJoinPool.unmanagedBlock(java.base@25.0.1/ForkJoinPool.java:4364)
+	at java.util.concurrent.ForkJoinPool.managedBlock(java.base@25.0.1/ForkJoinPool.java:4310)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(java.base@25.0.1/AbstractQueuedSynchronizer.java:1752)
+	at java.util.concurrent.ScheduledThreadPoolExecutor$DelayedWorkQueue.take(java.base@25.0.1/ScheduledThreadPoolExecutor.java:1154)
+	at java.util.concurrent.ScheduledThreadPoolExecutor$DelayedWorkQueue.take(java.base@25.0.1/ScheduledThreadPoolExecutor.java:883)
+	at java.util.concurrent.ThreadPoolExecutor.getTask(java.base@25.0.1/ThreadPoolExecutor.java:1016)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(java.base@25.0.1/ThreadPoolExecutor.java:1076)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(java.base@25.0.1/ThreadPoolExecutor.java:614)
+	at java.lang.Thread.runWith(java.base@25.0.1/Thread.java:1487)
+	at java.lang.Thread.run(java.base@25.0.1/Thread.java:1474)
+
+"Delayed-1" #100 [26296] daemon prio=6 os_prio=0 cpu=0.00ms elapsed=1022.74s tid=0x000002289177e980 nid=26296 waiting on condition  [0x000000e7cd1fe000]
+   java.lang.Thread.State: WAITING (parking)
+	at jdk.internal.misc.Unsafe.park(java.base@25.0.1/Native Method)
+	- parking to wait for  <0x0000000081d7cf30> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+	at java.util.concurrent.locks.LockSupport.park(java.base@25.0.1/LockSupport.java:369)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionNode.block(java.base@25.0.1/AbstractQueuedSynchronizer.java:520)
+	at java.util.concurrent.ForkJoinPool.unmanagedBlock(java.base@25.0.1/ForkJoinPool.java:4364)
+	at java.util.concurrent.ForkJoinPool.managedBlock(java.base@25.0.1/ForkJoinPool.java:4310)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(java.base@25.0.1/AbstractQueuedSynchronizer.java:1752)
+	at java.util.concurrent.ScheduledThreadPoolExecutor$DelayedWorkQueue.take(java.base@25.0.1/ScheduledThreadPoolExecutor.java:1161)
+	at java.util.concurrent.ScheduledThreadPoolExecutor$DelayedWorkQueue.take(java.base@25.0.1/ScheduledThreadPoolExecutor.java:883)
+	at java.util.concurrent.ThreadPoolExecutor.getTask(java.base@25.0.1/ThreadPoolExecutor.java:1016)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(java.base@25.0.1/ThreadPoolExecutor.java:1076)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(java.base@25.0.1/ThreadPoolExecutor.java:614)
+	at java.lang.Thread.runWith(java.base@25.0.1/Thread.java:1487)
+	at java.lang.Thread.run(java.base@25.0.1/Thread.java:1474)
+
+"Audio Music" #520 [35728] daemon prio=5 os_prio=0 cpu=500.00ms elapsed=171.70s tid=0x000002289159f180 nid=35728 in Object.wait()  [0x000000e7cd0ff000]
+   java.lang.Thread.State: TIMED_WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@25.0.1/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@25.0.1/Object.java:389)
+	at com.sun.media.sound.DirectAudioDevice$DirectDL.write(java.desktop@25.0.1/DirectAudioDevice.java:713)
+	- locked <0x0000000081401960> (a java.lang.Object)
+	at javazoom.jl.player.JavaSoundAudioDevice.writeImpl(JavaSoundAudioDevice.java:156)
+	at forge.sound.AudioMusic$VolumeAudioDevice.writeImpl(AudioMusic.java:160)
+	at javazoom.jl.player.AudioDeviceBase.write(AudioDeviceBase.java:133)
+	at javazoom.jl.player.advanced.AdvancedPlayer.decodeFrame(AdvancedPlayer.java:163)
+	- locked <0x0000000081401970> (a javazoom.jl.player.advanced.AdvancedPlayer)
+	at javazoom.jl.player.advanced.AdvancedPlayer.play(AdvancedPlayer.java:91)
+	at javazoom.jl.player.advanced.AdvancedPlayer.play(AdvancedPlayer.java:72)
+	at forge.sound.AudioMusic.lambda$play$0(AudioMusic.java:58)
+	at forge.sound.AudioMusic$$Lambda/0x000000000912da38.run(Unknown Source)
+	at java.lang.Thread.runWith(java.base@25.0.1/Thread.java:1487)
+	at java.lang.Thread.run(java.base@25.0.1/Thread.java:1474)
+
+"GC Thread#17" os_prio=2 cpu=125.00ms elapsed=123.38s tid=0x0000022890853570 nid=5940 runnable  
+
+"GC Thread#16" os_prio=2 cpu=62.50ms elapsed=927.27s tid=0x0000022891f28d80 nid=32700 runnable  
+
+"GC Thread#15" os_prio=2 cpu=93.75ms elapsed=1004.89s tid=0x00000228903b95a0 nid=11660 runnable  
+
+"GC Thread#14" os_prio=2 cpu=125.00ms elapsed=1010.77s tid=0x000002288f449b00 nid=7312 runnable  
+
+"GC Thread#13" os_prio=2 cpu=109.38ms elapsed=1161.09s tid=0x000002288f0f83f0 nid=38852 runnable  
+
+"G1 Conc#4" os_prio=2 cpu=4328.12ms elapsed=1161.12s tid=0x000002288f0f3aa0 nid=28884 runnable  
+
+"G1 Conc#3" os_prio=2 cpu=4296.88ms elapsed=1161.12s tid=0x000002288f0f7700 nid=32712 runnable  
+
+"G1 Conc#2" os_prio=2 cpu=4312.50ms elapsed=1161.12s tid=0x000002288f0f72b0 nid=10320 runnable  
+
+"G1 Conc#1" os_prio=2 cpu=4312.50ms elapsed=1161.12s tid=0x000002288f0f3ef0 nid=5056 runnable  
+
+"GC Thread#12" os_prio=2 cpu=156.25ms elapsed=1161.12s tid=0x000002288f0f3200 nid=38376 runnable  
+
+"GC Thread#11" os_prio=2 cpu=140.62ms elapsed=1496.60s tid=0x00000228fdea28a0 nid=32404 runnable  
+
+"GC Thread#10" os_prio=2 cpu=156.25ms elapsed=1496.60s tid=0x00000228fdea39e0 nid=19660 runnable  
+
+"GC Thread#4" os_prio=2 cpu=156.25ms elapsed=1496.60s tid=0x00000228fdea4f70 nid=20736 runnable  
+
+"GC Thread#7" os_prio=2 cpu=171.88ms elapsed=1496.60s tid=0x00000228fdea1bb0 nid=25212 runnable  
+
+"GC Thread#9" os_prio=2 cpu=156.25ms elapsed=1496.60s tid=0x00000228fdea2450 nid=17400 runnable  
+
+"GC Thread#6" os_prio=2 cpu=187.50ms elapsed=1496.60s tid=0x00000228fdea4280 nid=22724 runnable  
+
+"GC Thread#8" os_prio=2 cpu=140.62ms elapsed=1496.60s tid=0x00000228fdea2000 nid=13316 runnable  
+
+"GC Thread#5" os_prio=2 cpu=171.88ms elapsed=1496.60s tid=0x00000228fdea53c0 nid=36020 runnable  
+
+"GC Thread#3" os_prio=2 cpu=203.12ms elapsed=1496.60s tid=0x00000228fdad0c60 nid=30648 runnable  
+
+"GC Thread#2" os_prio=2 cpu=171.88ms elapsed=1496.60s tid=0x00000228fdd11a80 nid=30416 runnable  
+
+"GC Thread#1" os_prio=2 cpu=109.38ms elapsed=1496.60s tid=0x00000228fdd11650 nid=14120 runnable  
+
+"VM Thread" os_prio=2 cpu=125.00ms elapsed=1497.03s tid=0x00000228f7384ff0 nid=18616 runnable  
+
+"VM Periodic Task Thread" os_prio=2 cpu=171.88ms elapsed=1497.03s tid=0x00000228f7376ba0 nid=36244 waiting on condition  
+
+"G1 Refine#0" os_prio=2 cpu=515.62ms elapsed=1497.04s tid=0x00000228f723c390 nid=1888 runnable  
+
+"G1 Service" os_prio=2 cpu=31.25ms elapsed=1497.04s tid=0x00000228f723cea0 nid=13688 runnable  
+
+"G1 Main Marker" os_prio=2 cpu=15.62ms elapsed=1497.04s tid=0x00000228e8e6ac10 nid=18800 runnable  
+
+"G1 Conc#0" os_prio=2 cpu=4281.25ms elapsed=1497.04s tid=0x00000228e8e6c7c0 nid=14896 runnable  
+
+"GC Thread#0" os_prio=2 cpu=125.00ms elapsed=1497.04s tid=0x00000228e8e50bb0 nid=23384 runnable  
+
+JNI global refs: 38, weak refs: 0
+
+
+Found one Java-level deadlock:
+=============================
+"main":
+  waiting to lock monitor 0x00000228fd512f50 (object 0x0000000087e13748, a com.google.common.eventbus.Subscriber$SynchronizedSubscriber),
+  which is held by "Game-0"
+
+"Game-0":
+  waiting to lock monitor 0x000002288feb16c0 (object 0x0000000087dfefb0, a ForgeInteractiveSession),
+  which is held by "main"
+
+Java stack information for the threads listed above:
+===================================================
+"main":
+	at com.google.common.eventbus.Subscriber$SynchronizedSubscriber.invokeSubscriberMethod(Subscriber.java:141)
+	- waiting to lock <0x0000000087e13748> (a com.google.common.eventbus.Subscriber$SynchronizedSubscriber)
+	at com.google.common.eventbus.Subscriber.lambda$dispatchEvent$0(Subscriber.java:71)
+	at com.google.common.eventbus.Subscriber$$Lambda/0x0000000009224ad0.run(Unknown Source)
+	at com.google.common.util.concurrent.DirectExecutor.execute(DirectExecutor.java:31)
+	at com.google.common.eventbus.Subscriber.dispatchEvent(Subscriber.java:68)
+	at com.google.common.eventbus.Dispatcher$PerThreadQueuedDispatcher.dispatch(Dispatcher.java:111)
+	at com.google.common.eventbus.EventBus.post(EventBus.java:267)
+	at forge.game.Game.fireEvent(Game.java:1031)
+	at forge.game.mana.ManaPool.removeMana(ManaPool.java:204)
+	at forge.game.mana.ManaPool.removeMana(ManaPool.java:193)
+	at forge.game.mana.ManaPool.tryPayCostWithMana(ManaPool.java:258)
+	at forge.game.mana.ManaPool.payManaCostFromPool(ManaPool.java:349)
+	at forge.ai.ComputerUtilMana.payManaCost(ComputerUtilMana.java:630)
+	at forge.ai.ComputerUtilMana.payManaCost(ComputerUtilMana.java:74)
+	at forge.ai.ComputerUtilMana.canPayManaCost(ComputerUtilMana.java:63)
+	at forge.ai.ComputerUtilMana.canPayManaCost(ComputerUtilMana.java:60)
+	at ForgeInteractiveSession.captureSnapshot(ForgeInteractiveSession.java:339)
+	at ForgeInteractiveSession.snapshot(ForgeInteractiveSession.java:259)
+	- locked <0x0000000087dfefb0> (a ForgeInteractiveSession)
+	at ForgeEngineMain.main(ForgeEngineMain.java:460)
+"Game-0":
+	at ForgeInteractiveSession.publish(ForgeInteractiveSession.java:125)
+	- waiting to lock <0x0000000087dfefb0> (a ForgeInteractiveSession)
+	at ForgeInteractiveSession.send(ForgeInteractiveSession.java:144)
+	at forge.gamemodes.net.GameProtocolSender.send(GameProtocolSender.java:14)
+	at forge.gamemodes.net.ProtocolGuiGame.handleGameEvents(ProtocolGuiGame.java:551)
+	at forge.gui.control.GameEventForwarder.flush(GameEventForwarder.java:58)
+	at forge.gui.control.GameEventForwarder.receiveGameEvent(GameEventForwarder.java:47)
+	at java.lang.invoke.DirectMethodHandle$Holder.invokeVirtual(java.base@25.0.1/DirectMethodHandle$Holder)
+	at java.lang.invoke.LambdaForm$MH/0x0000000009269c00.invoke(java.base@25.0.1/LambdaForm$MH)
+	at java.lang.invoke.Invokers$Holder.invokeExact_MT(java.base@25.0.1/Invokers$Holder)
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invokeImpl(java.base@25.0.1/DirectMethodHandleAccessor.java:155)
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(java.base@25.0.1/DirectMethodHandleAccessor.java:104)
+	at java.lang.reflect.Method.invoke(java.base@25.0.1/Method.java:565)
+	at com.google.common.eventbus.Subscriber.invokeSubscriberMethod(Subscriber.java:85)
+	at com.google.common.eventbus.Subscriber$SynchronizedSubscriber.invokeSubscriberMethod(Subscriber.java:142)
+	- locked <0x0000000087e13748> (a com.google.common.eventbus.Subscriber$SynchronizedSubscriber)
+	at com.google.common.eventbus.Subscriber.lambda$dispatchEvent$0(Subscriber.java:71)
+	at com.google.common.eventbus.Subscriber$$Lambda/0x0000000009224ad0.run(Unknown Source)
+	at com.google.common.util.concurrent.DirectExecutor.execute(DirectExecutor.java:31)
+	at com.google.common.eventbus.Subscriber.dispatchEvent(Subscriber.java:68)
+	at com.google.common.eventbus.Dispatcher$PerThreadQueuedDispatcher.dispatch(Dispatcher.java:111)
+	at com.google.common.eventbus.EventBus.post(EventBus.java:267)
+	at forge.game.Game.fireEvent(Game.java:1031)
+	at forge.game.player.Player.removeChangedKeywords(Player.java:1008)
+	at forge.game.StaticEffect.remove(StaticEffect.java:209)
+	at forge.game.StaticEffect.remove(StaticEffect.java:177)
+	at forge.game.StaticEffects.clearStaticEffects(StaticEffects.java:47)
+	at forge.game.GameAction.checkStaticAbilities(GameAction.java:1108)
+	at forge.game.GameAction.checkStateEffects(GameAction.java:1674)
+	at forge.game.phase.PhaseHandler.checkStateBasedEffects(PhaseHandler.java:1166)
+	at forge.game.phase.PhaseHandler.mainLoopStep(PhaseHandler.java:1050)
+	at forge.game.phase.PhaseHandler.mainGameLoop(PhaseHandler.java:1035)
+	at forge.game.phase.PhaseHandler.startFirstTurn(PhaseHandler.java:1029)
+	at forge.game.GameAction.startGame(GameAction.java:2411)
+	at forge.game.Match.startGame(Match.java:92)
+	at forge.gamemodes.match.HostedMatch.lambda$startGame$0(HostedMatch.java:294)
+	at forge.gamemodes.match.HostedMatch$$Lambda/0x000000000917a918.run(Unknown Source)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(java.base@25.0.1/ThreadPoolExecutor.java:1090)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(java.base@25.0.1/ThreadPoolExecutor.java:614)
+	at java.lang.Thread.runWith(java.base@25.0.1/Thread.java:1487)
+	at java.lang.Thread.run(java.base@25.0.1/Thread.java:1474)
+
+Found 1 deadlock.
+

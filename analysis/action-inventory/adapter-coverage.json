@@ -1,0 +1,523 @@
+{
+  "assembly_sha256": {
+    "Google.Protobuf.dll": "592761c0cea52110c818978c94e33202d942a9a36ef8742b224d08fac5d42f2b",
+    "Wizards.MDN.GreProtobuf.dll": "0170f35ec3af708871d41d6a6e939f8faf5972a18691f8c7ac168f3458bfc928",
+    "Wizards.Arena.Models.Protobuf.dll": "add9ae06a7acc246c73d6b1dedbe99cc36c20463a6e618d5e106145af2a0239f",
+    "SharedClientCore.dll": "ff02a80282f36c45d6a639c6dc5013eff16406bce6eb0ef9985b59e1c3244b33",
+    "Core.dll": "947441eecc9a9231503af434ad7970e6af0bc2c56148d56991bba5b6c76458e6"
+  },
+  "messages": [
+    {
+      "name": "None",
+      "value": 0,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "GameStateMessage",
+      "value": 1,
+      "status": "native adapter",
+      "details": "ForgeEncoder.cs / BattleUpdates.cs",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionsAvailableReq",
+      "value": 2,
+      "status": "native adapter",
+      "details": "BattlePresentation.cs / BattleActionTypes.java",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ChooseStartingPlayerReq",
+      "value": 6,
+      "status": "native adapter",
+      "details": "BattleRequests.cs",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ConnectResp",
+      "value": 7,
+      "status": "native adapter",
+      "details": "MatchDoorHost.cs",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "GetSettingsResp",
+      "value": 9,
+      "status": "native adapter",
+      "details": "BattleFlow.cs",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SetSettingsResp",
+      "value": 10,
+      "status": "native adapter",
+      "details": "BattleFlow.cs",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "GroupReq",
+      "value": 11,
+      "status": "native adapter",
+      "details": "BattleGuiRequests.cs / BattlePrompts.java (scry top/bottom)",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "IllegalRequest",
+      "value": 12,
+      "status": "not implemented",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "MulliganReq",
+      "value": 15,
+      "status": "native adapter",
+      "details": "MatchDoorHost.cs / LondonMulligan.java",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "OrderReq",
+      "value": 17,
+      "status": "native adapter",
+      "details": "BattleGuiRequests.cs / BattlePrompts.java (card order)",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "PromptReq",
+      "value": 18,
+      "status": "not implemented",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "RevealHandReq",
+      "value": 21,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SelectNReq",
+      "value": 22,
+      "status": "native adapter",
+      "details": "BattleGuiRequests.cs / BattleRequests.cs (entities and labeled options)",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "AllowForceDraw",
+      "value": 24,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "BinaryGameState",
+      "value": 25,
+      "status": "not implemented",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "DeclareAttackersReq",
+      "value": 26,
+      "status": "native adapter",
+      "details": "BattleRequests.cs",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SubmitAttackersResp",
+      "value": 27,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "DeclareBlockersReq",
+      "value": 28,
+      "status": "native adapter",
+      "details": "BattleRequests.cs / BattleInputs.java (multiple attackers per blocker)",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SubmitBlockersResp",
+      "value": 29,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "AssignDamageReq",
+      "value": 30,
+      "status": "native adapter",
+      "details": "BattleGuiRequests.cs / BattlePrompts.java",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "AssignDamageConfirmation",
+      "value": 31,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "OrderCombatDamageReq",
+      "value": 32,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "OrderDamageConfirmation",
+      "value": 33,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SelectTargetsReq",
+      "value": 34,
+      "status": "native adapter",
+      "details": "BattleRequests.cs / BattleInputs.java / BattlePrompts.java (entities and stack spells/abilities)",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SubmitTargetsResp",
+      "value": 35,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "PayCostsReq",
+      "value": 36,
+      "status": "alternate workflow",
+      "details": "Forge payment input uses mana actions, bounded numbers, card selections, and confirmations.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "IntermissionReq",
+      "value": 37,
+      "status": "native adapter",
+      "details": "BattleCompletion.cs (end-of-game result)",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "DieRollResultsResp",
+      "value": 38,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SelectReplacementReq",
+      "value": 39,
+      "status": "native adapter",
+      "details": "BattleNativeMenus.cs / BattlePrompts.java; native parser/response checks, with labeled fallback where ability identity cannot be resolved.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SelectNGroupReq",
+      "value": 40,
+      "status": "native adapter",
+      "details": "BattleNativeMenus.cs / BattlePrompts.java; native parser/response checks, with labeled fallback where ability identity cannot be resolved.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "DistributionReq",
+      "value": 42,
+      "status": "native adapter",
+      "details": "BattleGuiRequests.cs / BattlePrompts.java",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "NumericInputReq",
+      "value": 43,
+      "status": "native adapter",
+      "details": "BattleRequests.cs / ForgeInteractiveSession.java",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SearchReq",
+      "value": 44,
+      "status": "native adapter",
+      "details": "BattleNativeMenus.cs / BattlePrompts.java; native parser/response checks, with labeled fallback where ability identity cannot be resolved.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "OptionalActionMessage",
+      "value": 45,
+      "status": "native adapter",
+      "details": "BattleRequests.cs",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "CastingTimeOptionsReq",
+      "value": 46,
+      "status": "native adapter",
+      "details": "BattleRequests.cs / BattleNativeMenus.cs (X and resolvable modal choices)",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SelectFromGroupsReq",
+      "value": 48,
+      "status": "native adapter",
+      "details": "BattleNativeMenus.cs / BattlePrompts.java; native parser/response checks, with labeled fallback where ability identity cannot be resolved.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SearchFromGroupsReq",
+      "value": 49,
+      "status": "native adapter",
+      "details": "BattleNativeMenus.cs / BattlePrompts.java; native parser/response checks, with labeled fallback where ability identity cannot be resolved.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "GatherReq",
+      "value": 50,
+      "status": "native adapter",
+      "details": "BattleNativeMenus.cs / BattlePrompts.java; native parser/response checks, with labeled fallback where ability identity cannot be resolved.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "QueuedGameStateMessage",
+      "value": 51,
+      "status": "not implemented",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "UIMessage",
+      "value": 52,
+      "status": "not implemented",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SubmitDeckReq",
+      "value": 53,
+      "status": "native adapter",
+      "details": "BattleNativeMenus.cs / BattlePrompts.java; native parser/response checks, with labeled fallback where ability identity cannot be resolved.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "EdictalMessage",
+      "value": 54,
+      "status": "not implemented",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "TimeoutMessage",
+      "value": 55,
+      "status": "not implemented",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "TimerStateMessage",
+      "value": 56,
+      "status": "not implemented",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SubmitDeckConfirmation",
+      "value": 57,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "StringInputReq",
+      "value": 58,
+      "status": "native adapter",
+      "details": "BattleGuiRequests.cs / BattlePrompts.java",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "SelectCountersReq",
+      "value": 59,
+      "status": "native adapter",
+      "details": "BattleNativeMenus.cs / BattlePrompts.java; native parser/response checks, with labeled fallback where ability identity cannot be resolved.",
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "PredictionResp",
+      "value": 60,
+      "status": "declared only / no recovered handler",
+      "details": "No adapter claimed.",
+      "visual_gameplay_verified": false
+    }
+  ],
+  "action_types": [
+    {
+      "name": "ActionType_None",
+      "value": 0,
+      "emitted": false,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_Cast",
+      "value": 1,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_Activate",
+      "value": 2,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_Play",
+      "value": 3,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_Activate_Mana",
+      "value": 4,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_Pass",
+      "value": 5,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_Activate_Test",
+      "value": 6,
+      "emitted": false,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_Special",
+      "value": 7,
+      "emitted": false,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_Special_TurnFaceUp",
+      "value": 8,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_ResolutionCost",
+      "value": 9,
+      "emitted": false,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_CastLeft",
+      "value": 10,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_CastRight",
+      "value": 11,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_Make_Payment",
+      "value": 12,
+      "emitted": false,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_CombatCost",
+      "value": 14,
+      "emitted": false,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_OpeningHandAction",
+      "value": 15,
+      "emitted": false,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_CastAdventure",
+      "value": 16,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_FloatMana",
+      "value": 17,
+      "emitted": false,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_CastMDFC",
+      "value": 18,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_PlayMDFC",
+      "value": 19,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_Special_Payment",
+      "value": 20,
+      "emitted": false,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_CastPrototype",
+      "value": 21,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_CastLeftRoom",
+      "value": 22,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_CastRightRoom",
+      "value": 23,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_CastOmen",
+      "value": 24,
+      "emitted": true,
+      "visual_gameplay_verified": false
+    },
+    {
+      "name": "ActionType_Placeholder25",
+      "value": 25,
+      "emitted": false,
+      "visual_gameplay_verified": false
+    }
+  ],
+  "validation": [
+    "Python regression suite; current counts/results are in the latest audit",
+    "Native installed-client parser/response tests",
+    "Real Forge scry/modes/divided-damage/trample tests",
+    "Real Forge X/fight regression",
+    "Real Forge MDFC land and Adventure casting/linked-face tests",
+    "Real Forge Treasure/Food/creature-token identities, creation and sacrifice effects",
+    "Real Forge counterspell stack targeting and multi-attacker blocking",
+    "Installed Arena player energy/poison counter-state parsers"
+  ],
+  "remaining": [
+    "Stock Arena visual workflows and all card variants need playtesting.",
+    "Best-of-three sideboarding is not supported.",
+    "Generic amount prompts do not transmit per-recipient maximums to Arena; Forge validates them.",
+    "Arbitrary non-card ordering uses click-selection order; its native UI order is unverified.",
+    "No full official-server gameplay/animation parity is claimed."
+  ]
+}

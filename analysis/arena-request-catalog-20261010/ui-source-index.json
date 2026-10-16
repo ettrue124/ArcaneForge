@@ -1,0 +1,310 @@
+[
+  {
+    "class": "OptionalActionBrowserWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\OptionalActionBrowserWorkflow.cs"
+  },
+  {
+    "class": "ActionsAvailableWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\ActionsAvailableWorkflow.cs"
+  },
+  {
+    "class": "CastingTimeOption_ChooseOrCostWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\CastingTimeOption_ChooseOrCostWorkflow.cs"
+  },
+  {
+    "class": "CastingTimeOption_FlashWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\CastingTimeOption_FlashWorkflow.cs"
+  },
+  {
+    "class": "CastingTimeOption_KickerWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\CastingTimeOption_KickerWorkflow.cs"
+  },
+  {
+    "class": "CastingTimeOption_ModalRepeatWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\CastingTimeOption_ModalRepeatWorkflow.cs"
+  },
+  {
+    "class": "LondonWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\LondonWorkflow.cs"
+  },
+  {
+    "class": "ScryWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\ScryWorkflow.cs"
+  },
+  {
+    "class": "SelectNFaceUpPileGroupWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\SelectNFaceUpPileGroupWorkflow.cs"
+  },
+  {
+    "class": "SelectNGroupWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\SelectNGroupWorkflow.cs"
+  },
+  {
+    "class": "SelectNPileGroupWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\SelectNPileGroupWorkflow.cs"
+  },
+  {
+    "class": "SelectTargetsWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\SelectTargetsWorkflow.cs"
+  },
+  {
+    "class": "SurveilWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\SurveilWorkflow.cs"
+  },
+  {
+    "class": "AssetLookupTree.Indirectors.Interaction.ActionsAvailable.Interaction_ChildWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\AssetLookupTree.Indirectors.Interaction.ActionsAvailable.Interaction_ChildWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.AdornCardWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.AdornCardWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.AutoTapActionsWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.AutoTapActionsWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.CastingTimeOption_ManaTypeWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.CastingTimeOption_ManaTypeWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.ReplicateWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.ReplicateWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.ChooseStartingPlayerWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.ChooseStartingPlayerWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.DeclareAttackersWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.DeclareAttackersWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.DeclareBlockersWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.DeclareBlockersWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.DistributionWithExistingValuesWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.DistributionWithExistingValuesWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.DistributionWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.DistributionWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.EffectCostWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.EffectCostWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.IntermissionWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.IntermissionWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.NullWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.NullWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.NumericInputWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.NumericInputWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.OrderWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.OrderWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.PayCostWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.PayCostWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.ReadAheadWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.ReadAheadWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SearchFromGroupsWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SearchFromGroupsWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectFromGroupsWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectFromGroupsWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectReplacementWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectReplacementWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SubmitDeckWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SubmitDeckWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.WorkflowController",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.WorkflowController.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectReplacements.TurtleHurtleWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectReplacements.TurtleHurtleWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.ChoiceButtonsWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.ChoiceButtonsWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.ChoiceModalWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.ChoiceModalWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.ChoicePromptButtonsWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.ChoicePromptButtonsWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.ChoiceSelectionWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.ChoiceSelectionWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.ChoiceWithContextWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.ChoiceWithContextWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.DungeonRoomSelectWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.DungeonRoomSelectWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.DungeonSelectWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.DungeonSelectWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.LimboSelectionWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.LimboSelectionWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.RandomSelectionWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.RandomSelectionWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.SelectBasicLandSubtypeWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.SelectBasicLandSubtypeWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.SelectBasicLandWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.SelectBasicLandWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.SelectColorWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.SelectColorWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.ParityWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.ParityWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.SelectionWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.SelectionWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.TriggeredAbilityWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.TriggeredAbilityWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.TypeKindsWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.TypeKindsWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.SelectPrintingIndexWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.SelectPrintingIndexWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.SelectZoneWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.SelectZoneWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectN.SelectZonesWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectN.SelectZonesWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectCounters.SelectCounterWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectCounters.SelectCounterWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.SelectCounters.SelectCountersWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.SelectCounters.SelectCountersWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.Search.SearchWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.Search.SearchWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.OptionalAction.OptionalActionMessage_ScryishWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.OptionalAction.OptionalActionMessage_ScryishWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.OptionalAction.OptionalActionMessageWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.OptionalAction.OptionalActionMessageWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.OptionalAction.ExploreWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.OptionalAction.ExploreWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.OptionalAction.NonMechanicCardButtonWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.OptionalAction.NonMechanicCardButtonWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.Mulligan.MulliganWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.Mulligan.MulliganWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.Grouping.GroupWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.Grouping.GroupWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.Gather.GatherWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.Gather.GatherWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.AdditionalCostWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.AdditionalCostWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.CastingTimeOptionWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.CastingTimeOptionWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.ChooseXWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.ChooseXWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.CastingTimeOption_ModalSelectCostOptionWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.CastingTimeOption_ModalSelectCostOptionWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.ModalWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.ModalWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.CostKeywordWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.CostKeywordWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.CastingTimeOption_SpecializeWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.CastingTimeOption.CastingTimeOption_SpecializeWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.AssignDamage.AssignDamageWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.AssignDamage.AssignDamageWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.AssignDamage.AutoAssignDamageWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.AssignDamage.AutoAssignDamageWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.ActionsAvailable.ResolutionCastWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.ActionsAvailable.ResolutionCastWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.ActionsAvailable.CannotTakeActionWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.ActionsAvailable.CannotTakeActionWorkflow.cs"
+  },
+  {
+    "class": "Wotc.Mtga.DuelScene.Interactions.ActionsAvailable.OpeningHandActionWorkflow",
+    "source": "analysis\\arena-request-catalog-20261010\\ui-sources\\Wotc.Mtga.DuelScene.Interactions.ActionsAvailable.OpeningHandActionWorkflow.cs"
+  }
+]

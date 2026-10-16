@@ -1,0 +1,12 @@
+[
+  {
+    "accept": true,
+    "offered": 1018,
+    "arrival": 899999
+  },
+  {
+    "accept": false,
+    "offered": 1018,
+    "arrival": null
+  }
+]

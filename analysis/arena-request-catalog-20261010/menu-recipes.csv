@@ -1,0 +1,33 @@
+purpose,request,condition,workflow,notes
+Scry: top versus bottom,GroupReq,context=Scry (1),ScryWorkflow,Returns GroupResp with Library/Top and Library/Bottom groups. This is the drag-across-the-library interaction.
+Surveil: top versus graveyard,GroupReq,context=Surveil (2),SurveilWorkflow,Returns GroupResp; graveyard is a different destination from library bottom.
+London mulligan bottoming,GroupReq,context=LondonMulligan (3),LondonWorkflow,The mulligan grouping workflow uses the request group constraints.
+Generic divide-into-piles,GroupReq,"context=None (0), with group specs",GroupWorkflow,Liliana ultimate has a separate battlefield-pile path selected from the resolving card.
+Reorder top of library,OrderReq,orderingContext=OrderingForTop (2),OrderWorkflow,Only changes relative order among the supplied cards. Cannot move a card to the other end of the library.
+Reorder bottom of library,OrderReq,orderingContext=OrderingForBottom (1),OrderWorkflow,May auto-submit when full control is disabled and the local library has more than 10 cards.
+Ordinary ordering,OrderReq,orderingContext=None (0),OrderWorkflow,No library placeholder; arrange the supplied items.
+Triggered abilities,SelectNReq,optionContext=Stacking AND context=TriggeredAbility,TriggeredAbilityWorkflow,Other stacking selections take SelectNWorkflow_Stacking instead.
+Mana in the pool,SelectNReq,context=ManaPool,SelectNWorkflow_ManaPool,Uses mana entries rather than card instance IDs.
+Choose a card color,SelectNReq,listType=Static or StaticSubset; staticList=Colors or CardColors,SelectColorWorkflow,Earlier SelectN routing branches still take precedence.
+Choose a mana color,SelectNReq,context=ManaFromAbility OR staticList=ManaColors,SelectColorWorkflow,Provide the corresponding offered colors.
+Choose a basic land type,SelectNReq,context=Resolution; optionContext=Resolution; listType=Static; staticList=BasicLandTypes,SelectBasicLandWorkflow,Static subtype variant uses exactly the five basic-land subtype IDs; see SelectNRequest predicates.
+Text choice: prompt buttons,SelectNReq,"Choice selection; minSel=maxSel=1; two choices with no cancellation, or one choice with AllowCancel.Continue",ChoicePromptButtonsWorkflow,This branch is checked before the other choice layouts.
+Text choice: small button menu,SelectNReq,Choice selection; prior prompt-button rule did not match; at most 6 choices; minSel=maxSel=1,ChoiceButtonsWorkflow,Dynamic text choices use PromptParameterIndex IDs and matching prompt parameters.
+Text choice: list,SelectNReq,Choice selection; prior button rules did not match; more than 3 sorted choices,ChoiceSelectionWorkflow,Not every selection with many card IDs is a text-choice list.
+Text choice: modal cards,SelectNReq,Choice selection; all earlier choice-layout rules did not match,ChoiceModalWorkflow,At most 3 sorted choices at this point. Preserve legal selection counts and option descriptions.
+Choose exactly one counter,SelectCountersReq,minSelect=1; maxSelect=1,SelectCounterWorkflow,Different from choosing a counter TYPE through a static SelectN list.
+Choose multiple counters,SelectCountersReq,Other minSelect/maxSelect combinations,SelectCountersWorkflow,Uses counter distribution and selection helpers.
+Distribute a fresh amount,DistributionReq,No existingDistributions,DistributionWorkflow,"Uses the supplied amount, recipients, and minimum-per-target constraints."
+Edit an existing distribution,DistributionReq,existingDistributions is nonempty,DistributionWithExistingValuesWorkflow,Starts with existing allocated amounts.
+Gather an exact amount,GatherReq,amountToGather != 0,GatherWorkflow_RemoveExact,Uses sources and destinationId; response contains Gatherings.
+Gather any number,GatherReq,amountToGather=0,GatherWorkflow_AnyNumber,Separate from distributing an amount outward.
+Choose a number,NumericInputReq,Effective prompt ID is not 166,NumericInputWorkflow,Use numeric bounds/options supplied by the request.
+Read ahead,NumericInputReq,Effective prompt.promptId=166,ReadAheadWorkflow,Uses the specific read-ahead workflow; not an arbitrary generic number picker.
+Select a pile,SelectNGroupReq,Default path,SelectNGroupWorkflow,Liliana ultimate and Hostile Negotiations have special paths based on source/state.
+Choose starting player,ChooseStartingPlayerReq,Dedicated request,ChooseStartingPlayerWorkflow,Player choice workflow.
+Choose replacement effect,SelectReplacementReq,Default path,SelectReplacementWorkflow,The client has an additional TurtleHurtle special-case route.
+Choose casting options,CastingTimeOptionsReq,Nested child request type/options,CastingTimeOptionWorkflow,"Child branches include X, kicker, timing permission, SelectN, modes, either/or costs, cost keywords, specialize, additional costs, and replicate."
+Search a zone,SearchReq,Dedicated search payload,SearchWorkflow,"Keep search semantics, legal IDs and zone information; do not substitute a generic choice just because it displays cards."
+Search grouped cards,SearchFromGroupsReq,Dedicated grouped search payload,SearchFromGroupsWorkflow,Distinct request from SelectFromGroupsReq and from grouping cards into piles.
+Select from grouped cards,SelectFromGroupsReq,Dedicated grouped selection payload,SelectFromGroupsWorkflow,Additional browser variants are selected by zones and request/state.
+Optional action,OptionalActionMessage,Action/request data plus source and asset lookup rules,OptionalActionMessageWorkflow,"The client can instead choose Explore, scry-like, special browser, or card-button layouts. See routing code."

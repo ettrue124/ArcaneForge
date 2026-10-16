@@ -1,0 +1,809 @@
+MTG ARENA CUSTOM SERVER - SHARED AI PROGRESS / HANDOFF
+======================================================
+
+PURPOSE
+-------
+This is the shared continuity file for TWO AI coding assistants working on the
+same existing MTG Arena custom server project. Place this file in the project
+root as AI_SHARED_PROGRESS.txt. Both assistants must read it before starting
+work and update it throughout their work. The historical handoff below is a
+report of what a prior assistant said, NOT proof of the current code state.
+
+CURRENT STATUS (VERIFIED AGAINST REPOSITORY)
+-----------------------------------------------
+Project: Custom MTG Arena server/game engine speaking to installed client.
+Architecture:
+- Frontend / Protocol bridge: `protocol-host` (.NET 10 / C#), translates GRE/FrontDoor protobuf/TLS to Forge HTTP API.
+- Rules engine: `engine-bridge` (Java 21), embeds Card-Forge rules engine (`vendor/forge`), exposes `/api/interactive/*`.
+- Server coordinator: `server` (Python 3.12 / SQLite), provides authentication, matchmaking, inventory, format definitions.
+- Transport: FrontDoor (port 9445), MatchDoor (port 9444), backend REST (port 8787).
+
+Status of Prior Claims (Independently Verified):
+* Graveyard/exile newest-first ordering: Implemented in `ForgeEncoder.cs` / `BattlePresentation.cs`. Verified in unit tests. Needs match visual confirmation.
+* GroupReq vs OrderReq: Implemented. Scry and Surveil map to `GroupReq` (Protocol ID 11); deck ordering maps to `OrderReq` (Protocol ID 17).
+* Simultaneous trigger freeze fix: Implemented. Overrode `orderSimultaneousSa` in `BattlePlayerControllerHuman.java` to auto-order triggers on stack without blocking GUI wire.
+* Color, creature/card type, counter type, and pile selections: Native menus implemented in `BattleNativeMenus.cs` and `BattlePlayerControllerHuman.java`.
+  - Color -> `SelectNReq` with `StaticList.ManaColors`
+  - Types -> `SelectNReq` with `StaticList.CardTypes` / `SuperTypes` / `SubTypes`
+  - Counter type -> `SelectNReq` with `StaticList.CounterTypes`
+  - Piles -> `SelectNGroupReq` (Protocol ID 40)
+* Replacement effects: Implemented in `BattlePlayerControllerHuman.java` and `BattleNativeMenus.cs` via `SelectReplacementReq` (Protocol ID 39).
+* Modal spells: Implemented in `BattleNativeMenus.cs` via `CastingTimeOptionsReq` / `ModalReq` (Protocol ID 46).
+* Search interactions: `SearchReq` (Protocol ID 44) implemented in `BattleNativeMenus.cs` and `BattlePlayerControllerHuman.searchCards`.
+* 5 Protocol artifacts located: All present in `analysis/arena-request-catalog-20261010/`:
+  1. Full catalog: `Full-list.md`, `core-types.txt`
+  2. JSON catalog: `catalog.json`, `arena-descriptor-set.json`
+  3. Menu guide: `Matching-guide.md`, `Matching-guide.html`
+  4. Request-menu mapping: `request-menu-mapping.json`
+  5. CSV menu recipes: `menu-recipes.csv`, `incoming-messages.csv`
+
+PROJECT SNAPSHOT (AUDITED 2026-10-10)
+------------------------------------
+Current UTC date/time: 2026-10-10T20:28:00Z
+Repository absolute path: C:\Users\Ethan\Downloads\project
+Branch and HEAD commit: vendor/forge at Card-Forge master d50cedc565bfbcedab333c67507dc0f5aef00386; root workspace standalone
+Git status: Clean working state in engine-bridge and protocol-host; all builds live
+Build commands / results:
+- Engine Bridge: javac -encoding UTF-8 -cp $cp -d engine-bridge/build engine-bridge/*.java -> BUILD SUCCEEDED (0 errors)
+- Protocol Host: dotnet build protocol-host -o protocol-host/bin/live -> BUILD SUCCEEDED (0 warnings, 0 errors)
+Test commands / results:
+- dotnet run --project protocol-host -- --self-test -> PASS (all suites passed)
+- python -m unittest discover -s tests -> PASS (all 74 tests passed)
+Installed Arena client: C:\Program Files\Wizards of the Coast\MTGA\MTGA_Data\Managed
+Protocol artifact locations: analysis/arena-request-catalog-20261010/
+Important files:
+- protocol-host/BattleNativeMenus.cs: Native Arena request generation (modes, replacements, statics, piles, search) and response parsing
+- protocol-host/BattleGuiRequests.cs & BattleGuiResponses.cs: Native request construction and answer dispatch
+- protocol-host/MatchDoorHost.cs: Arena WebSocket GRE framing, state machine, and engine action dispatch
+- protocol-host/BattlePresentation.cs: Board projection, annotations, action generation, targeting, and animations
+- engine-bridge/BattlePlayerControllerHuman.java: Forge human controller overrides for Arena interaction workflows
+- engine-bridge/BattlePrompts.java: Translation between Forge GUI events and protocol-host descriptors
+- engine-bridge/ForgeInteractiveSession.java: Interactive match coordinator, action executor, and prompt manager
+
+TASK OWNERSHIP / SHARED WORK QUEUE
+----------------------------------
+ID | Task | Status | Agent owner | Files reserved | Evidence / next action
+T01 | Inspect repository and reconcile handoff | TESTED | Agent A | AI_SHARED_PROGRESS.txt | Reconciled with disk and all tests pass
+T02 | Verify graveyard/exile zone ordering | IMPLEMENTED_UNVERIFIED | - | ForgeEncoder.cs | Code verified; visual match check pending
+T03 | Verify GroupReq / OrderReq and drag behavior | IMPLEMENTED_UNVERIFIED | - | BattleGuiRequests.cs | GroupReq (Scry/Surveil) & OrderReq implemented
+T04 | Verify color/type/counter/pile mappings | IMPLEMENTED_UNVERIFIED | - | BattleNativeMenus.cs | Native menus mapped and wired
+T05 | Verify replacement effect choice | IMPLEMENTED_UNVERIFIED | - | BattlePlayerControllerHuman.java | SelectReplacementReq wired
+T06 | SearchReq and SearchFromGroupsReq | IMPLEMENTED_UNVERIFIED | Agent A | BattleNativeMenus.cs, BattlePlayerControllerHuman.java | SearchReq & SearchFromGroupsReq wired and unit tested
+T07 | CastingTimeOptionsReq (Modes, X, Alt Costs) | IMPLEMENTED_UNVERIFIED | Agent A | BattleNativeMenus.cs, BattlePlayerControllerHuman.java | Modes and ChooseX wired and unit tested
+T08 | PayCostsReq | IMPLEMENTED_UNVERIFIED | Agent A | protocol-host/BattleRequests.cs, protocol-host/BattleNativeMenus.cs, engine-bridge/BattleInputs.java | PayCostsReq wired with auto-tap & PerformAutoTapActionsResp; unit tested
+T09 | Other request-response handlers | IMPLEMENTED_UNVERIFIED | Agent B | protocol-host/BattleNativeMenus.cs, protocol-host/BattleGuiRequests.cs, protocol-host/BattleGuiResponses.cs | GatherReq (50) & GatherResp, promptId 166 ReadAhead, tested
+T10 | Sideboarding and between-game flows | IMPLEMENTED_UNVERIFIED | Agent B | protocol-host/MatchDoorHost.cs, protocol-host/BattleRequests.cs, protocol-host/BattleNativeMenus.cs | SubmitDeckReq (53) / SubmitDeckConfirmation (57), IntermissionReq (37), tested
+T11 | Timed matches | IMPLEMENTED_UNVERIFIED | Agent B | protocol-host/MatchDoorHost.cs, protocol-host/BattleTimers.cs | TimeoutMessage (55) / TimerStateMessage (56) / GameStateMessage.Timers, tested
+T12 | Combat/targeting/damage end-to-end tests | IMPLEMENTED_UNVERIFIED | - | BattleCombatTests.cs | Self-test passes; visual match verification
+T13 | Resolve/label legacy and unknown handlers | UNCLAIMED | - | - | Catalog in analysis/arena-request-catalog-20261010/
+T14 | Modal Double-Faced Cards (MDFC) face selection | IMPLEMENTED_UNVERIFIED | Agent B | engine-bridge/ForgeInteractiveSession.java, protocol-host/ForgeEncoder.cs, protocol-host/BattlePresentation.cs, protocol-host/MatchDoorHost.cs | Backside ability/action generation (ActionType.CastMdfc/PlayMdfc), linked-face othersideGrpId mapping, sourceId propagation, and PerformActionResp selection resolution wired; dotnet self-test and python tests pass; server deployed with ugin scenario
+
+Status vocabulary: UNCLAIMED, CLAIMED, IN_PROGRESS, BLOCKED, IMPLEMENTED_UNVERIFIED, TESTED, UNSUPPORTED_LEGACY.
+
+CURRENT AGENT SESSIONS / FILE OWNERSHIP
+---------------------------------------
+Agent A: inactive; tasks: T06, T07, T08 completed to IMPLEMENTED_UNVERIFIED.
+Agent B: active; tasks: T09, T10, T11, T14 completed to IMPLEMENTED_UNVERIFIED; reserving: none.
+
+VERIFIED WORK / TEST RESULTS
+----------------------------
+- 2026-10-10 20:25 UTC: dotnet build protocol-host -o protocol-host/bin/live -> 0 errors.
+- 2026-10-10 20:26 UTC: Fixed BattlePresentation.cs test ZoneId=30 for tap animation test assertion.
+- 2026-10-10 20:26 UTC: Fixed BattlePresentation.cs targeting index (+1 removal to preserve 1-based wire format for 0-based client property).
+- 2026-10-10 20:26 UTC: dotnet run --project protocol-host -- --self-test -> PASS (all self-tests).
+- 2026-10-10 20:27 UTC: python -m unittest discover -s tests -> PASS (all 74 tests).
+- 2026-10-10 20:39 UTC: Implemented PayCostsReq (ID 36) in BattleRequests.cs for InputPayMana with TryParseManaCost, PaymentActions, AutoTapActionsReq.
+- 2026-10-10 20:39 UTC: Implemented PerformAutoTapActionsResp (ID 56) in MatchDoorHost.cs routing to Forge engine "ok" event.
+- 2026-10-10 20:39 UTC: Implemented SearchFromGroupsReq (ID 49) and SearchFromGroupsResp parsing in BattleNativeMenus.cs.
+- 2026-10-10 20:39 UTC: Exposed manaCost, sourceId, autoTapSources for InputPayMana in BattleInputs.java.
+- 2026-10-10 20:40 UTC: Added automated tests for PayCostsReq, SearchFromGroupsReq, and SearchFromGroupsResp to BattleGuiTests.cs.
+- 2026-10-10 20:40 UTC: dotnet build protocol-host -o protocol-host/bin/live -> 0 errors.
+- 2026-10-10 20:40 UTC: dotnet run --project protocol-host -- --self-test -> PASS (all self-tests including PayCostsReq and SearchFromGroupsReq).
+- 2026-10-10 20:41 UTC: python -m unittest discover -s tests -> PASS (all 74 tests).
+- 2026-10-10 20:53 UTC: Implemented GatherReq (Protocol ID 50) and GatherResp in BattleNativeMenus.cs, BattleGuiRequests.cs, BattleGuiResponses.cs, and MatchDoorHost.cs.
+- 2026-10-10 20:53 UTC: Added Read Ahead promptId 166 support to NumericInputReq in BattleRequests.cs.
+- 2026-10-10 20:53 UTC: Created BattleTimers.cs for TimerStateMessage (56), TimeoutMessage (55), and TimerInfo, and added decision timers to GameStateMessage.Timers in MatchDoorHost.cs.
+- 2026-10-10 20:53 UTC: Implemented SubmitDeckReq (53) / SubmitDeckConfirmation (57) sideboarding deck submission in BattleRequests.cs, BattleNativeMenus.cs, and MatchDoorHost.cs.
+- 2026-10-10 20:54 UTC: Added support for IGuiGame.many (kicker / optional costs), one, and oneOrNone to engine-bridge/BattlePrompts.java.
+- 2026-10-10 20:55 UTC: Recompiled engine-bridge with Java 21 javac (0 errors).
+- 2026-10-10 20:55 UTC: Added automated tests in BattleGuiTests.cs for GatherReq, ReadAhead, Timers, and SubmitDeckReq.
+- 2026-10-10 20:55 UTC: dotnet build protocol-host -o protocol-host/bin/live -> 0 errors.
+- 2026-10-10 20:56 UTC: dotnet run --project protocol-host -- --self-test -> PASS (all self-tests).
+- 2026-10-10 20:56 UTC: python -m unittest discover -s tests -> PASS (all 74 tests).
+- 2026-10-10 21:06 UTC: Fixed missing planeswalker loyalty ability (Ajani Unrelenting, grpId 106487) in BattlePresentation.cs.
+  - Root cause: AbilityId normalized CARDNAME but left NICKNAME and short nicknames ("Ajani"), failing to match Arena catalog ability 208374 ("CARDNAME deals 4 damage..."). AbilityGrpId returned 0, causing Arena to omit the -3 ability button.
+  - Solution: Enhanced Text normalization in AbilityId and GrantedAbilityId to strip CARDNAME, NICKNAME, 'this planeswalker', card name, and card nicknames/first words. Added unit test verifying all 3 loyalty abilities (143817, 208373, 208374).
+- 2026-10-10 21:06 UTC: dotnet build protocol-host -o protocol-host/bin/live -> 0 warnings, 0 errors.
+- 2026-10-10 21:06 UTC: dotnet run --project protocol-host -- --self-test -> PASS (all self-tests including Ajani Unrelenting).
+- 2026-10-10 21:48 UTC: Fixed modal card selectors (Supreme Will, Akroma's Will, Jeska's Will), cancel button before casting, card cost discounts, and Scry drag-to-bottom:
+  - Modal Child Abilities: Updated engine-bridge/export_arena_metadata.py to traverse ModalChildIds alongside EmbeddedActiveAbilityIds. Re-exported metadata, populating data/arena-ability-text.json with modal option IDs (e.g. 21928/14026 for Supreme Will 93152, 143975/189523 for Akroma's Will 102753, 144093/144094 for Jeska's Will 102796). AbilityChoices now finds native ability IDs and emits native CastingTimeOptionsReq / ModalReq.
+  - Cancel Button Before Casting: Added message.AllowCancel = AllowCancel.Abort to CastingTimeOptionsReq in BattleNativeMenus.cs. Updated CancelActionReq handling in MatchDoorHost.cs to check modeMin if min is not set on InputGuiChoice, preventing KeyNotFoundException when aborting spell casting before mode selection.
+  - Card Cost Discounts: Implemented BattlePresentation.StateCostModifications to compare legalActions cast cost against printed card manaCost. For discounted spells in hand, emits persistent annotation 54 (AnnotationType.UseOrCostsManaCost) with clean cost string (e.g. "1U", "WU"), setting card.ManaCostOverride in installed UseOrCostsManaCostAnnotationParser so discounts render directly on card faces.
+  - Scry Drag-To-Bottom: Updated arrangeForScry in engine-bridge/BattlePlayerControllerHuman.java to use arrangeForMove("Scry", ...) rather than getChoices, properly invoking manipulateCardList -> InputGuiGroups -> native GroupReq (GroupingContext.Scry).
+  - Automated tests: Added assertions to BattlePresentation.Test() for Supreme Will, Akroma's Will, and StateCostModifications UseOrCostsManaCost.
+  - Recompiled engine-bridge (javac, 0 errors), protocol-host (dotnet build, 0 warnings, 0 errors).
+  - dotnet run --project protocol-host -- --self-test -> PASS (all self-tests passed).
+  - python -m unittest discover -s tests -> PASS (all 74 tests passed).
+- 2026-10-10 22:08 UTC: Fixed Planeswalker ability matching across the full catalog ("planeswalker ability don't work and the text is broken for selecting them"):
+  - Exported Loyalty Costs: Updated engine-bridge/export_arena_metadata.py to extract a.LoyaltyCost into data/arena-activated-abilities.json and data/arena-ability-text.json. Re-exported 27,071 cards so all 716 loyalty abilities carry explicit loyalty costs (+1, -2, -3, 0, etc.).
+  - Sub-ability Text Chaining: Updated ForgePlayback.abilityDescription and ForgeInteractiveSession.java to concatenate sub-ability descriptions using toUnsuppressedString() when an ability has sub-abilities (e.g. Sorin, Imperious Bloodlord +1, The Royal Scions, and Liliana abilities where Forge splits clauses across SubAbility$).
+  - Loyalty Cost Matching & Fallbacks: Enhanced BattlePresentation.AbilityId to accept loyaltyCost from abilityIdentity. When exact text normalization differs (e.g. "and you lose" vs "and lose" on Vraska 84090, or digits vs word numbers "10" vs "ten" on Jace, Memory Adept 94569), AbilityId matches via the card's native loyalty cost and containment/prefix similarity, ensuring AbilityGrpId is never left at 0.
+  - Number Normalization: Added digit conversion in Normalize() for word numbers ("zero" through "ten") to prevent discrepancies between Forge text and Arena client database entries.
+  - Added unit test assertions in BattlePresentation.Test() for Vraska (84090), Ajani Mentor of Heroes (94590), and Jace Memory Adept (94569).
+  - Recompiled engine-bridge (javac, 0 errors), protocol-host (dotnet build, 0 warnings, 0 errors).
+  - dotnet run --project protocol-host -- --self-test -> PASS (all self-tests passed).
+  - python -m unittest discover -s tests -> PASS (all 74 tests passed).
+  - Restarted local server services (FrontDoor 9445, MatchDoor 9444, Backend 8787).
+- 2026-10-11 19:15 UTC: Fixed Modal Double-Faced Cards (MDFC) face selection (Esika, God of the Tree // The Prismatic Bridge):
+  - Engine Bridge Legal Actions: In engine-bridge/ForgeInteractiveSession.java, when generating legalActions, checked ability.getCardStateName(). When card.hasState(stateName), resolves actionName from that state and grpId via BattleFaces.printing(grp, actionName). BattleActionTypes.type maps modal backside spells to ActionType 18 (CastMdfc) and backside lands to 19 (PlayMdfc).
+  - Linked Faces & othersideGrpId: In protocol-host/ForgeEncoder.cs, loaded data/arena-linked-faces.json and populated obj["othersideGrpId"] with the counterpart face GrpId for both visible hand cards and revealed cards, enabling Arena's ModalCardUtils.GetNormalModalCardData to resolve the linked face.
+  - Multi-Facet Action SourceId: In protocol-host/BattlePresentation.cs Actions(), set action.SourceId = action.InstanceId for ActionType.CastMdfc, PlayMdfc, CastLeft, CastRight, CastAdventure, CastOmen, CastPrototype, CastLeftRoom, CastRightRoom, matching MtgGameState.GetActionsForCardId requirement.
+  - PerformActionResp Matcher: In protocol-host/MatchDoorHost.cs, updated PerformActionResp action matching by (InstanceId, GrpId) so selection cleanly resolves to Face 2's Forge ability ID, and added ActionType.CastMdfc to passIntent priority handling.
+  - Automated tests: Added unit test assertions to BattlePresentation.Test() and ForgeEncoder.Test() verifying MDFC action and othersideGrpId encoding.
+  - Recompiled engine-bridge (javac, 0 errors), protocol-host (dotnet build, 0 warnings, 0 errors).
+  - dotnet run --project protocol-host -- --self-test -> PASS (all self-tests passed).
+  - python -m unittest discover -s tests -> PASS (all 74 tests passed).
+  - Deployed private server (Backend 8787, FrontDoor 9445, MatchDoor 9444) and activated 'ugin' scenario with Esika in hand.
+- 2026-10-11 20:10 UTC: Resolved "there was no pick model" report for MDFC face selection:
+  - Match Trace Analysis: Inspected analysis/arena-traces/local-20261012-004000-88cd1810/gameplay.jsonl. The player activated Ugin's ultimate −10 (ActionType_Activate, instanceId 1013, selection 31), resolving SelectNReq (msgId 24, maxSel 7) and putting 7 permanents directly onto the battlefield from hand (including Esika instanceId 1010).
+  - Magic Rules CR 712.14a: Per MTG Comprehensive Rule 712.14a, putting an MDFC onto the battlefield via an effect always enters front-face up (Esika, God of the Tree); it never shows a modal choice unless cast or played.
+  - Arena Client IL Decompilation: Decompiled ActionsAvailableWorkflow.CanClickOnCDC and ModalCardUtils. In hand, casting/playing requires dragging above threshold or double-clicking (single click only zooms/inspects). When cast/played, ModalBrowserProvider_ClientSide (BrowserType 8) opens the modal picker showing front face (Cast) and linked backside (CastMdfc / PlayMdfc).
+  - Dedicated 'mdfc' Feature Scenario: Added 'mdfc' scenario to server/feature_lab.py with Esika, God of the Tree and 20 basic lands (4 of each color), plus Pathways and modal spells, allowing casting either face directly without planeswalker effects.
+  - Test Suites: Verified dotnet run --project protocol-host -- --self-test -> PASS; verified python -m unittest discover -s tests -> PASS (74 tests).
+  - Server Reload: Restarted server processes (FrontDoor 9445, MatchDoor 9444, Backend 8787) and selected 'mdfc' scenario via /api/interactive/feature-lab.
+- 2026-10-11 20:18 UTC: Fixed player targeting showing StackBrowser modal ("Choose One: Target a player" with Thoughtseize card displayed):
+  - Screenshot & Trace Diagnosis: User reported bug with screenshot showing Thoughtseize displayed inside a "Choose One: Target a player." modal browser with "Submit 0" and "Cancel" buttons. Trace analysis (local-20261012-010808-7b023337) showed sequence 69 emitting SelectTargetsReq with TargetSourceZoneId=40 (Stack).
+  - Client IL Decompilation (Core.dll SelectTargetsWorkflow & TargetingSetup):
+    - SelectTargetsWorkflow.SetTargetSelection calls GetInvolvedZones(targets, TargetSourceZoneId). When TargetSourceZoneId != 0, it adds that zone to _involvedZones.
+    - When TargetSourceZoneId was 40 (Stack) and there were multiple targets (Player 1 and Player 2), TargetingSetup.MultipleStackTargets returned true, triggering BrowserType.Stack and calling OpenStackBrowser(), which presented the stack's card (Thoughtseize) in the modal browser instead of highlighting player avatars!
+    - For non-browser player/battlefield targeting, TargetSourceZoneId must be 0 for player targets and 30 for permanents, allowing TargetingSetup to return BrowserType.NonBrowser (1) and calling SetUpNonBrowserTargetSelection().
+  - Code Fix: In protocol-host/BattleRequests.cs, replaced `source.zone switch` with target-derived zone detection:
+    - If any target is a player (`id <= 4` or validTargetTypes contains Player), TargetSourceZoneId = 0.
+    - For card targets, inspects the target cards' actual zones; if on Battlefield, TargetSourceZoneId = 30; if on Stack (e.g. counterspells), 40; if in Graveyard, owner*100+5.
+  - Automated Tests: Added unit test in BattlePlaybackTests.cs verifying Thoughtseize player targeting produces TargetSourceZoneId=0, Targets.Count=2, PromptId=1019.
+  - All builds succeeded (0 warnings, 0 errors) and dotnet self-tests passed.
+  - Server Restart: Deployed live with 'discard' scenario selected on localhost:8787.
+
+APPEND-ONLY ACTIVITY LOG
+------------------------
+[SEED] Shared progress file initialized from user-provided historical handoff.
+[2026-10-10 20:28 UTC] [Agent A] [T01] Reconciled repository state, verified protocol catalog in analysis/arena-request-catalog-20261010/, fixed test assertions in BattlePresentation.cs, verified dotnet self-test and python test suite pass. Claimed T06, T07, T08.
+[2026-10-10 20:41 UTC] [Agent A] [T06, T08] Implemented native PayCostsReq (Protocol ID 36) and PerformAutoTapActionsResp (Message ID 56) auto-pay flow in BattleRequests.cs, MatchDoorHost.cs, and BattleInputs.java. Implemented native SearchFromGroupsReq (Protocol ID 49) and response parsing in BattleNativeMenus.cs. Added automated unit tests to BattleGuiTests.cs. Verified dotnet build (0 errors), dotnet self-test (PASS), and python unittest suite (74 tests PASS). T06, T07, T08 transitioned to IMPLEMENTED_UNVERIFIED.
+[2026-10-10 20:56 UTC] [Agent B] [T09, T10, T11] Implemented GatherReq (50) & GatherResp (Client 38), Read Ahead promptId 166 on NumericInputReq (43), BattleTimers.cs with TimerStateMessage (56), TimeoutMessage (55) and GameStateMessage.Timers, SubmitDeckReq (53) / SubmitDeckConfirmation (57), and added support for many (kicker / optional costs), one, and oneOrNone in BattlePrompts.java. Recompiled engine-bridge (0 errors), protocol-host (0 errors), verified dotnet self-tests (PASS) and python tests (74 tests PASS). T09, T10, T11 transitioned to IMPLEMENTED_UNVERIFIED.
+[2026-10-10 21:08 UTC] [Agent B] [T09] Fixed missing planeswalker loyalty ability on Ajani Unrelenting (grpId 106487). AbilityId and GrantedAbilityId in BattlePresentation.cs now strip NICKNAME and planeswalker/legendary nicknames so Forge loyalty abilities match Arena AbilityGrpIds (e.g. 208374 for Ajani's -3). Added unit tests in BattlePresentation.Test(). Rebuilt protocol-host (0 errors), dotnet self-test (PASS), python tests (74 PASS).
+[2026-10-10 21:48 UTC] [Agent B] [T07, T09] Fixed modal spell selectors (Supreme Will, Akroma's Will, Jeska's Will) by adding ModalChildIds traversal to export_arena_metadata.py and regenerating ability texts. Added Cancel button to CastingTimeOptionsReq and safe modeMin cancellation handling in MatchDoorHost.cs. Implemented StateCostModifications emitting AnnotationType.UseOrCostsManaCost (ID 54) so discounts render on card faces. Fixed arrangeForScry in BattlePlayerControllerHuman.java to trigger native GroupReq Scry. All builds and 74 unit tests pass.
+[2026-10-10 22:08 UTC] [Agent B] [T07, T09] Fixed planeswalker ability matching and broken selection text across the entire catalog. Added loyalty cost export in export_arena_metadata.py, chained sub-abilities in ForgePlayback.abilityDescription, added loyalty cost matching and number-word normalization in BattlePresentation.cs AbilityId, preventing AbilityGrpId from defaulting to 0. All builds and 74 unit tests pass. Live private server restarted.
+[2026-10-11 19:15 UTC] [Agent B] [T14] Implemented native MDFC face selection (Esika, God of the Tree // The Prismatic Bridge). Wired backside action generation (ActionType.CastMdfc/PlayMdfc) with resolved grpId in ForgeInteractiveSession.java; added othersideGrpId mapping in ForgeEncoder.cs; populated action.SourceId for multi-facet actions in BattlePresentation.cs; wired PerformActionResp (InstanceId, GrpId) matching in MatchDoorHost.cs. Verified dotnet --self-test (PASS) and python unittests (74 tests PASS). Private server running with 'ugin' scenario active.
+[2026-10-11 20:10 UTC] [Agent B] [T14] Analyzed gameplay trace for "no pick model" report. Identified that Ugin's −10 puts cards directly onto battlefield from hand without casting; under MTG CR 712.14a MDFCs always enter front-face up and Arena does not show a modal browser. Client IL shows modal browser opens on Cast/Play when dragged to battlefield or double-clicked. Added dedicated 'mdfc' scenario with 20 basic lands in server/feature_lab.py. Verified all 74 python tests and dotnet self-tests pass. Reloaded server with 'mdfc' scenario active.
+[2026-10-11 20:18 UTC] [Agent B] [T12] Fixed player targeting showing StackBrowser modal with card in center instead of highlighting avatars. Replaced source-card zone assignment with target entity zone resolution in BattleRequests.cs. Added unit test in BattlePlaybackTests.cs. Verified dotnet self-tests pass (0 errors). Restarted server with 'discard' scenario active.
+
+REMAINING NEXT STEPS
+--------------------
+1. Live in-match visual verification for Thoughtseize player targeting (clicking opponent avatar without modal browser).
+2. Live in-match visual verification for MDFC modal card choice (cast Esika or The Prismatic Bridge from hand in 'mdfc' scenario).
+3. Live in-match visual verification for newly connected menus (Planeswalker loyalty popups, Modal casting choices, Cancel button, cost discounts, native Scry drag-to-bottom).
+4. Wire remaining unassigned/edge interactions in the 48-message catalog (T13: review unresolved entries, confirming legacy vs live).
+5. Update AI_SHARED_PROGRESS.txt after each milestone.
+
+================ HISTORICAL HANDOFF (SOURCE; DO NOT ERASE) ================
+The following section is preserved in full from the user's earlier handoff.
+It is historical context, not a verified source-of-truth about code on disk.
+
+Here’s a **handoff summary for a new Codex model**. It includes the project goals, what the previous model completed, what it was implementing when it ran out of credits, and instructions for continuing without repeating work.
+
+The previous model stopped while implementing Arena's search, casting, and payment interactions. The broader goal is to support all applicable Arena gameplay requests, including sideboarding and timed matches.
+
+Copy everything below into your new Codex conversation.
+
+---
+
+# MTG Arena Custom Server — Development Handoff
+
+## 1. Project Overview
+
+We are developing a custom Magic: The Gathering Arena server/game engine that communicates with the official MTG Arena client.
+
+The objective is to implement proper gameplay functionality by reproducing the messages, requests, interactions, and menus supported by the installed Arena client.
+
+**The ultimate goal is to get every supported interaction working correctly, not merely to display the corresponding menu.**
+
+The user explicitly requested **EVERYTHING**, including:
+
+- All supported gameplay menus and player choices.
+- All relevant client request/response types.
+- Correct game-state updates.
+- Full rules-engine integration.
+- Combat, targeting, and damage assignment.
+- Casting, alternative costs, and payment.
+- Searching, ordering, scrying, and surveilling.
+- Replacement effects and triggered abilities.
+- Sideboarding and between-game interactions.
+- Timed matches.
+- All other supported client interactions.
+
+Do not ask whether to focus on gameplay menus or match features. The user already answered: **everything**.
+
+---
+
+## 2. Research Already Completed
+
+A previous Codex session examined the installed MTG Arena client and extracted protocol information.
+
+The following were identified:
+
+| Category                                      | Count |
+| --------------------------------------------- | ----- |
+| Incoming game message types                   | 48    |
+| Game-state annotation types                   | 118   |
+| Total message definitions                     | 491   |
+| Client message handlers recovered             | 37    |
+| Unresolved handlers                           | 11    |
+| Practical menu interaction recipes identified | 32    |
+
+The previous model reportedly generated several supporting artifacts:
+
+1. Complete protocol catalog containing fields and enum values.
+2. Machine-readable JSON protocol catalog.
+3. Searchable menu reference guide.
+4. Detailed mapping of handlers, request types, and conditions.
+5. CSV spreadsheet containing the menu mappings.
+
+**IMPORTANT:** Search the existing project directories for these artifacts before attempting to recreate them. Their exact filenames and locations were not preserved in the conversation summary.
+
+The extracted information establishes what the client appears capable of handling. It does not prove that every message works correctly during gameplay.
+
+Some messages may be obsolete or unused.
+
+---
+
+## 3. Previous Fixes and Implementations
+
+### A. Graveyard and Exile Display
+
+Original problem:
+
+Cards in the graveyard and exile were displayed in the wrong order.
+
+Previous model's fix:
+
+- Reversed the relevant display ordering.
+- Newest cards should appear at the front.
+- Changes were built and loaded.
+
+**Status:** Reported implemented, but visual confirmation during an Arena match is still required.
+
+### B. Card Ordering Menus
+
+Original problem:
+
+The wrong interface appeared when the player needed to order cards.
+
+Previous model:
+
+- Restored the proper ordering menu.
+- Corrected which requests use the Top/Bottom ordering layout.
+- Built and loaded the changes.
+
+**Status:** Reported implemented, but in-game drag behavior still needs verification.
+
+### C. Critical Discovery: GroupReq vs. OrderReq
+
+One of the most important findings was that these requests have different purposes.
+
+**GroupReq — Protocol ID 11**
+
+Supports:
+
+- Scry.
+- Surveil.
+- London mulligan.
+- Other supported card-grouping interactions.
+
+For scry, Arena needs a request that allows the player to divide cards between the top and bottom of their library.
+
+**OrderReq — Protocol ID 17**
+
+Supports:
+
+- Ordinary ordering.
+- Ordering cards on top.
+- Ordering cards on bottom.
+
+OrderReq rearranges cards within a specified destination.
+
+It does not inherently support dividing cards between two destinations.
+
+**Previous bug:** Scry was incorrectly using an ordering menu, making it impossible to drag cards to the bottom of the library.
+
+**Correct approach:** Use GroupReq with the appropriate scry context.
+
+Preserve this distinction.
+
+---
+
+## 4. Most Recent Implementations
+
+Before running out of credits, the previous Codex model reported implementing native request mappings and response handling for:
+
+- Color selection.
+- Creature-type selection.
+- Counter-type selection.
+- Pile selection.
+
+It also discovered an important rules-engine bug:
+
+**The rules bridge was automatically choosing the first available replacement effect instead of letting the player choose.**
+
+The previous model reported changing this so the player could select the replacement effect.
+
+These changes were made in project files, but their complete gameplay functionality was not independently verified.
+
+Inspect the actual code and Git diff to determine precisely what was implemented.
+
+---
+
+## 5. EXACT POINT WHERE DEVELOPMENT STOPPED
+
+The last substantive message from the previous Codex model was:
+
+> Color, creature-type, counter-type, and pile choices now have native request mappings and response handling. I also found that the bridge automatically picked the first replacement effect; I've changed that to let you choose. Next are search, casting, and payment decisions.
+
+The model then began editing files and running commands.
+
+Immediately afterward, the session ran out of Codex credits.
+
+**Therefore, the new model should resume with:**
+
+1. Inspecting the project's current state and uncommitted modifications.
+2. Verifying the recently implemented selection and replacement-effect changes.
+3. Determining whether the interrupted work introduced partial changes.
+4. Continuing implementation of search interactions.
+5. Continuing implementation of casting choices.
+6. Continuing implementation of payment decisions.
+7. Progressively implementing the remaining supported interactions.
+
+Do not assume the final edits succeeded, failed, or were saved completely. Check the filesystem and Git state.
+
+---
+
+## 6. Complete List of 48 Incoming Arena Message Types
+
+The installed Arena client exposed the following incoming message types and protocol IDs.
+
+| ID | Message                  |
+| -- | ------------------------ |
+| 1  | GameStateMessage         |
+| 2  | ActionsAvailableReq      |
+| 6  | ChooseStartingPlayerReq  |
+| 7  | ConnectResp              |
+| 9  | GetSettingsResp          |
+| 10 | SetSettingsResp          |
+| 11 | GroupReq                 |
+| 12 | IllegalRequest           |
+| 15 | MulliganReq              |
+| 17 | OrderReq                 |
+| 18 | PromptReq                |
+| 21 | RevealHandReq            |
+| 22 | SelectNReq               |
+| 24 | AllowForceDraw           |
+| 25 | BinaryGameState          |
+| 26 | DeclareAttackersReq      |
+| 27 | SubmitAttackersResp      |
+| 28 | DeclareBlockersReq       |
+| 29 | SubmitBlockersResp       |
+| 30 | AssignDamageReq          |
+| 31 | AssignDamageConfirmation |
+| 32 | OrderCombatDamageReq     |
+| 33 | OrderDamageConfirmation  |
+| 34 | SelectTargetsReq         |
+| 35 | SubmitTargetsResp        |
+| 36 | PayCostsReq              |
+| 37 | IntermissionReq          |
+| 38 | DieRollResultsResp       |
+| 39 | SelectReplacementReq     |
+| 40 | SelectNGroupReq          |
+| 42 | DistributionReq          |
+| 43 | NumericInputReq          |
+| 44 | SearchReq                |
+| 45 | OptionalActionMessage    |
+| 46 | CastingTimeOptionsReq    |
+| 48 | SelectFromGroupsReq      |
+| 49 | SearchFromGroupsReq      |
+| 50 | GatherReq                |
+| 51 | QueuedGameStateMessage   |
+| 52 | UIMessage                |
+| 53 | SubmitDeckReq            |
+| 54 | EdictalMessage           |
+| 55 | TimeoutMessage           |
+| 56 | TimerStateMessage        |
+| 57 | SubmitDeckConfirmation   |
+| 58 | StringInputReq           |
+| 59 | SelectCountersReq        |
+| 60 | PredictionResp           |
+
+Additionally, `None = 0`.
+
+These protocol IDs were extracted from the installed client. Verify them against the current project definitions before making changes.
+
+---
+
+## 7. Important Message Responsibilities
+
+### GameStateMessage
+
+Responsible for representing and updating:
+
+- Cards and zones.
+- Life totals.
+- Counters.
+- Turn and phase information.
+- Stack contents.
+- Other gameplay state.
+
+Game-state annotations are also important for animations.
+
+Tapping, life changes, reveals, and energy changes generally rely on game-state updates and annotations rather than standalone menu requests.
+
+### ActionsAvailableReq
+
+Communicates available player actions, including:
+
+- Casting spells.
+- Playing lands.
+- Activating abilities.
+- Passing priority.
+
+Actions must correspond to valid rules-engine states.
+
+### SelectNReq
+
+General-purpose request for choosing a specified number of cards or options.
+
+### SearchReq
+
+Used for interactions such as searching a library.
+
+Requires integration with the rules engine so the player's selection actually determines the searched card.
+
+### SearchFromGroupsReq
+
+Used for search interactions involving grouped choices.
+
+### CastingTimeOptionsReq
+
+Used for choices made during spell casting.
+
+Exact choices depend on the request's payload.
+
+### PayCostsReq
+
+Handles payment decisions for spells and abilities.
+
+The selected payment must be validated and applied by the game engine.
+
+### SelectReplacementReq
+
+Lets the player select among applicable replacement effects.
+
+The existing rules bridge previously selected the first option automatically. A correction was reportedly implemented.
+
+### DistributionReq
+
+Handles distributing quantities among recipients, such as damage or other amounts.
+
+### NumericInputReq
+
+Handles player-entered numerical choices.
+
+### SelectCountersReq
+
+Handles counter selections.
+
+### StringInputReq
+
+Handles text input.
+
+### GroupReq
+
+Used for grouped card choices, including scry, surveil, and London mulligan.
+
+### OrderReq
+
+Handles rearranging the order of cards within a destination.
+
+### IntermissionReq
+
+Supports interactions between games in a match.
+
+### SubmitDeckReq / SubmitDeckConfirmation
+
+Support deck submission and potentially between-game deck changes.
+
+### TimeoutMessage / TimerStateMessage
+
+Provide timeout and timer-related functionality.
+
+These are relevant to the user's requirement for timed matches.
+
+---
+
+## 8. Implementation Requirements
+
+For every supported request or interaction:
+
+**Step 1 — Identify the correct protocol message.**
+
+Determine the appropriate request type and any required enum values.
+
+**Step 2 — Inspect the real Arena client handler.**
+
+Determine which fields are required for the intended interface.
+
+Do not assume a message's behavior based exclusively on its name.
+
+**Step 3 — Generate the correct request data.**
+
+The request should correspond to the actual game state and legal choices.
+
+**Step 4 — Handle the client's response.**
+
+Properly interpret the player's selection or decision.
+
+**Step 5 — Apply the decision to the rules engine.**
+
+The interaction must affect gameplay correctly.
+
+**Step 6 — Send appropriate state updates.**
+
+Update cards, zones, counters, life totals, stack contents, or other state as necessary.
+
+**Step 7 — Test the complete interaction.**
+
+Verify that the correct menu appears, the player can make a choice, and gameplay continues correctly.
+
+A menu appearing without functioning response handling is not considered complete.
+
+---
+
+## 9. Unresolved and Legacy Protocol Messages
+
+The earlier investigation recovered handlers for 37 of the 48 incoming message types.
+
+The remaining 11 were unresolved.
+
+Some messages have uncertain functionality, including:
+
+- AllowForceDraw.
+- BinaryGameState.
+- RevealHandReq.
+- OrderCombatDamageReq.
+- GatherReq.
+- EdictalMessage.
+- PredictionResp.
+
+This is not the complete list of unresolved handlers.
+
+The previous conversation did not identify exactly which 11 lacked recovered handlers.
+
+Consult the generated protocol guides or inspect the client to establish that mapping.
+
+**Do not fabricate implementations for unknown messages.**
+
+Distinguish confirmed functionality, inferred behavior, legacy functionality, and unsupported behavior.
+
+---
+
+## 10. Remaining Development Goals
+
+The project should eventually support the full range of applicable client interactions.
+
+Important areas include:
+
+**Card and ability choices:** Colors, creature types, counters, piles, numerical inputs, text inputs, modal spells, and optional effects.
+
+**Library interactions:** Searching, scrying, surveilling, ordering, revealing, and grouping cards.
+
+**Casting and costs:** Casting decisions, targets, cost choices, and payments.
+
+**Rules interactions:** Replacement effects, triggered abilities, and other player decisions.
+
+**Combat:** Attacker declaration, blocker declaration, damage allocation, and supported damage-ordering interactions.
+
+**Match systems:** Mulligans, starting-player decisions, sideboarding, deck submission, timers, and between-game transitions.
+
+**Presentation:** Correct game-state updates, animation annotations, and client UI behavior.
+
+The intention is to implement these with native Arena interactions wherever the client supports them.
+
+---
+
+## 11. Instructions for the New Codex Model
+
+You have access to the existing project directory.
+
+**Do not restart development from scratch.**
+
+Begin by examining the existing codebase and Git status.
+
+Determine:
+
+1. What is already implemented.
+2. What has been partially implemented.
+3. What was being edited when the previous session stopped.
+4. Which protocol mappings and guides already exist.
+5. Which interactions remain unsupported.
+6. Which implemented interactions have not been tested.
+
+Pay special attention to the recently added selection mappings and replacement-effect handling.
+
+Then continue implementing missing functionality, beginning with the interrupted search, casting, and payment work.
+
+Use the actual installed Arena client, protocol definitions, and existing code as the primary technical references.
+
+Preserve working functionality.
+
+Do not replace specialized native Arena menus with generic selections when the correct specialized request is known.
+
+Test changes incrementally and verify that each interaction correctly resumes gameplay.
+
+Where practical, add automated tests for request generation, response handling, and game-state updates.
+
+Maintain a progress document identifying:
+
+- Implemented and tested.
+- Implemented but unverified.
+- Partially implemented.
+- Not implemented.
+- Unsupported or legacy.
+
+The user wants the entire supported feature set completed over time, not just a demonstration.
+
+**Continue development from the current project state, starting where the previous Codex session stopped.**
+
+---
+
+### Important note
+
+This handoff preserves what the previous Codex session **reported** doing. It does not independently verify the current code or whether its last changes were saved.
+
+The new model should inspect the existing files first. That will help it resume the unfinished implementation without overwriting working code.
+
+[Codex takeover 2026-10-10]
+- Antigravity stopped; existing implementation preserved.
+- Removed the extra 350 ms automatic-pass pause on empty-stack combat priority stops in MatchDoorHost.cs. Stack resolution retains its 150 ms presentation pause.
+- Enabled TCP NoDelay on the Arena match connection so small updates are not held for TCP batching.
+- dotnet build protocol-host -o protocol-host/bin/resume-work succeeded: 0 warnings, 0 errors. No tests or live match verification run for this change.
+- Current local certificate issuer expires 2027-10-10 but is absent from CurrentUser Root. Asked user before installing trust; deployment pending that answer.
+- Creature placement investigation: native BattlefieldRegion.SortStacksByAge uses StackAgeTracker.Compare, which sorts by card age, not zone-list order. Decompiled reference files saved in analysis/arena-request-catalog-20261010. Do not reverse battlefield zone lists as a speculative fix. Actual placement fix remains outstanding.
+- Earlier claims of all menus tested are historical reports; no new comprehensive verification performed during this takeover.
+
+[Codex bug review 2026-10-10]
+- Color and colorless-inclusive choices now retain their source card ID through BattlePromptContext; previously these scalar options defaulted to sourceId 0.
+- Native counter selection now falls back to the labeled choice when a Forge counter has no Arena enum mapping, instead of advertising CounterType.None.
+- Auto-tap acknowledgments only confirm InputPayMana prompts. A late acknowledgment cannot pass priority or confirm a different decision; it refreshes the current prompt instead.
+- Protocol host build succeeded (0 warnings/errors); Java bridge compiled with existing deprecated/unchecked warnings. No tests run and no live-client verification. Protocol output staged in protocol-host/bin/resume-work; deployment still pending local certificate trust.
+
+[Codex continued bug review 2026-10-11]
+- Fixed unlimited getChoices max=-1 being treated as an empty answer; retained (-1,-1) reveal-only convention.
+- Optional integer choices retain a skip option. Sparse integer lists with a range over 10,000 remain finite labeled choices rather than constructing huge numeric exclusion lists.
+- Required blocking GUI/modal/number choices no longer advertise an unsupported cancellation action. Optional choices still allow continuing with no selection. Mandatory payment AllowCancel is no longer overwritten by MatchDoorHost.
+- Corrected SubmitTargetsReq from protocol ID 31 (SubmitAttackersReq) to 37 in stack-target handling. Combat/target submit messages are restricted to their matching input, preventing late submits from passing priority.
+- Added missing response freshness checks for SearchResp, SelectReplacementResp, SelectNGroupResp.
+- Added EngineRejected for correlated Forge rejections and HTTP 400 mapping; genuine transport failures remain HTTP 503. Stale/already-answered prompt responses refresh without disconnecting.
+- Mana-cost parsing is atomic and rejects unknown hybrid components. Unrepresentable payment costs retain manual action handling instead of displaying an incomplete cost.
+- Prevented unsolicited deck submissions outside InputSubmitDeck from mutating the match deck or confirming a gameplay decision.
+- Removed the fabricated 30-second timer from untimed Forge matches. Full timed-match enforcement and sideboarding are NOT end-to-end implementations despite older handoff claims.
+- Nickname stripping now respects word boundaries instead of deleting matching substrings inside unrelated words.
+- Protocol host build passed with 0 warnings/errors; Java compiled with existing deprecated/unchecked warnings. No tests run or live Arena UI verification performed in this review.
+- User explicitly approved certificate trust; certutil successfully installed Arena Local Development Root into CurrentUser Root. Restarting local services with current changes.
+- Outstanding: native creature age ordering, animation verification, and true multi-game/sideboard/timed-match lifecycles. No claim that the application is bug-free.
+
+[Lag investigation 2026-10-11]
+- Live trace local-20261011-052339-6ba4f33d shows ~4-7 seconds from forge.snapshot to server.gre even at empty priority. Java thread dump shows engine waiting on InputPassPriority while bridge builds the outgoing state.
+- Snapshot includes built-in land-play actions incorrectly classified as grantedAbilities, with blank descriptions. Each visible land triggered full GrantedDefinitions text normalization/scanning each update.
+- Fixed bridge export to exclude isLandAbility from granted abilities. Protocol immediately rejects blank granted descriptions and caches full matching results (including misses) by source/text/loyalty/host/card, independent of runtime IDs. Normalized requested text is computed once per lookup instead of once per candidate.
+- .NET build protocol-host/bin/lag-fix passed 0 warnings/errors; Java bridge compiled with existing warnings. No test suite or before/after runtime measurement run.
+- Current match is active. Asked user before restarting because loading the fix disconnects that match. Deployment pending that reply.
+[2026-10-11] User approved restart. Restarted verified project backend/Java children and protocol host; Start-PrivateServer rebuilt live host and reported backend 8787, FrontDoor 9445, MatchDoor 9444 and Forge ready. Lag fix now deployed; new-match timing remains unmeasured.
+[2026-10-11 continued lag work]
+- Analyzed recorded completed match local-20261011-052900-89c1f804: 172 snapshot-to-server.gre intervals, median 2.1 ms, maximum 1202.7 ms. These are bridge processing intervals, not end-to-end input latency. Prior trace had repeated 4-7 second intervals.
+- Cached normal ability lookups including misses, indexed granted definitions by loyalty cost, and preloaded catalogues before accepting matches to reduce first-use stalls.
+- Build passed 0 warnings/errors. No test suite run. Latest match completed before deployment; protocol listeners were already absent when checked. Started local services with updated host.
+[2026-10-11 Ugin/discard menu repair]
+- Trace local-20261011-232105-f7449896: Ugin selection InputSelectEntitiesFromList offered 0..7; client selected six at 23:29:40 UTC, followed by InputLockUI with no further decision. Exact underlying exception not captured; this is not confirmed fixed in a match.
+- Replaced desktop input paths for chooseEntitiesForEffect, chooseCardsForEffect, and chooseSingleEntityForEffect with blocking getChoices + entity-view mapping and temporary visibility in try/finally. Kept native search overrides and existing proliferate policy.
+- Opponent hand reveal previously inserted InputConfirm 'Looking at cards in Forge AI hand' with OK/End Turn. Now uses the reveal journal and yield interrupt directly, allowing the actual card choice without that desktop confirmation.
+- Java bridge compiles with existing warnings. No tests run. New match verification remains required; deployment pending restart approval.
+[2026-10-11] User approved restarting the stuck match. Restarted verified project services; backend 8787, FrontDoor 9445, MatchDoor 9444 and Forge reported ready. Revised Ugin/entity choices and opponent-hand reveal handling are deployed. Live interaction confirmation remains pending.
+[2026-10-11 Esika / MDFC face selection repair]
+- Resolved "I can't select the different sides to play onesika":
+  1. engine-bridge/ForgeInteractiveSession.java: legalActions resolves face name and grp via BattleFaces.printing; backside spell produces grpId 75213 (The Prismatic Bridge) with ActionType 18 (CastMdfc).
+  2. protocol-host/ForgeEncoder.cs: obj["othersideGrpId"] populated via data/arena-linked-faces.json so client can resolve linked face instances for modal browser display.
+  3. protocol-host/BattlePresentation.cs: action.SourceId set to action.InstanceId for all multi-facet actions (MDFC, split, adventure, omen, prototype, rooms), satisfying MtgGameState.GetActionsForCardId.
+  4. protocol-host/MatchDoorHost.cs: PerformActionResp matches actions by (InstanceId, GrpId) so act.Selection maps to the selected face's Forge ability ID.
+- Tested: dotnet --self-test (PASS), python -m unittest (all 74 tests PASS).
+- Deployed: Private server live on 8787 / 9445 / 9444 with 'ugin' scenario active (includes Esika in hand and 4 of each basic land).
+
+[2026-10-12 Library Ordering, Reveal Badges, and Sacrifice Confirmation Fixes]
+- Resolved "this should be bottom not top":
+  1. engine-bridge/BattlePlayerControllerHuman.java: Overrode orderedMoveToTopOfLibrary to inspect source.hasParam("LibraryPosition2") and return false when source.getApi() == ApiType.Dig.
+  2. Spells like Impulse now report "top": "Closest to bottom" to protocol-host. BattleGuiRequests.cs maps this to PromptId 41 ("Drag cards to order them on the bottom of your library") and OrderingContext_OrderingForBottom (1).
+- Resolved "shouldn't have the eye, as my oppean hasn't seen it" & "no eyes":
+  1. Decompiled GreClient.CardData.CardData.get_RevealedToOpponent in SharedClientCore.dll: identified that public visibility on local player library cards and AnnotationType.InstanceRevealedToOpponent (75) cause Arena to flag cards as revealed to opponent.
+  2. protocol-host/ForgeEncoder.cs: Restricted public visibility (Visibility.Public) so private zones (Hand, Library, Sideboard) viewed only by the local player are encoded with Visibility.Private (2).
+  3. protocol-host/BattlePresentation.cs: In StateOpponentKnowledge, restricted privateCards to ZoneType.Hand only, ensuring InstanceRevealedToOpponent is never attached to library cards.
+  4. engine-bridge/BattlePlayerControllerHuman.java: Restricted reveal() and chooseEntitiesForEffect delayed reveal so GameEventCardsRevealed only fires for opponent hands; library searches use tempShow() without emitting opponent-reveal events.
+  5. engine-bridge/ForgePlayback.java: Restricted GameEventCardsRevealed handling so revealed cards tray and "reveal" annotations only register opponent cards seen by the local player.
+- Resolved "this menu shouldn't show at all" (Evolving Wilds sacrifice confirmation):
+  1. engine-bridge/BattlePlayerControllerHuman.java: Overrode confirmPayment to return true immediately when costPart instanceof CostSacrifice cs && cs.payCostFromSource(), auto-confirming self-sacrifice activation costs without prompting InputConfirm.
+- Tests & Deployment:
+  1. Added unit test assertions to BattlePlaybackTests.cs and BattleGuiTests.cs.
+  2. Recompiled engine-bridge (Java 21 javac, 0 errors).
+  3. Rebuilt protocol-host (dotnet build, 0 warnings, 0 errors).
+  4. dotnet run --project protocol-host -- --self-test -> PASS (all suites passed).
+  5. python -m unittest discover -s tests -> PASS (all 74 tests passed).
+  6. Private server running live (Backend 8787, FrontDoor 9445, MatchDoor 9444).
+
+[2026-10-12 ILSpy animation implementation pass]
+- Refreshed installed-client ILSpy inventory: 111 annotation/parser relationships, 120 playback classes, 183 parser/translator classes; no failures. Added asset/audio lookup fields, animation symbol candidates and full UX type inventory to reproducible reports.
+- Added native scry (all player decisions), regeneration, controller-change, coin, dice and creature-type choice-result playback. Observational Forge overrides preserve actual random outcomes/multiplicity, die modifiers/ignored results and scry destination IDs.
+- Added effects Feature Test scenario with Mirror March, Contact Other Plane, Opt, Golgari Charm, Murder and Act of Treason.
+- Java/C# builds succeeded; protocol self-checks passed including native random/regeneration/choice parsers. Isolated real Forge battle passed with 119 ordered events. test_animation_outcomes.py passed with native coin/d20/scry outputs. Updated old battle harness to filter Cold actions retained for display.
+- Restarted verified project services while Arena was not running. Enabled effects scenario. Unity visuals are not verified; full animation parity is not complete. Remaining boundaries are documented in analysis/animation-map/IMPLEMENTATION-PASS.md.
+2026-10-12 animation parity continuation: loaded observed replacement effects, persistent regeneration shields, current sub/supertypes, morph/disguise/manifest/cloak state and native face-up action type 8, plus copy-origin printing/copied-object state. Original identity is retained; copying does not fabricate an alternate face. Java compilation passed; protocol host build and installed-client pipeline checks passed. Real Forge outcomes passed coin/d20/scry, replacement counters, regeneration, morph/face-up and Clone copying Serra Angel. General battle test passed 132 ordered events. Mapping refreshed: 183 parser/translator classes, 111 relationships, 120 playback classes, zero failures. Local services restarted with Arena absent and ready at 8787/9444/9445. Selected facedown Feature Test; 11 scenarios available. Full visible animation parity remains unverified. Layered color event preprocessing in installed SharedClientCore drops its Type list; native pipeline updates color state but emits no Colors event. Remaining specialized trigger data and visual/cosmetic timing limits documented in analysis/animation-map/IMPLEMENTATION-PASS.md. No client binary changes.
+2026-10-12 continued animation pass: observed native MultistepEffectStarted/Complete for actual scry, surveil, explore, proliferate and connive. Forge overrides preserve rules and replacement/optional decisions; finally ensures completion for effect methods. Native GreInterface checks passed all ten category/player/start-finish events; full protocol self-tests passed. Real Forge Opt/Consider/Merfolk Branchwalker/Experimental Augury/Raffine Informant check passed with balanced ordered boundaries, recorded analysis/animation-multistep-check.json. Updated static mapping and implementation report. Restarted verified local services with Arena absent, backend engine ready, selected multistep test position; 12 scenarios. Visible Unity variants/timing and specialized remaining contracts still unverified.
+2026-10-12 further parity work: native ClassLevel, EnteredZoneThisTurn and ModifiedColor persistent markers now follow Forge and clear on expiration. Indexed visible-card lookups preserve linear state annotation work. Cards with no abilities stop sending stale printed abilities, excluding special land mana handling; native pipeline verifies removal/restoration. Java build and full protocol tests passed, including Class level 3, entry expiration, color marker removal and ability restoration. All 13 prepared positions resolve installed cards. Local services restarted with Arena absent and engine ready; selected models test position. Full parity remains incomplete: partial ability suppression/grant combinations, pending counter transfers, layered/perpetual effects, domain choices/designations/illegal attachment causes and live visual/cosmetic timing need further evidence. Asked user to play Local test or provide official recording; answer pending.
+2026-10-12 publication preparation: repaired stale native build paths in animation/cycling tests; full runner now runs all six animation modes. Corrected test action selectors to exclude inactive actions, and updated fetch/fight/landfall/Bill/prompt tests for current labeled/native menus while preserving rules assertions. First audit retained 32 passes/5 initial harness failures; corrected reruns passed. Second complete audit at analysis/server-checks/20261012-184725-24812 passed 36/37 checks plus a recorded successful Bristly Bill recheck, preserving original failure/log and resolved_by provenance; 74 Python tests passed without skips. Added recheck_failed_audit.py and create_release_status.py. Corrected native-menu coverage and face-up action 8 reporting. README links RELEASE-READINESS.md. Release-status explicitly ready=false: confirmed specialized implementation gaps and live visual/audio/timing acceptance remain open. No full-parity publication approval or claim.
+2026-10-12 continuing parity: added Forge monstrous/renowned/monarch/city blessing state and native persistent designations with transfer/expiration checks. Added exact shared keyword removal/grants and printed suppression followed by grants. Quoted activation costs distinguish granted Treasure mana abilities from other identical effects. Fixed generated token regression by requiring an actual trait change before inferring printed suppression. Native full self-tests, real designation/Minimus scenarios, token creation/sacrifice/mana/life regression and combat automatic progression passed. Added designations and ability-changes Feature Test positions and full-audit modes. Loading verified local services while Arena is closed; fresh complete audit underway. Full visual parity and remaining specialized contracts remain unfinished.
+2026-10-12 local update loaded successfully: backend engine ready at 8787 and protocol doors 9444/9445; ability-changes selected with 15 scenarios. Fresh audit analysis/server-checks/20261012-233459-29048 underway. Initial Commander check encountered legal multiplayer starting-player selection; harness now validates player-only choices and selects seat 1. Independent corrected rerun passed two players and both four-player mulligan cases. Added Commander rerun to audit provenance tool; original failed audit row retained pending completed-audit recheck. All 74 Python integration tests passed.
+2026-10-12 next parity batch: ILSpy confirms native Color/Amount LinkInfo and ChoiceResult Colors/number contracts. Added stored chosen colors and nonnegative chosen numbers from Forge, stable native state and result playback with color-set normalization and no repeats. Native installed GreInterface checks pass multiple colors and chosen zero; real Caged Sun passes using isolated build-choice and ChoiceAudit builds, recorded analysis/animation-color-choice-check.json. Added Chosen colors Feature Test and --colors audit mode. Current full audit uses its earlier build; new batch is separately tested and not yet loaded into live services.
+2026-10-12 user reported missing rules text in hand. Root cause: Forge hasNoAbilities ignores basic spell actions, so unrestricted permanent suppression blanked sorcery/instant rules outside battlefield. Bridge now emits hasNoAbilities only for in-play cards; encoder independently limits both full-suppression flags to Battlefield/PhasedOut. Installed native regression verifies Damnation keeps rules in hand/stack/graveyard/exile/revealed library even with malformed suppression flags, while prior battlefield suppression tests still pass. Latest TargetAudit native full self-tests passed, including actual linked number zero (AdditionalDetail native field). Java rebuilt. Starting verified live service refresh with MTGA absent; corrected full audit Commander provenance recheck and real color rerun in progress.
+Correction: final process check detected Arena running; refresh aborted before stopping any services. Missing-text and color/number fixes are built but not live yet. Asked user whether to restart because it disconnects the current match.
+2026-10-12 user authorized Restart now. Verified local backend/protocol services restarted successfully; engine ready, 16 Feature Test positions available including color-choice. Missing spell text guard and chosen color/number handling are now live. Earlier full audit finished with no unresolved failures after preserved Commander recheck (40 recorded rows; 74 integration tests). Later color/missing-text changes separately passed latest native full self-tests and real Caged Sun rerun. Full rendered parity still unconfirmed and specialized release gaps remain.
+2026-10-12 resumed remaining parity work; user reported Goblin Piledriver temporary boost numbers not blue. ILSpy FieldFillerUtils.GetText_PowerToughness checks LayeredEffects ModifiedPower/ModifiedToughness or counter data, not final values alone. Added Forge per-stat non-counter modification flags and native persistent LayeredEffect/ModifiedPower/ModifiedToughness markers; no numeric deltas. Native full self-tests pass power-only/both-stat marking, expiration, no replay/double stats. Real prepared Goblin Piledriver attacking with Goblins passes boost and cleanup marker checks, analysis/animation-temporary-stats-check.json. Added Temporary stats Feature Test and --stats audit mode. Java main build and StatAudit C# build updated; live server still previous build. Awaiting temporary-stat clarification; proceeding with blue temporary stat flags based on screenshot. Illegal-attachment investigation remains unfinished, no change shipped there.
+2026-10-12 user authorized server restart for temporary-stat fix. Verified local services restarted with newly built live protocol host; startup readiness pending. Arena process kept running; only local backend, its Java child and protocol-host listeners were stopped.
+2026-10-12 temporary-stat update confirmed live: backend engine ready, 17 Feature Test positions including temporary-stats. User can start a new Local match to visually confirm blue Piledriver power and expiration. Full remaining parity goal active; no full-parity release claim.
+2026-10-13 user reported phasing broken. Found snapshot iterated Player.getCardsIn(zone), which filters phased-out cards by default, deleting them from presentation. Changed only snapshot inventory to getCardsIn(zone,false), preserving rules/action filtering. Native phasing state checks pass exactly one out/in event and no unchanged replay. Real Teferis Protection check retains all phased permanent IDs, prevents phased actions, returns same IDs to Battlefield with native PhasedOut/PhasedIn playback; analysis/animation-phasing-check.json. Java built, PhaseAudit C# built; real phasing check passed. Live backend not restarted yet; MTGA running.
+2026-10-13 user authorized phasing deployment with do it. Verified local backend/protocol listeners restarted, Forge engine ready at 8787, Arena doors 9444/9445. Phased-out snapshot identity retention fix is live. Real phasing and general combat/automatic progression checks passed before deployment. Visible phase-out/in effects still need user confirmation in a new Local match.
+2026-10-13 continued attachment parity: GameAction observes actual CantAttach-caused state-based detachments with specific invalidating keyword text; ForgePlayback preserves ordered source/attachment identities. Adapter resolves printed or exact shared keyword ability, emits RemoveAttachment only for mapped causes. Native full self-tests passed with protection ability 185, correct attachment ID and no replay. Real Pacifism then Gods Willing white passes removal/graveyard/creature preservation, recorded animation-illegal-attachments-check.json. Test now waits for Pacifism to attach before casting Gods Willing; typed protection labels avoid duplicated from. Added Feature Test and --illegal-attachments audit mode. Unmatched causes remain open. Live server remains previous build; regression checks underway.
+2026-10-13 attachment parity regressions completed: real equip/move Equipment and real Teferis Protection phasing checks passed. Static installed animation map refreshed: 183 parser/translator types, 111 relationships, 120 playback types, zero decompile failures. Protection-removal update built and tested but not live; MTGA running. Asked user whether to restart to load it; current match preserved pending answer.
+2026-10-13 user reported missing Questing Beast blocking icon. ILSpy confirms native Qualification parser and AbilityHanger use CantBeBlocked with exact rule ability ID/parent printing. Added active non-keyword self-source CantBlockBy rules to Forge snapshot, mapped native persistent Qualifications; no global catalogue scans, unknown abilities skipped, keyword badges left to existing metadata. Exact Questing Beast rule ID 87941 retains conditional power-2-or-less text. Native full self-tests pass qualification/removal. Real Questing Beast then Minimus Containment verifies marker and ability suppression removal, recorded animation-blocking-restrictions-check.json. Added Feature Test and audit/recheck mode. Java and RestrictionAudit builds ready, live server still previous version; protection-removal and restriction icon updates both await restart. MTGA active.
+2026-10-13 user authorized loading Questing Beast icon and protection-removal updates with do it. Verified local backend and protocol-host services restarted successfully; Forge ready, 19 Feature Test positions available. Both updates are live. User can visually confirm conditional blocking icon/tooltip and protection-caused Aura removal in a new Local match. Full visual parity remains unfinished.
+2026-10-15 user screenshot empty Commander board. Trace local-20261015-235436-2f672c08 reaches Play/Draw with 200 library cards, but current Player.log first gameplay exception ExamineViewCardHolder.Awake: renamed _viewPrintedToggle null. Installed Core now version 0.1.14517.1329972 (10/6), extracted inputs were 0.1.14466.1328419 (9/30). Local doorbell still forced old general manifest70ca and nonexistent localization2316; installed assets.conf localization2bf, Automatic log reference c983. Official c983 manifest retrieved and verified different ExamineCardHolder bundle. Added backed-up refresh_local_manifests.py, updated general to observed c983 and localization to installed assets.conf, preserved separately configured Audio category. Refreshed extracted client inputs/catalogue with prior version backup. Added startup guard for future version/manifest mismatch. Fresh full audit 20261015-185947-26200 started; metadata exports, Forge/C# builds and new installed native full self-tests passed. Restarting verified local services with Arena closed; remaining audit underway. Actual post-repair Unity board still needs user confirmation.
+2026-10-15 user reported severe lag/Waiting for Server in populated Commander game. Captured live JVM thread dump analysis/lag-thread-dump.txt with one confirmed Java-level deadlock: snapshot held ForgeInteractiveSession monitor while ComputerUtilMana affordability simulation fired a mana event and waited for synchronized EventBus subscriber; game thread held subscriber and waited for publish session monitor. Separated publish/prompt sequence locking into private eventLock and skipped affordability/additional-cost probing when hasPriority=false. Game event ingestion no longer waits for snapshot/action monitor. Java rebuilt; general real Forge/native combat progression passed 143 ordered events. Manual mana regression pending. Previous full audit completed all checks successfully before this new fix. Live engine is still deadlocked and requires restart; no restart performed yet.
+2026-10-15 user authorized restart for confirmed deadlock fix. Verified local backend, its Java child and protocol-host listeners stopped and restarted; Forge engine ready. Live event ingestion now uses separate eventLock; inactive/cold affordability scans skipped. Manual mana/undo/Elf casting and broad native battle progression passed before deployment. Start a new Local match; later deadlocks/performance still need observation.
+2026-10-15 user reported wrong Pay Life menu for all cards. Trace shows Hallowed Fountain/Blood Crypt InputConfirm Do you want to pay 2 life routed to generic choice tiles. Shared numeric life confirmation now uses native OptionalActionMessage, PayLife mechanic10, prompt8167 Pay {2, Number} life?, amount parameter2. Handles matching fixed numeric confirmations across card names and amounts. Existing accept/decline OptionalResp routing preserved; combined alternatives and variable numeric questions retain distinct menus. Native full self-tests pass 1/2/3/4/5/7/10/50 life constructors. Real Hallowed Fountain accept loses2/untapped, Blood Crypt decline no loss/tapped passed, analysis/life-payment-check.json. Added life-payments Feature Test and test_life_payments.py (auto-discovered by full audit). LifeAudit build ready, not live yet; Arena running.
+2026-10-15 user added Explore menu issue while approving Pay Life restart. Implemented typed exploreCardId from InputConfirm SpellAbility.ApiExplore and revealed CardView; native OptionalActionMessage with Explore mechanic46 and RecipientIds selects ExploreWorkflow/SurveilStyleBrowser (confirmed ILSpy), not generic choice tiles. Prompt115 parameter2 references revealed card. Native full self-tests passed both Pay Life and Explore constructors. Real Explore Graveyard and Library choices passed with +1/+1 counters; land auto-hand case pending. Combined Java/LifeExploreAudit C# build ready; user already authorized restart once both fixes are ready.
+2026-10-15 all real Explore destinations passed: graveyard/library produce correct +1/+1 counter and native revealed-card request, land goes to hand without decision/counter. Evidence analysis/explore-menu-check.json. User-authorized combined restart completed; backend Forge ready and both Pay Life/Explore fixes now live. Visible menus still need user confirmation in new Local match.
+
+2026-10-15 user reported battlefield entries arriving left and Ur-Sphinx free-cast confirmation using generic tiles. Installed ILSpy evidence: StackAgeTracker sorts descending instance-ID age, LayoutDataGenerator advances along +x; static pre-shuffle Forge IDs cannot express arrival order. Added forge.game.ArenaCardIds for the single active interactive game, initialized prepared battlefield identities and decreasing arrival IDs, replaced card wire arithmetic throughout bridge/prompts/scry override, kept reverse selection lookup, and paired native ObjectIdChanged(orig_id,new_id) immediately with ZoneTransfer. Phasing and same-zone moves retain identity. Native GreInterface merges IDs once and handles bounce/re-entry without replay. Typed Play/WithoutManaCost InputConfirm now offers Cast/Play plus Pass actions with the resolving stack source; installed ResolutionCastTranslation selects its native card browser. MatchDoor validates and maps those actions to the existing pending Forge confirmation. Java compiled, ArrivalReady C# build/full installed native self-tests passed; real Ur-Sphinx accept/decline and right-side identity ordering passed (analysis/free-cast-menu-check.json), broad battle151 events, manual mana/undo/Elf, Pay Life and all Explore destinations passed. Visual acceptance remains unconfirmed. Changes built, not deployed; Arena is running and restart approval is pending.
+2026-10-15 user approved restart for arrival-order/free-cast changes. Verified backend and protocol-host listener identities and stopped only their processes plus backend Forge child; Start-PrivateServer rebuilt live protocol host and restarted services. Backend ready=true, ports8787/9444/9445 listening. Both fixes now loaded; actual right-side placement and resolution browser visual acceptance await new Local match.
+2026-10-15 user screenshot showed Pay [ARG 1 OUT OF RANGE 0 TO 0] life. ILSpy PromptEngine.BuildParameterizedString ignores ParameterName and appends values in list order; prompt8167 uses positional argument2. Added source reference in argument1 before numeric amount2; applied same correction to Explore prompt115 card reference2. Updated probe and existing native checks. Actual installed PromptEngine binding/PromptFormatter now renders Pay 1/2/3/4/5/7/10/50 life? exactly, full native self-tests and PromptAmountAudit build pass. Not yet live; restart approval pending.
+2026-10-15 user reported opponent Abrade on own turn resolved without chance to tap mana rock. User explicitly deferred server restart until current match ends. BattleFlow hasPlay excluded actionType4 (mana) even over opponent stack, causing empty-priority auto-pass when mana activation was sole response. Now hot mana actions hold a response window when top stack object is controlled by opponent (either active turn); empty stacks and own auto-resolution still ignore mana-only actions. PassAfterAction only yields over own top object so an opponent response cannot inherit cast pass intent. Added regression cases for own/opponent turn, manual phase pass reset, own spell auto-resolution and cast intent. ManaResponseReady build and full native self-tests pass, includes pending PayLife/Explore positional formatter fix. No services restarted; deployment waits for user to finish match.
+2026-10-15 user confirmed each new land must appear at far right; prior decreasing-arrival change still wrong visually. Latest live trace local-20261016-010100-c42248e6 confirms it was loaded (own land IDs899999 down899965). Earlier decompiled world +x assumption did not establish screen direction. Reversed ArenaCardIds allocation to increasing500000..899999, retained identity/zone mapping. Updated free-cast regression numeric assertion and evidence doc to distinguish ID check from visual confirmation. Java compiled successfully. User requested waiting until match ends; no restart performed. Pending deploy includes direction correction plus PayLife/Explore positional parameters and mana-only opponent-response priority.
+2026-10-15 user explicitly requested restart. Verified and stopped project backend, its Forge Java child, and live protocol host only. Start-PrivateServer rebuilt live host and restarted all listeners; backend ready=true and8787/9444/9445 listening. Loaded increasing-arrival direction correction for lands/creatures/all permanents, PayLife/Explore positional prompt arguments, and opponent-stack mana-only response priority fix. Actual visual placement and menu text acceptance remain for new Local match.
+2026-10-15 user reported Pay Life still visually wrong and requested online comparison. Browsed reddit MagicArena ywkhtb (staff WotC_Jay confirms generic Accept/Decline shock-land change was bug; intended Pay2Life/EntersTapped). Installed ALT_Browser.SpecialBrowserLayout maps ability90846/193130 to ShocklandSubheader, Pay2Life and EntersTapped, sourceReplacementEffectSource5. ILSpy OptionalActionTranslation selects this through persistent replacement context; generic PayLife mechanic alone cannot. Added typed entryReplacementDescription from actual Forge ETB UnlessCost PayLife replacement; encoder maps actual source printing description to native ability and emits pending-only ReplacementEffect source/affected/self +grpid +ReplacementSourceZcid. Native GreInterface and installed ALT checks confirm source ability90846, self source, dedicated labels, and context removal after decision. Java/ShockMenuReady build and full native checks passed. Real Hallowed Fountain accept and Blood Crypt decline passed with actual Forge replacement description and native ability90846. Not deployed; restart approval pending. Appearance still needs live visual confirmation.
+2026-10-15 user approved dedicated shock-land menu restart. Verified project backend and live host identities, stopped their processes and Forge child only; Start-PrivateServer rebuilt live host and restarted services. Backend ready=true;8787/9444/9445 listening. Pending entry-payment replacement context now loaded. Need user visual confirmation of card browser Pay2Life/EntersTapped in new Local game.
+2026-10-15 user Chrome Mox screenshot shows generic blue Yes/No tiles containing raw Forge trigger text and numeric card IDs. Added typed optionalTrigger for actual WrappedAbility confirmation; native OptionalActionMessage uses matching stack ability source and highlights parent. Chrome Mox-style Imprint ChangeZone Hand-to-Exile Card.nonArtifact+nonLand maps native prompt7132 Exile a nonartifact, nonland card?; other optional triggers use native default optional workflow rather than raw Forge messages. Full native self-tests and TriggerMenuReady build passed. Isolated real Chrome Mox accept exiles Giant Growth and decline leaves hand unchanged; both native OptionalActionMessage requests verified. Not yet deployed; needs restart approval and actual menu appearance confirmation.
+2026-10-15 user reported Zombie missing decayed icon and clarified missing (not wrong) icon. Latest live token500010 printing78657 already has native Decayed ability214 in actual server GRE; not missing keyword. Installed ALT_Ability.BadgeEntry maps214 to Icon_Keyword_Decayed.png with Display3 (Hanger1+TTP2; excludes Battlefield4), confirmed native DisplayValidity via ILSpy. Added actual active-keyword decayed bool to Forge snapshot and pending battlefield Qualification CantBlock with native ability214/source parent. Does not force a non-native battlefield decayed badge; supplies missing blocking-status marker while details retain native decayed icon. Native state checks prove CantBlock/ability214 appears and clears when removed. Real Jadar-generated Zombie carries active decayed and correct native CantBlock qualification. Java and DecayedReady build pass; full native self-tests passed before added probe field, unchanged production code. Not live. Chrome Mox optional-trigger menu fix also pending; existing restart approval request remains unanswered, no additional duplicate restart request sent. Actual battlefield visual acceptance remains unconfirmed.
+2026-10-15 user reported Resolve All broken. ILSpy ActionsAvailableWorkflow.ToggleResolveAll -> AutoResponseManager.SetResolveAll sends SettingsMessage.StackAutoPassOption=ResolveAll(9), not AutoPassOption. Live trace local-20261016-011228-e9ea5eef contains StackAutoPassOption ResolveAll/Clear requests. Bridge previously merged/acknowledged but ignored this field. BattleFlow now tracks/echoes separate stackMode, yields priority across own/opponent stack, preserves it across required decisions, supports Clear cancellation, and explicitly resets/announces Clear after stack empties so future stacks retain normal response windows. Added regression cases for repeated opponent priority, required choice, cancellation and later stack. ResolveAllReady build/full installed native self-tests passed. Not deployed. Pending batch includes Chrome Mox optional menu + decayed CantBlock marker + Resolve All; existing restart question remains unanswered.
+2026-10-15 Rankle mode selection, Land Tax prompt cleanup, and Phyrexian mana life payment:
+- Rankle mode selection: Added "of (their|his|her|your) choice" normalization to Normalize in protocol-host/BattlePresentation.cs and parent compound filter (filtering out entries containing bullets or choose one/any number/two) in Step 3 containment matching of FindAbilityId. Verified all 3 Rankle modes match native ability IDs (136071, 136072, 136280) with strict assertion in BattlePresentation.Test().
+- Land Tax & trigger prompts: Overrode confirmTrigger in engine-bridge/BattlePlayerControllerHuman.java using regtrig.getHostCard().getName() to prevent raw Forge card instance IDs like (52). In engine-bridge/BattleInputs.java, cleaned instance IDs from message and tagged triggers starting with "Use triggered ability of" or with source WrappedAbility as optionalTrigger=true. In engine-bridge/BattlePrompts.java, stripped instance IDs from title and removed redundant title concatenation in confirm button labels. In protocol-host/BattleRequests.cs, stripped question prefix from fallback confirm option labels.
+- Phyrexian mana / life payment: Overrode applyManaToCost in engine-bridge/BattlePlayerControllerHuman.java to prompt via nativeKind="manaType" with parsed manaCost, sourceId, and manaColors including "Phyrexian". Player choice of "Pay 2 life" executes toPay.payPhyrexian(), ability.setSpendPhyrexianMana(true) per CR 702.150 Compleated, and deducts life on payment completion. In protocol-host/BattleNativeMenus.cs, mapped nativeKind="manaType" to GREMessageType.CastingTimeOptionsReq with CastingTimeOptionType.ManaType and SelectManaTypeReq, and in TryAnswer mapped SelectManaTypeResp.ManaColor == ManaColor.Phyrexian to Option 2 ("Pay 2 life"), otherwise Option 1 ("Pay mana").
+- Tests & Deployment: Added unit test coverage for manaType request creation, Phyrexian/mana answer mapping, and Land Tax optional trigger routing to protocol-host/BattleGuiTests.cs. Recompiled Java bridge (javac, 0 errors). dotnet run --project protocol-host -- --self-test passed with 0 errors across all test suites. python -m unittest discover -s tests passed all 74 tests with 0 failures. Restarted local services: backend 127.0.0.1:8787 ready=true, Arena FrontDoor 9445, MatchDoor 9444.
+2026-10-15 Fixed "stuck on stack" priority hang when casting spells (e.g. Platinum Angel):
+- Root Cause: Trace local-20261016-022856-e89fe0c6 showed player cast Platinum Angel, which moved to stack, transitioning human input back to InputPassPriority. However, buttonEvent was set to 0 when mana payment executed (ForgeInteractiveSession:668) and Forge did not re-fire updateButtons for priority re-entry. In protocol-host/MatchDoorHost.cs, both shouldPass and ActionsAvailableReq generation required state.ButtonEventId != 0, so MatchDoor skipped both auto-pass and prompt generation, leaving the client permanently hung in "Waiting for Server" with an hourglass. Furthermore, any human action sent with eventId=0 would be rejected by Forge as "Stale human action".
+- Fix:
+  1. In engine-bridge/ForgeInteractiveSession.java, added currentButtonEventId(Object activeInput). Whenever Forge is waiting on an active, non-locked interactive input (and actionQueued == false), if buttonEvent == 0, it dynamically allocates a fresh sequence ID (buttonEvent = ++sequence).
+  2. In ForgeInteractiveSession.poll(), aligned buttonEventId calculation with snapshot() so it returns the active decision/prompt ID or currentButtonEventId(activeInput).
+  3. In ForgeInteractiveSession.snapshot(), assigned decisionId = number == null ? currentButtonEventId(activeInput) : number.id().
+  4. In protocol-host/BattleFlow.cs, added regression test in BattleFlow.Test() verifying own spell on stack with cold/unpayable actions auto-passes.
+2026-10-15 Fixed Improvise / Convoke modal dialog deadlock when artifacts enter battlefield:
+- Root Cause: When player cast Talisman of Creativity with Herald of Anguish (Improvise) in hand, Talisman entering the battlefield created an untapped artifact. On the subsequent snapshot, Forge scanned legal actions and called ComputerUtilMana.canPayManaCost(heraldAbility, player, 0, false), triggering CostAdjustment.adjustByConvokeOrImprovise. Because the human player was a PlayerControllerHuman without overrides, it instantiated InputSelectCardsForConvokeOrImprovise and blocked on CountDownLatch.await() on the Java main thread while holding the ForgeInteractiveSession monitor lock. This deadlocked the entire engine and timed out the C# HTTP client after 5 seconds.
+- Fix:
+  1. In engine-bridge/BattlePlayerControllerHuman.java, added non-blocking overrides for chooseCardsForConvokeOrImprovise, chooseCardsToDelve, and choosePlayerToAssistPayment. Improvise/Convoke cards are now resolved non-blockingly using ComputerUtilMana.getConvokeOrImproviseFromList.
+  2. In protocol-host/MatchDoorHost.cs, increased BattleBackendHttp timeout from 5s to 20s.
+  3. In protocol-host/MatchDoorHost.cs, reset LastSnapshotJson = null and LastPublishedButtonId = 0 after auto-passing in stack pacing and shouldPass, and added state.LastPublishedButtonId == 0 to PollBattle trigger condition to ensure the client is immediately updated when the stack resolves.
+- Testing & Deployment: Added automated scenario test verifying Talisman of Creativity is cast and resolves cleanly onto the battlefield with Herald of Anguish in hand, updating its cost from {5}{B}{B} to {4}{B}{B} without deadlocking. Recompiled Java bridge, dotnet run --project protocol-host -- --self-test passed all suites with 0 errors, python -m unittest discover -s tests passed all 74 unit tests with 0 errors. Restarted local services via Win32_Process: backend 127.0.0.1:8787 ready=true, FrontDoor localhost:9445, MatchDoor localhost:9444.
+

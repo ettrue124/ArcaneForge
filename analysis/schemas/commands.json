@@ -1,0 +1,734 @@
+[
+  {
+    "name": "Authenticate",
+    "value": 0
+  },
+  {
+    "name": "StartHook",
+    "value": 1
+  },
+  {
+    "name": "ScalingPassthrough",
+    "value": 2
+  },
+  {
+    "name": "TencentSecurityAntiHackData",
+    "value": 3
+  },
+  {
+    "name": "TencentRmtCreateOrder",
+    "value": 4
+  },
+  {
+    "name": "Attach",
+    "value": 5
+  },
+  {
+    "name": "GetFormats",
+    "value": 6
+  },
+  {
+    "name": "ForceDetach",
+    "value": 7
+  },
+  {
+    "name": "GetConflictingAccountsData",
+    "value": 8
+  },
+  {
+    "name": "FriendRequestNotification",
+    "value": 100
+  },
+  {
+    "name": "GrantsListPendinGrants",
+    "value": 300
+  },
+  {
+    "name": "GrantsClaimPendingGrants",
+    "value": 301
+  },
+  {
+    "name": "DeckGetDeck",
+    "value": 400
+  },
+  {
+    "name": "DeckGetDeckSummaries",
+    "value": 401
+  },
+  {
+    "name": "DeckUpsertDeck",
+    "value": 402
+  },
+  {
+    "name": "DeckDeleteDeck",
+    "value": 403
+  },
+  {
+    "name": "DeckGetAllPreconDecks",
+    "value": 404
+  },
+  {
+    "name": "DeckGetPreconDeck",
+    "value": 405
+  },
+  {
+    "name": "DeckUpsertDeckV2",
+    "value": 406
+  },
+  {
+    "name": "DeckGetDeckSummariesV2",
+    "value": 407
+  },
+  {
+    "name": "DeckGetAllPreconDecksV2",
+    "value": 408
+  },
+  {
+    "name": "DeckGetPreconDeckV2",
+    "value": 409
+  },
+  {
+    "name": "DeckGetAllPreconDecksV3",
+    "value": 410
+  },
+  {
+    "name": "DeckGetDeckSummariesV3",
+    "value": 411
+  },
+  {
+    "name": "DeckUpsertDeckV3",
+    "value": 412
+  },
+  {
+    "name": "DcIssueChallenge",
+    "value": 500
+  },
+  {
+    "name": "DcCancelChallenge",
+    "value": 501
+  },
+  {
+    "name": "CardGetCardSet",
+    "value": 550
+  },
+  {
+    "name": "CardGetAllCards",
+    "value": 551
+  },
+  {
+    "name": "CardRedeemWildCards",
+    "value": 552
+  },
+  {
+    "name": "CardCompleteVault",
+    "value": 553
+  },
+  {
+    "name": "EventJoin",
+    "value": 600
+  },
+  {
+    "name": "EventDrop",
+    "value": 601
+  },
+  {
+    "name": "EventSetDeck",
+    "value": 602
+  },
+  {
+    "name": "EventEnterPairing",
+    "value": 603
+  },
+  {
+    "name": "EventGetActiveEvents",
+    "value": 604
+  },
+  {
+    "name": "EventGetCourses",
+    "value": 605
+  },
+  {
+    "name": "EventLeavePairing",
+    "value": 606
+  },
+  {
+    "name": "EventClaimPrize",
+    "value": 607
+  },
+  {
+    "name": "EventGetMatchResultReport",
+    "value": 608
+  },
+  {
+    "name": "EventResign",
+    "value": 609
+  },
+  {
+    "name": "EventGetChoices",
+    "value": 610
+  },
+  {
+    "name": "EventSetChoice",
+    "value": 611
+  },
+  {
+    "name": "EventAiBotMatch",
+    "value": 612
+  },
+  {
+    "name": "EventGetActiveMatches",
+    "value": 613
+  },
+  {
+    "name": "EventSetJumpStartPacket",
+    "value": 614
+  },
+  {
+    "name": "EventJoinDraftQueue",
+    "value": 615
+  },
+  {
+    "name": "EventLeaveDraftQueue",
+    "value": 616
+  },
+  {
+    "name": "EventPlayerDraftReadyPlayer",
+    "value": 617
+  },
+  {
+    "name": "EventPlayerDraftGetTablePacks",
+    "value": 618
+  },
+  {
+    "name": "EventJoinDraft",
+    "value": 619
+  },
+  {
+    "name": "EventPlayerDraftMakePick",
+    "value": 620
+  },
+  {
+    "name": "EventPlayerDraftConfirmCardPoolGrant",
+    "value": 621
+  },
+  {
+    "name": "EventSetDeckV2",
+    "value": 622
+  },
+  {
+    "name": "EventGetCoursesV2",
+    "value": 623
+  },
+  {
+    "name": "EventGetActiveEventsV2",
+    "value": 624
+  },
+  {
+    "name": "EventPlayerDraftReserveCard",
+    "value": 625
+  },
+  {
+    "name": "EventPlayerDraftClearReservedCard",
+    "value": 626
+  },
+  {
+    "name": "EventSetDeckV3",
+    "value": 627
+  },
+  {
+    "name": "StoreGetEntitlements",
+    "value": 703
+  },
+  {
+    "name": "CarouselGetCarouselItems",
+    "value": 704
+  },
+  {
+    "name": "MercGetSkus",
+    "value": 705
+  },
+  {
+    "name": "MercGetListingsV2",
+    "value": 706
+  },
+  {
+    "name": "MercPurchaseV2",
+    "value": 707
+  },
+  {
+    "name": "MercGetStoreStatusV2",
+    "value": 708
+  },
+  {
+    "name": "MercGetListingsV3",
+    "value": 709
+  },
+  {
+    "name": "MercGetListingsV4",
+    "value": 710
+  },
+  {
+    "name": "MercGetSkusV2",
+    "value": 711
+  },
+  {
+    "name": "StoreGetEntitlementsV2",
+    "value": 712
+  },
+  {
+    "name": "MercGetSkusV3",
+    "value": 713
+  },
+  {
+    "name": "MercGetListingsV5",
+    "value": 714
+  },
+  {
+    "name": "MercGetSkusAndListings",
+    "value": 715
+  },
+  {
+    "name": "CurrencyGetCurrencies",
+    "value": 800
+  },
+  {
+    "name": "BoosterOpenBoosters",
+    "value": 900
+  },
+  {
+    "name": "BoosterGetOwnedBoosters",
+    "value": 901
+  },
+  {
+    "name": "QuestGetQuests",
+    "value": 1000
+  },
+  {
+    "name": "QuestSwapQuest",
+    "value": 1001
+  },
+  {
+    "name": "RankGetCombinedRankInfo",
+    "value": 1100
+  },
+  {
+    "name": "RankEvaluatePayouts",
+    "value": 1101
+  },
+  {
+    "name": "RankGetSeasonAndRankDetails",
+    "value": 1102
+  },
+  {
+    "name": "RankGetSeasonHistory",
+    "value": 1103
+  },
+  {
+    "name": "RankGetSeasonAndRewardHistory",
+    "value": 1104
+  },
+  {
+    "name": "RankEvaluatePayoutsV2",
+    "value": 1105
+  },
+  {
+    "name": "PeriodicRewardsGetStatus",
+    "value": 1200
+  },
+  {
+    "name": "RenewalGetCurrentRenewal",
+    "value": 1201
+  },
+  {
+    "name": "RenewalRedeemRewards",
+    "value": 1202
+  },
+  {
+    "name": "GetVoucherDefinitions",
+    "value": 1520
+  },
+  {
+    "name": "GetSets",
+    "value": 1521
+  },
+  {
+    "name": "AccountGetTencentScreenName",
+    "value": 1600
+  },
+  {
+    "name": "AccountSetTencentScreenName",
+    "value": 1601
+  },
+  {
+    "name": "AccountGetAvatar",
+    "value": 1602
+  },
+  {
+    "name": "AccountSetAvatar",
+    "value": 1603
+  },
+  {
+    "name": "GraphGetGraphDefinitions",
+    "value": 1700
+  },
+  {
+    "name": "GraphGetGraphState",
+    "value": 1701
+  },
+  {
+    "name": "GraphProcess",
+    "value": 1702
+  },
+  {
+    "name": "GraphProcessV2",
+    "value": 1703
+  },
+  {
+    "name": "GraphSetFavoriteNodes",
+    "value": 1704
+  },
+  {
+    "name": "BotDraftStartDraft",
+    "value": 1800
+  },
+  {
+    "name": "BotDraftDraftPick",
+    "value": 1801
+  },
+  {
+    "name": "BotDraftDraftStatus",
+    "value": 1802
+  },
+  {
+    "name": "CosmeticsGetPlayerOwnedCosmetics",
+    "value": 1900
+  },
+  {
+    "name": "CosmeticsGetPreferredCosmetics",
+    "value": 1901
+  },
+  {
+    "name": "CosmeticsSetPreferredAvatar",
+    "value": 1902
+  },
+  {
+    "name": "CosmeticsSetPreferredSleeve",
+    "value": 1903
+  },
+  {
+    "name": "CosmeticsSetPreferredPet",
+    "value": 1904
+  },
+  {
+    "name": "CosmeticsSetPreferredTitle",
+    "value": 1905
+  },
+  {
+    "name": "CosmeticsPurchaseCosmetic",
+    "value": 1906
+  },
+  {
+    "name": "BotDraftDebugUnloadCache",
+    "value": 1907
+  },
+  {
+    "name": "DraftCompleteDraft",
+    "value": 1908
+  },
+  {
+    "name": "CosmeticsSetPreferredEmotes",
+    "value": 1909
+  },
+  {
+    "name": "GetPlayBladeQueueConfig",
+    "value": 1910
+  },
+  {
+    "name": "GetPlayerPreferences",
+    "value": 1911
+  },
+  {
+    "name": "SetPlayerPreferences",
+    "value": 1912
+  },
+  {
+    "name": "LogBusinessEvents",
+    "value": 1913
+  },
+  {
+    "name": "LogBusinessEventsV2",
+    "value": 1914
+  },
+  {
+    "name": "GetNetDeckFolders",
+    "value": 2200
+  },
+  {
+    "name": "GetPlayerInbox",
+    "value": 2300
+  },
+  {
+    "name": "MarkLetterRead",
+    "value": 2301
+  },
+  {
+    "name": "ClaimAttachment",
+    "value": 2302
+  },
+  {
+    "name": "GetWpnNotificationPreferences",
+    "value": 2350
+  },
+  {
+    "name": "SetOrganizationNotificationPreference",
+    "value": 2351
+  },
+  {
+    "name": "SetGlobalWpnNotificationPreference",
+    "value": 2352
+  },
+  {
+    "name": "GetDesignerMetadata",
+    "value": 2400
+  },
+  {
+    "name": "StaticContent",
+    "value": 2500
+  },
+  {
+    "name": "GetAllPreferredPrintings",
+    "value": 2600
+  },
+  {
+    "name": "SetPreferredPrinting",
+    "value": 2601
+  },
+  {
+    "name": "RemovePreferredPrinting",
+    "value": 2602
+  },
+  {
+    "name": "TournamentCreate",
+    "value": 2650
+  },
+  {
+    "name": "TournamentJoin",
+    "value": 2651
+  },
+  {
+    "name": "TournamentDropPlayer",
+    "value": 2652
+  },
+  {
+    "name": "TournamentGetState",
+    "value": 2653
+  },
+  {
+    "name": "TournamentPlayerReadyRound",
+    "value": 2654
+  },
+  {
+    "name": "TournamentReportMatchResult",
+    "value": 2655
+  },
+  {
+    "name": "TournamentPlayerReadyStart",
+    "value": 2656
+  },
+  {
+    "name": "GetAllPrizeWalls",
+    "value": 2700
+  },
+  {
+    "name": "LobbyJoin",
+    "value": 2800
+  },
+  {
+    "name": "LobbyCreate",
+    "value": 2801
+  },
+  {
+    "name": "LobbySendMessage",
+    "value": 2802
+  },
+  {
+    "name": "LobbyExit",
+    "value": 2803
+  },
+  {
+    "name": "LobbyInvite",
+    "value": 2804
+  },
+  {
+    "name": "LobbyClose",
+    "value": 2805
+  },
+  {
+    "name": "LobbyReconnectAll",
+    "value": 2806
+  },
+  {
+    "name": "LobbyKick",
+    "value": 2807
+  },
+  {
+    "name": "GatheringJoin",
+    "value": 2900
+  },
+  {
+    "name": "GatheringCreate",
+    "value": 2901
+  },
+  {
+    "name": "GatheringSendMessage",
+    "value": 2902
+  },
+  {
+    "name": "GatheringExit",
+    "value": 2903
+  },
+  {
+    "name": "GatheringInvite",
+    "value": 2904
+  },
+  {
+    "name": "GatheringClose",
+    "value": 2905
+  },
+  {
+    "name": "GatheringReconnectAll",
+    "value": 2906
+  },
+  {
+    "name": "GatheringKick",
+    "value": 2907
+  },
+  {
+    "name": "GatheringUpdateMetadata",
+    "value": 2908
+  },
+  {
+    "name": "GatheringAssignRole",
+    "value": 2909
+  },
+  {
+    "name": "GatheringRemoveRole",
+    "value": 2910
+  },
+  {
+    "name": "GatheringGenerateInviteCode",
+    "value": 2911
+  },
+  {
+    "name": "GatheringClearInviteCode",
+    "value": 2912
+  },
+  {
+    "name": "GatheringJoinByInviteCode",
+    "value": 2913
+  },
+  {
+    "name": "GatheringCreateV2",
+    "value": 2914
+  },
+  {
+    "name": "GatheringDeclineInvite",
+    "value": 2915
+  },
+  {
+    "name": "GatheringCheckText",
+    "value": 2916
+  },
+  {
+    "name": "ChallengeJoin",
+    "value": 3000
+  },
+  {
+    "name": "ChallengeCreate",
+    "value": 3001
+  },
+  {
+    "name": "ChallengeSendMessage",
+    "value": 3002
+  },
+  {
+    "name": "ChallengeExit",
+    "value": 3003
+  },
+  {
+    "name": "ChallengeInvite",
+    "value": 3004
+  },
+  {
+    "name": "ChallengeClose",
+    "value": 3005
+  },
+  {
+    "name": "ChallengeReconnectAll",
+    "value": 3006
+  },
+  {
+    "name": "ChallengeKick",
+    "value": 3007
+  },
+  {
+    "name": "ChallengeReady",
+    "value": 3008
+  },
+  {
+    "name": "ChallengeUnready",
+    "value": 3009
+  },
+  {
+    "name": "ChallengeSetSettings",
+    "value": 3010
+  },
+  {
+    "name": "ChallengeIssue",
+    "value": 3011
+  },
+  {
+    "name": "ChallengeStartLaunchCountdown",
+    "value": 3012
+  },
+  {
+    "name": "ChallengeSetPlayerSettings",
+    "value": 3013
+  },
+  {
+    "name": "ExternalChatLogin",
+    "value": 4000
+  },
+  {
+    "name": "ExternalChatAuthGetToken",
+    "value": 4001
+  },
+  {
+    "name": "ExternalChatMerge",
+    "value": 4002
+  },
+  {
+    "name": "ExternalChatUnmerge",
+    "value": 4003
+  },
+  {
+    "name": "ExternalChatGetUserId",
+    "value": 4004
+  },
+  {
+    "name": "ReportPlayer",
+    "value": 4100
+  },
+  {
+    "name": "GetKillSwitchData",
+    "value": 4200
+  },
+  {
+    "name": "MosaicAuxiliary",
+    "value": 4300
+  },
+  {
+    "name": "ProtobufTest",
+    "value": 9991
+  }
+]

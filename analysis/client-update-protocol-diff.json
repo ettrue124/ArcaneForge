@@ -1,0 +1,247 @@
+[
+  {
+    "type": "Wizards.Arena.Models.Network.CmdType",
+    "change": "fields_or_enum",
+    "delta": [
+      {
+        "key": "2350",
+        "old": {
+          "name": "GetEventLinkNotificationPreferences",
+          "number": 2350
+        },
+        "new": {
+          "name": "GetWpnNotificationPreferences",
+          "number": 2350
+        }
+      },
+      {
+        "key": "2352",
+        "old": null,
+        "new": {
+          "name": "SetGlobalWpnNotificationPreference",
+          "number": 2352
+        }
+      },
+      {
+        "key": "2915",
+        "old": null,
+        "new": {
+          "name": "GatheringDeclineInvite",
+          "number": 2915
+        }
+      },
+      {
+        "key": "2916",
+        "old": null,
+        "new": {
+          "name": "GatheringCheckText",
+          "number": 2916
+        }
+      },
+      {
+        "key": "4300",
+        "old": null,
+        "new": {
+          "name": "MosaicAuxiliary",
+          "number": 4300
+        }
+      }
+    ]
+  },
+  {
+    "type": "wotc.mtgo.gre.external.messaging.AbilityType",
+    "change": "fields_or_enum",
+    "delta": [
+      {
+        "key": "419",
+        "old": {
+          "name": "AbilityType_Placeholder419",
+          "number": 419
+        },
+        "new": {
+          "name": "AbilityType_EmpowerJace",
+          "number": 419
+        }
+      },
+      {
+        "key": "432",
+        "old": null,
+        "new": {
+          "name": "AbilityType_Placeholder432",
+          "number": 432
+        }
+      }
+    ]
+  },
+  {
+    "type": "wotc.mtgo.gre.external.messaging.AbilityWord",
+    "change": "fields_or_enum",
+    "delta": [
+      {
+        "key": "58",
+        "old": null,
+        "new": {
+          "name": "AbilityWord_Placeholder58",
+          "number": 58
+        }
+      }
+    ]
+  },
+  {
+    "type": "wotc.mtgo.gre.external.messaging.CardType",
+    "change": "fields_or_enum",
+    "delta": [
+      {
+        "key": "15",
+        "old": null,
+        "new": {
+          "name": "CardType_Conspiracy",
+          "number": 15
+        }
+      }
+    ]
+  },
+  {
+    "type": "wotc.mtgo.gre.external.messaging.GroupSpecification",
+    "change": "fields_or_enum",
+    "delta": [
+      {
+        "key": "7",
+        "old": null,
+        "new": {
+          "name": "hot_ids",
+          "number": 7,
+          "label": "LABEL_REPEATED",
+          "type": "TYPE_UINT32"
+        }
+      }
+    ]
+  },
+  {
+    "type": "wotc.mtgo.gre.external.messaging.MiscellaneousTerm",
+    "change": "fields_or_enum",
+    "delta": [
+      {
+        "key": "33",
+        "old": null,
+        "new": {
+          "name": "MiscellaneousTerm_Placeholder33",
+          "number": 33
+        }
+      },
+      {
+        "key": "34",
+        "old": null,
+        "new": {
+          "name": "MiscellaneousTerm_Placeholder34",
+          "number": 34
+        }
+      }
+    ]
+  },
+  {
+    "type": "wotc.mtgo.gre.external.messaging.PlayerConfig",
+    "change": "fields_or_enum",
+    "delta": [
+      {
+        "key": "14",
+        "old": null,
+        "new": {
+          "name": "toasts",
+          "number": 14,
+          "label": "LABEL_REPEATED",
+          "type": "TYPE_MESSAGE",
+          "typeName": ".wotc.mtgo.gre.external.messaging.ToastTuple"
+        }
+      }
+    ]
+  },
+  {
+    "type": "wotc.mtgo.gre.external.messaging.PromptMessage",
+    "change": "fields_or_enum",
+    "delta": [
+      {
+        "key": "200",
+        "old": {
+          "name": "PromptMessage_Placeholder200",
+          "number": 200
+        },
+        "new": {
+          "name": "PromptMessage_EmpowerJace",
+          "number": 200
+        }
+      }
+    ]
+  },
+  {
+    "type": "wotc.mtgo.gre.external.messaging.QualificationType",
+    "change": "fields_or_enum",
+    "delta": [
+      {
+        "key": "96",
+        "old": null,
+        "new": {
+          "name": "QualificationType_PlayWithZoneRevealed",
+          "number": 96
+        }
+      }
+    ]
+  },
+  {
+    "type": "wotc.mtgo.gre.external.messaging.SubType",
+    "change": "fields_or_enum",
+    "delta": [
+      {
+        "key": "489",
+        "old": {
+          "name": "SubType_PlaceholderSubType489",
+          "number": 489
+        },
+        "new": {
+          "name": "SubType_Heartwood",
+          "number": 489
+        }
+      },
+      {
+        "key": "490",
+        "old": {
+          "name": "SubType_PlaceholderSubType490",
+          "number": 490
+        },
+        "new": {
+          "name": "SubType_Sculpture",
+          "number": 490
+        }
+      },
+      {
+        "key": "536",
+        "old": null,
+        "new": {
+          "name": "SubType_PlaceholderSubType536",
+          "number": 536
+        }
+      }
+    ]
+  },
+  {
+    "type": "wotc.mtgo.gre.external.messaging.ToastTuple",
+    "change": "added",
+    "new": {
+      "name": "ToastTuple",
+      "field": [
+        {
+          "name": "toastID",
+          "number": 1,
+          "label": "LABEL_OPTIONAL",
+          "type": "TYPE_UINT32"
+        },
+        {
+          "name": "toastParam",
+          "number": 2,
+          "label": "LABEL_OPTIONAL",
+          "type": "TYPE_UINT32"
+        }
+      ]
+    }
+  }
+]

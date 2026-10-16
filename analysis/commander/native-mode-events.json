@@ -1,0 +1,302 @@
+[
+  {
+    "InternalEventName": "AIBotMatch",
+    "EventState": "Active",
+    "FormatType": "Constructed",
+    "StartTime": "2000-01-01T00:00:00Z",
+    "LockedTime": "2099-01-01T00:00:00Z",
+    "ClosedTime": "2099-01-01T00:00:00Z",
+    "Flags": [
+      "IsArenaPlayModeEvent",
+      "IsAiBotMatch"
+    ],
+    "PastEntries": {},
+    "EntryFees": [
+      {
+        "CurrencyType": "Free",
+        "Quantity": 0,
+        "MaxUses": null,
+        "ReferenceId": null
+      }
+    ],
+    "EventTags": [],
+    "EventUXInfo": {
+      "PublicEventName": "AIBotMatch",
+      "DisplayPriority": 0,
+      "PrioritizeBannerIfPlayerHasToken": false,
+      "Parameters": {},
+      "Group": "",
+      "EventBladeBehavior": "Queue",
+      "DynamicFilterTagIds": [],
+      "DeckSelectFormat": "Historic",
+      "FactionSealedUXInfo": [],
+      "Prizes": {},
+      "EventComponentData": {
+        "AvgQueueTimeDisplay": null,
+        "BoosterPacksDisplay": null,
+        "EmblemDisplay": null,
+        "CardDisplay": null,
+        "CardsDisplay": null,
+        "LossDetailsDisplay": null,
+        "StickerDisplay": null,
+        "TimerDisplay": null,
+        "DescriptionText": {
+          "LocKey": "ArenaLab/Modes/Play"
+        },
+        "SubtitleText": null,
+        "TitleRankText": {
+          "LocKey": "ArenaLab/Modes/Play"
+        },
+        "ChestWidget": null,
+        "InspectPreconDecksWidget": null,
+        "InspectSingleDeckWidget": null,
+        "PreviewEventWidget": null,
+        "ResignWidget": null,
+        "SelectedDeckWidget": {
+          "DeckButtonBehavior": "Editable",
+          "ShowCopyDeckButton": false
+        },
+        "ViewCardPoolWidget": null,
+        "MainButtonWidget": {},
+        "ByCourseObjectiveTrack": {
+          "ChestDescriptions": []
+        },
+        "CumulativeObjectiveTrack": {
+          "ChestDescriptions": []
+        },
+        "HiddenBubblesObjectiveTrack": {
+          "ChestDescriptions": []
+        },
+        "DraftScreenUI": null,
+        "DirectGameUI": null,
+        "PrizeWallData": null
+      },
+      "Joinability": "Open"
+    },
+    "WinCondition": 0,
+    "AllowedCountryCodes": null,
+    "ExcludedCountryCodes": null,
+    "MinimumRank": "None"
+  },
+  {
+    "InternalEventName": "CommanderAI",
+    "EventState": "Active",
+    "FormatType": "Constructed",
+    "StartTime": "2000-01-01T00:00:00Z",
+    "LockedTime": "2099-01-01T00:00:00Z",
+    "ClosedTime": "2099-01-01T00:00:00Z",
+    "Flags": [
+      "IsArenaPlayModeEvent",
+      "IsAiBotMatch"
+    ],
+    "PastEntries": {},
+    "EntryFees": [
+      {
+        "CurrencyType": "Free",
+        "Quantity": 0,
+        "MaxUses": null,
+        "ReferenceId": null
+      }
+    ],
+    "EventTags": [],
+    "EventUXInfo": {
+      "PublicEventName": "CommanderAI",
+      "DisplayPriority": 1,
+      "PrioritizeBannerIfPlayerHasToken": false,
+      "Parameters": {},
+      "Group": "",
+      "EventBladeBehavior": "Queue",
+      "DynamicFilterTagIds": [],
+      "DeckSelectFormat": "Commander",
+      "FactionSealedUXInfo": [],
+      "Prizes": {},
+      "EventComponentData": {
+        "AvgQueueTimeDisplay": null,
+        "BoosterPacksDisplay": null,
+        "EmblemDisplay": null,
+        "CardDisplay": null,
+        "CardsDisplay": null,
+        "LossDetailsDisplay": null,
+        "StickerDisplay": null,
+        "TimerDisplay": null,
+        "DescriptionText": {
+          "LocKey": "ArenaLab/Modes/Commander"
+        },
+        "SubtitleText": null,
+        "TitleRankText": {
+          "LocKey": "ArenaLab/Modes/Commander"
+        },
+        "ChestWidget": null,
+        "InspectPreconDecksWidget": null,
+        "InspectSingleDeckWidget": null,
+        "PreviewEventWidget": null,
+        "ResignWidget": null,
+        "SelectedDeckWidget": {
+          "DeckButtonBehavior": "Editable",
+          "ShowCopyDeckButton": false
+        },
+        "ViewCardPoolWidget": null,
+        "MainButtonWidget": {},
+        "ByCourseObjectiveTrack": {
+          "ChestDescriptions": []
+        },
+        "CumulativeObjectiveTrack": {
+          "ChestDescriptions": []
+        },
+        "HiddenBubblesObjectiveTrack": {
+          "ChestDescriptions": []
+        },
+        "DraftScreenUI": null,
+        "DirectGameUI": null,
+        "PrizeWallData": null
+      },
+      "Joinability": "Open"
+    },
+    "WinCondition": 0,
+    "AllowedCountryCodes": null,
+    "ExcludedCountryCodes": null,
+    "MinimumRank": "None"
+  },
+  {
+    "InternalEventName": "CommanderAI4",
+    "EventState": "Active",
+    "FormatType": "Constructed",
+    "StartTime": "2000-01-01T00:00:00Z",
+    "LockedTime": "2099-01-01T00:00:00Z",
+    "ClosedTime": "2099-01-01T00:00:00Z",
+    "Flags": [
+      "IsArenaPlayModeEvent",
+      "IsAiBotMatch"
+    ],
+    "PastEntries": {},
+    "EntryFees": [
+      {
+        "CurrencyType": "Free",
+        "Quantity": 0,
+        "MaxUses": null,
+        "ReferenceId": null
+      }
+    ],
+    "EventTags": [],
+    "EventUXInfo": {
+      "PublicEventName": "CommanderAI4",
+      "DisplayPriority": 2,
+      "PrioritizeBannerIfPlayerHasToken": false,
+      "Parameters": {},
+      "Group": "",
+      "EventBladeBehavior": "Queue",
+      "DynamicFilterTagIds": [],
+      "DeckSelectFormat": "Commander",
+      "FactionSealedUXInfo": [],
+      "Prizes": {},
+      "EventComponentData": {
+        "AvgQueueTimeDisplay": null,
+        "BoosterPacksDisplay": null,
+        "EmblemDisplay": null,
+        "CardDisplay": null,
+        "CardsDisplay": null,
+        "LossDetailsDisplay": null,
+        "StickerDisplay": null,
+        "TimerDisplay": null,
+        "DescriptionText": {
+          "LocKey": "ArenaLab/Modes/Commander4"
+        },
+        "SubtitleText": null,
+        "TitleRankText": {
+          "LocKey": "ArenaLab/Modes/Commander4"
+        },
+        "ChestWidget": null,
+        "InspectPreconDecksWidget": null,
+        "InspectSingleDeckWidget": null,
+        "PreviewEventWidget": null,
+        "ResignWidget": null,
+        "SelectedDeckWidget": {
+          "DeckButtonBehavior": "Editable",
+          "ShowCopyDeckButton": false
+        },
+        "ViewCardPoolWidget": null,
+        "MainButtonWidget": {},
+        "ByCourseObjectiveTrack": {
+          "ChestDescriptions": []
+        },
+        "CumulativeObjectiveTrack": {
+          "ChestDescriptions": []
+        },
+        "HiddenBubblesObjectiveTrack": {
+          "ChestDescriptions": []
+        },
+        "DraftScreenUI": null,
+        "DirectGameUI": null,
+        "PrizeWallData": null
+      },
+      "Joinability": "Open"
+    },
+    "WinCondition": 0,
+    "AllowedCountryCodes": null,
+    "ExcludedCountryCodes": null,
+    "MinimumRank": "None"
+  },
+  {
+    "InternalEventName": "DirectGame",
+    "EventState": "Active",
+    "FormatType": "Constructed",
+    "StartTime": "0001-01-01T00:00:00",
+    "LockedTime": "9999-12-31T23:59:59.9999999",
+    "ClosedTime": "9999-12-31T23:59:59.9999999",
+    "Flags": [],
+    "PastEntries": {},
+    "EntryFees": [
+      {
+        "CurrencyType": "None",
+        "Quantity": 0,
+        "MaxUses": null,
+        "ReferenceId": null
+      }
+    ],
+    "EventTags": null,
+    "EventUXInfo": {
+      "PublicEventName": null,
+      "DisplayPriority": 99999,
+      "PrioritizeBannerIfPlayerHasToken": false,
+      "Parameters": {},
+      "Group": "",
+      "EventBladeBehavior": "Hidden",
+      "DynamicFilterTagIds": null,
+      "DeckSelectFormat": "",
+      "FactionSealedUXInfo": null,
+      "Prizes": null,
+      "EventComponentData": {
+        "AvgQueueTimeDisplay": null,
+        "BoosterPacksDisplay": null,
+        "EmblemDisplay": null,
+        "CardDisplay": null,
+        "CardsDisplay": null,
+        "LossDetailsDisplay": null,
+        "StickerDisplay": null,
+        "TimerDisplay": null,
+        "DescriptionText": null,
+        "SubtitleText": null,
+        "TitleRankText": null,
+        "ChestWidget": null,
+        "InspectPreconDecksWidget": null,
+        "InspectSingleDeckWidget": null,
+        "PreviewEventWidget": null,
+        "ResignWidget": null,
+        "SelectedDeckWidget": null,
+        "ViewCardPoolWidget": null,
+        "MainButtonWidget": null,
+        "ByCourseObjectiveTrack": null,
+        "CumulativeObjectiveTrack": null,
+        "HiddenBubblesObjectiveTrack": null,
+        "DraftScreenUI": null,
+        "DirectGameUI": null,
+        "PrizeWallData": null
+      },
+      "Joinability": "Undefined"
+    },
+    "WinCondition": 0,
+    "AllowedCountryCodes": null,
+    "ExcludedCountryCodes": null,
+    "MinimumRank": "None"
+  }
+]

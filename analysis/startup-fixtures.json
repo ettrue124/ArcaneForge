@@ -1,0 +1,1576 @@
+{
+  "purpose": "Synthetic local offline deckbuilder account initialization; not official campaign, rewards, events or store content. No official service requests.",
+  "commands": {
+    "GraphGetGraphDefinitions": {
+      "format": "json",
+      "payload": {
+        "GraphDefinitions": [
+          {
+            "Id": "NPE_Tutorial",
+            "Type": "NPETutorial",
+            "StartTime": "2020-01-01T00:00:00Z",
+            "EndRevealTime": "2099-01-01T00:00:00Z",
+            "EndTime": "2099-01-01T00:00:00Z",
+            "NodeGroups": [
+              {
+                "Name": "Completed_Group",
+                "Nodes": [
+                  "LocalCompleted"
+                ]
+              }
+            ],
+            "Nodes": {
+              "LocalCompleted": {
+                "Id": "LocalCompleted",
+                "Type": "ManualComplete",
+                "Children": [],
+                "Configuration": {},
+                "UXInfo": {}
+              }
+            },
+            "Configuration": {},
+            "Milestones": []
+          },
+          {
+            "Id": "ColorChallenge",
+            "Type": "ColorChallenge",
+            "StartTime": "2020-01-01T00:00:00Z",
+            "EndRevealTime": "2099-01-01T00:00:00Z",
+            "EndTime": "2099-01-01T00:00:00Z",
+            "NodeGroups": [
+              {
+                "Name": "white",
+                "Nodes": [
+                  "UnlockPlayMode"
+                ]
+              }
+            ],
+            "Nodes": {
+              "UnlockPlayMode": {
+                "Id": "UnlockPlayMode",
+                "Type": "ManualComplete",
+                "Children": [],
+                "Configuration": {},
+                "UXInfo": {}
+              }
+            },
+            "Configuration": {},
+            "Milestones": []
+          },
+          {
+            "Id": "NewPlayerExperience",
+            "Type": "NPE",
+            "StartTime": "2020-01-01T00:00:00Z",
+            "EndRevealTime": "2099-01-01T00:00:00Z",
+            "EndTime": "2099-01-01T00:00:00Z",
+            "NodeGroups": [],
+            "Nodes": {},
+            "Configuration": {},
+            "Milestones": [
+              {
+                "Name": "NPE_Completed",
+                "Nodes": []
+              },
+              {
+                "Name": "OpenSparkQueue",
+                "Nodes": []
+              },
+              {
+                "Name": "OpenSparkyDeckDuel",
+                "Nodes": []
+              },
+              {
+                "Name": "PlayedThroughSparkRank",
+                "Nodes": []
+              },
+              {
+                "Name": "OpenHistoricBrawlQueue",
+                "Nodes": []
+              },
+              {
+                "Name": "OpenAlchemyRankQueue",
+                "Nodes": []
+              },
+              {
+                "Name": "NPEv4_Landing",
+                "Nodes": []
+              },
+              {
+                "Name": "OpenDualColorPreconEvent",
+                "Nodes": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "GraphGetGraphState": {
+      "format": "json",
+      "payload": {
+        "NodeStates": {
+          "LocalCompleted": {
+            "Status": "Completed"
+          },
+          "UnlockPlayMode": {
+            "Status": "Completed"
+          }
+        },
+        "MilestoneStates": {
+          "NPE_Completed": true,
+          "ColorChallenge_Completed": true,
+          "OpenSparkQueue": true,
+          "OpenSparkyDeckDuel": true,
+          "PlayedThroughSparkRank": true,
+          "OpenHistoricBrawlQueue": true,
+          "OpenAlchemyRankQueue": true,
+          "NPEv4_Landing": true,
+          "OpenDualColorPreconEvent": true
+        }
+      }
+    },
+    "StaticContent": {
+      "format": "json",
+      "type": "Wizards.Unification.Models.Event.StaticContentResponse",
+      "payload": {
+        "AvailableCosmetics": {
+          "Hash": 1,
+          "Object": {
+            "ArtStyles": [],
+            "Avatars": [],
+            "Pets": [],
+            "Sleeves": [],
+            "Emotes": [],
+            "Titles": []
+          }
+        },
+        "SurveyConfigs": {
+          "Hash": 1,
+          "Object": []
+        },
+        "CardNicknames": {
+          "Hash": 1,
+          "Object": []
+        },
+        "EmergencyBannedCardTitleIds": {
+          "Hash": 1,
+          "Object": []
+        },
+        "QueueTips": {
+          "Hash": 1,
+          "Object": []
+        }
+      }
+    },
+    "GetPlayerPreferences": {
+      "format": "json",
+      "payload": {
+        "Preferences": {
+          "Experience": "Advanced"
+        }
+      }
+    },
+    "GetPlayBladeQueueConfig": {
+      "format": "json",
+      "payload": [
+        {
+          "Id": "AIBotMatch",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Modes/Play",
+          "EventNameBO1": "AIBotMatch",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Historic"
+          ]
+        },
+        {
+          "Id": "CommanderAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Modes/Commander",
+          "EventNameBO1": "CommanderAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/100",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Commander"
+          ]
+        },
+        {
+          "Id": "CommanderAI4",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Modes/Commander4",
+          "EventNameBO1": "CommanderAI4",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/100",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Commander"
+          ]
+        }
+      ]
+    },
+    "GetNetDeckFolders": {
+      "format": "json",
+      "payload": []
+    },
+    "GetAllPreferredPrintings": {
+      "format": "json",
+      "payload": {}
+    },
+    "GetVoucherDefinitions": {
+      "format": "json",
+      "payload": {
+        "VoucherDefinitions": []
+      },
+      "protobufType": "Wizards.Arena.Models.Network.GetVoucherDefinitionsResponse",
+      "protobufPayload": {
+        "voucherDefinitions": []
+      }
+    },
+    "DeckGetAllPreconDecksV3": {
+      "format": "json",
+      "payload": {
+        "CacheVersion": 1,
+        "PreconDecks": []
+      }
+    },
+    "RenewalGetCurrentRenewal": {
+      "format": "json",
+      "payload": {
+        "currentId": null,
+        "definitionId": null,
+        "initialPayoutsStartTime": "2020-01-01T00:00:00Z",
+        "initialPayoutsEndTime": "2020-01-01T00:00:00Z",
+        "rotatingSets": [],
+        "ready": false
+      }
+    },
+    "RankGetCombinedRankInfo": {
+      "format": "json",
+      "payload": {
+        "constructedSeasonOrdinal": 0,
+        "constructedClass": 0,
+        "constructedLevel": 4,
+        "constructedStep": 0,
+        "constructedMatchesWon": 0,
+        "constructedMatchesLost": 0,
+        "constructedMatchesDrawn": 0,
+        "limitedSeasonOrdinal": 0,
+        "limitedClass": 0,
+        "limitedLevel": 4,
+        "limitedStep": 0,
+        "limitedMatchesWon": 0,
+        "limitedMatchesLost": 0,
+        "limitedMatchesDrawn": 0,
+        "constructedPercentile": 0,
+        "constructedLeaderboardPlace": 0,
+        "limitedPercentile": 0,
+        "limitedLeaderboardPlace": 0
+      }
+    },
+    "RankGetSeasonAndRankDetails": {
+      "format": "json",
+      "payload": {
+        "currentSeason": {
+          "seasonOrdinal": 0,
+          "seasonStartTime": "2026-10-01T00:00:00Z",
+          "seasonEndTime": "2026-11-01T00:00:00Z",
+          "seasonLimitedRewards": {},
+          "seasonConstructedRewards": {},
+          "minMatches": 0
+        },
+        "limitedRankInfo": [],
+        "constructedRankInfo": []
+      }
+    },
+    "StoreGetEntitlementsV2": {
+      "format": "json",
+      "payload": {
+        "InventoryInfo": {
+          "SeqId": 1,
+          "Changes": [],
+          "Gems": 0,
+          "Gold": 0,
+          "TotalVaultProgress": 0,
+          "wcTrackPosition": 0,
+          "WildCardCommons": 0,
+          "WildCardUnCommons": 0,
+          "WildCardRares": 0,
+          "WildCardMythics": 0,
+          "CustomTokens": {},
+          "Boosters": [],
+          "Vouchers": {},
+          "VouchersV2": {},
+          "PrizeWallsUnlocked": [],
+          "Cosmetics": {
+            "ArtStyles": [],
+            "Avatars": [],
+            "Pets": [],
+            "Sleeves": [],
+            "Emotes": [],
+            "Titles": []
+          }
+        },
+        "ContainsFirstPurchase": false
+      }
+    },
+    "GetDesignerMetadata": {
+      "format": "json",
+      "payload": {
+        "NonCraftableCardList": [],
+        "NonCollectibleCardList": [],
+        "UnreleasedSets": []
+      }
+    },
+    "GetSets": {
+      "format": "json",
+      "payload": {
+        "SetDatas": [],
+        "SetGroups": [
+          {
+            "GroupName": "AllFilters",
+            "Sets": [
+              "10E",
+              "2X2",
+              "2XM",
+              "5DN",
+              "7ED",
+              "8ED",
+              "9ED",
+              "A25",
+              "ACR",
+              "AER",
+              "AFR",
+              "AKH",
+              "AKR",
+              "ALA",
+              "ANA",
+              "ANB",
+              "APC",
+              "ARB",
+              "AVR",
+              "BFZ",
+              "BIG",
+              "BLB",
+              "BLC",
+              "BNG",
+              "BOK",
+              "BRO",
+              "BRR",
+              "C13",
+              "C16",
+              "C18",
+              "C20",
+              "C21",
+              "CC2",
+              "CHK",
+              "CLB",
+              "CLU",
+              "CM2",
+              "CMA",
+              "CMD",
+              "CMR",
+              "CN2",
+              "CONF",
+              "CSP",
+              "DAR",
+              "DDD",
+              "DDK",
+              "DDL",
+              "DDU",
+              "DFT",
+              "DGM",
+              "DIS",
+              "DKA",
+              "DMC",
+              "DMR",
+              "DMU",
+              "DRC",
+              "DSK",
+              "DST",
+              "DTK",
+              "ECC",
+              "ECL",
+              "ELD",
+              "EMN",
+              "EOC",
+              "EOE",
+              "EOS",
+              "EVE",
+              "EXO",
+              "FCA",
+              "FDC",
+              "FDN",
+              "FEM",
+              "FIC",
+              "FIN",
+              "FRA",
+              "FRC",
+              "FRF",
+              "FUT",
+              "G18",
+              "GRN",
+              "GTC",
+              "HBG",
+              "HOB",
+              "HOC",
+              "HOU",
+              "ICE",
+              "IKO",
+              "IMA",
+              "INR",
+              "INV",
+              "ISD",
+              "J21",
+              "J25",
+              "JMP",
+              "JOU",
+              "JUD",
+              "KHM",
+              "KLD",
+              "KLR",
+              "KTK",
+              "LCC",
+              "LCI",
+              "LEA",
+              "LGN",
+              "LRW",
+              "LTC",
+              "LTR",
+              "M10",
+              "M11",
+              "M12",
+              "M13",
+              "M14",
+              "M15",
+              "M19",
+              "M20",
+              "M21",
+              "M3C",
+              "MAR",
+              "MAT",
+              "MBS",
+              "ME2",
+              "ME4",
+              "MH1",
+              "MH2",
+              "MH3",
+              "MID",
+              "MIR",
+              "MKM",
+              "MMA",
+              "MMQ",
+              "MOC",
+              "MOM",
+              "MOR",
+              "MRD",
+              "MSC",
+              "MSH",
+              "MUL",
+              "NCC",
+              "NEC",
+              "NEM",
+              "NEO",
+              "NPH",
+              "ODY",
+              "OGW",
+              "OMB",
+              "ONC",
+              "ONE",
+              "ONS",
+              "ORI",
+              "OTC",
+              "OTJ",
+              "OTP",
+              "PIO",
+              "PIP",
+              "PLC",
+              "PLS",
+              "PRM",
+              "PZA",
+              "RAV",
+              "REX",
+              "RIX",
+              "RNA",
+              "ROE",
+              "RTR",
+              "RVR",
+              "SCG",
+              "SHM",
+              "SIR",
+              "SIS",
+              "SLD",
+              "SNC",
+              "SOA",
+              "SOC",
+              "SOI",
+              "SOK",
+              "SOM",
+              "SOS",
+              "SPG",
+              "SPM",
+              "STA",
+              "STH",
+              "STX",
+              "TDC",
+              "TDM",
+              "THB",
+              "THS",
+              "TLA",
+              "TLE",
+              "TMC",
+              "TMP",
+              "TMT",
+              "TOR",
+              "TSP",
+              "UDS",
+              "ULG",
+              "UMA",
+              "UND",
+              "UNF",
+              "USG",
+              "UST",
+              "VIS",
+              "VMA",
+              "VOW",
+              "WAR",
+              "WOC",
+              "WOE",
+              "WOT",
+              "WTH",
+              "WWK",
+              "XLN",
+              "Y22",
+              "Y23",
+              "Y24",
+              "Y25",
+              "Y26",
+              "ZEN",
+              "ZNR"
+            ]
+          },
+          {
+            "GroupName": "Historic",
+            "Sets": [
+              "10E",
+              "2X2",
+              "2XM",
+              "5DN",
+              "7ED",
+              "8ED",
+              "9ED",
+              "A25",
+              "ACR",
+              "AER",
+              "AFR",
+              "AKH",
+              "AKR",
+              "ALA",
+              "ANA",
+              "ANB",
+              "APC",
+              "ARB",
+              "AVR",
+              "BFZ",
+              "BIG",
+              "BLB",
+              "BLC",
+              "BNG",
+              "BOK",
+              "BRO",
+              "BRR",
+              "C13",
+              "C16",
+              "C18",
+              "C20",
+              "C21",
+              "CC2",
+              "CHK",
+              "CLB",
+              "CLU",
+              "CM2",
+              "CMA",
+              "CMD",
+              "CMR",
+              "CN2",
+              "CONF",
+              "CSP",
+              "DAR",
+              "DDD",
+              "DDK",
+              "DDL",
+              "DDU",
+              "DFT",
+              "DGM",
+              "DIS",
+              "DKA",
+              "DMC",
+              "DMR",
+              "DMU",
+              "DRC",
+              "DSK",
+              "DST",
+              "DTK",
+              "ECC",
+              "ECL",
+              "ELD",
+              "EMN",
+              "EOC",
+              "EOE",
+              "EOS",
+              "EVE",
+              "EXO",
+              "FCA",
+              "FDC",
+              "FDN",
+              "FEM",
+              "FIC",
+              "FIN",
+              "FRA",
+              "FRC",
+              "FRF",
+              "FUT",
+              "G18",
+              "GRN",
+              "GTC",
+              "HBG",
+              "HOB",
+              "HOC",
+              "HOU",
+              "ICE",
+              "IKO",
+              "IMA",
+              "INR",
+              "INV",
+              "ISD",
+              "J21",
+              "J25",
+              "JMP",
+              "JOU",
+              "JUD",
+              "KHM",
+              "KLD",
+              "KLR",
+              "KTK",
+              "LCC",
+              "LCI",
+              "LEA",
+              "LGN",
+              "LRW",
+              "LTC",
+              "LTR",
+              "M10",
+              "M11",
+              "M12",
+              "M13",
+              "M14",
+              "M15",
+              "M19",
+              "M20",
+              "M21",
+              "M3C",
+              "MAR",
+              "MAT",
+              "MBS",
+              "ME2",
+              "ME4",
+              "MH1",
+              "MH2",
+              "MH3",
+              "MID",
+              "MIR",
+              "MKM",
+              "MMA",
+              "MMQ",
+              "MOC",
+              "MOM",
+              "MOR",
+              "MRD",
+              "MSC",
+              "MSH",
+              "MUL",
+              "NCC",
+              "NEC",
+              "NEM",
+              "NEO",
+              "NPH",
+              "ODY",
+              "OGW",
+              "OMB",
+              "ONC",
+              "ONE",
+              "ONS",
+              "ORI",
+              "OTC",
+              "OTJ",
+              "OTP",
+              "PIO",
+              "PIP",
+              "PLC",
+              "PLS",
+              "PRM",
+              "PZA",
+              "RAV",
+              "REX",
+              "RIX",
+              "RNA",
+              "ROE",
+              "RTR",
+              "RVR",
+              "SCG",
+              "SHM",
+              "SIR",
+              "SIS",
+              "SLD",
+              "SNC",
+              "SOA",
+              "SOC",
+              "SOI",
+              "SOK",
+              "SOM",
+              "SOS",
+              "SPG",
+              "SPM",
+              "STA",
+              "STH",
+              "STX",
+              "TDC",
+              "TDM",
+              "THB",
+              "THS",
+              "TLA",
+              "TLE",
+              "TMC",
+              "TMP",
+              "TMT",
+              "TOR",
+              "TSP",
+              "UDS",
+              "ULG",
+              "UMA",
+              "UND",
+              "UNF",
+              "USG",
+              "UST",
+              "VIS",
+              "VMA",
+              "VOW",
+              "WAR",
+              "WOC",
+              "WOE",
+              "WOT",
+              "WTH",
+              "WWK",
+              "XLN",
+              "Y22",
+              "Y23",
+              "Y24",
+              "Y25",
+              "Y26",
+              "ZEN",
+              "ZNR"
+            ]
+          }
+        ],
+        "StoreSetGroups": [],
+        "SetCollectionGroup": {}
+      },
+      "protobufType": "Wizards.Arena.Models.Network.SetMetadataResponse",
+      "protobufPayload": {
+        "setDatas": [],
+        "setGroups": [
+          {
+            "groupName": "AllFilters",
+            "sets": [
+              "10E",
+              "2X2",
+              "2XM",
+              "5DN",
+              "7ED",
+              "8ED",
+              "9ED",
+              "A25",
+              "ACR",
+              "AER",
+              "AFR",
+              "AKH",
+              "AKR",
+              "ALA",
+              "ANA",
+              "ANB",
+              "APC",
+              "ARB",
+              "AVR",
+              "BFZ",
+              "BIG",
+              "BLB",
+              "BLC",
+              "BNG",
+              "BOK",
+              "BRO",
+              "BRR",
+              "C13",
+              "C16",
+              "C18",
+              "C20",
+              "C21",
+              "CC2",
+              "CHK",
+              "CLB",
+              "CLU",
+              "CM2",
+              "CMA",
+              "CMD",
+              "CMR",
+              "CN2",
+              "CONF",
+              "CSP",
+              "DAR",
+              "DDD",
+              "DDK",
+              "DDL",
+              "DDU",
+              "DFT",
+              "DGM",
+              "DIS",
+              "DKA",
+              "DMC",
+              "DMR",
+              "DMU",
+              "DRC",
+              "DSK",
+              "DST",
+              "DTK",
+              "ECC",
+              "ECL",
+              "ELD",
+              "EMN",
+              "EOC",
+              "EOE",
+              "EOS",
+              "EVE",
+              "EXO",
+              "FCA",
+              "FDC",
+              "FDN",
+              "FEM",
+              "FIC",
+              "FIN",
+              "FRA",
+              "FRC",
+              "FRF",
+              "FUT",
+              "G18",
+              "GRN",
+              "GTC",
+              "HBG",
+              "HOB",
+              "HOC",
+              "HOU",
+              "ICE",
+              "IKO",
+              "IMA",
+              "INR",
+              "INV",
+              "ISD",
+              "J21",
+              "J25",
+              "JMP",
+              "JOU",
+              "JUD",
+              "KHM",
+              "KLD",
+              "KLR",
+              "KTK",
+              "LCC",
+              "LCI",
+              "LEA",
+              "LGN",
+              "LRW",
+              "LTC",
+              "LTR",
+              "M10",
+              "M11",
+              "M12",
+              "M13",
+              "M14",
+              "M15",
+              "M19",
+              "M20",
+              "M21",
+              "M3C",
+              "MAR",
+              "MAT",
+              "MBS",
+              "ME2",
+              "ME4",
+              "MH1",
+              "MH2",
+              "MH3",
+              "MID",
+              "MIR",
+              "MKM",
+              "MMA",
+              "MMQ",
+              "MOC",
+              "MOM",
+              "MOR",
+              "MRD",
+              "MSC",
+              "MSH",
+              "MUL",
+              "NCC",
+              "NEC",
+              "NEM",
+              "NEO",
+              "NPH",
+              "ODY",
+              "OGW",
+              "OMB",
+              "ONC",
+              "ONE",
+              "ONS",
+              "ORI",
+              "OTC",
+              "OTJ",
+              "OTP",
+              "PIO",
+              "PIP",
+              "PLC",
+              "PLS",
+              "PRM",
+              "PZA",
+              "RAV",
+              "REX",
+              "RIX",
+              "RNA",
+              "ROE",
+              "RTR",
+              "RVR",
+              "SCG",
+              "SHM",
+              "SIR",
+              "SIS",
+              "SLD",
+              "SNC",
+              "SOA",
+              "SOC",
+              "SOI",
+              "SOK",
+              "SOM",
+              "SOS",
+              "SPG",
+              "SPM",
+              "STA",
+              "STH",
+              "STX",
+              "TDC",
+              "TDM",
+              "THB",
+              "THS",
+              "TLA",
+              "TLE",
+              "TMC",
+              "TMP",
+              "TMT",
+              "TOR",
+              "TSP",
+              "UDS",
+              "ULG",
+              "UMA",
+              "UND",
+              "UNF",
+              "USG",
+              "UST",
+              "VIS",
+              "VMA",
+              "VOW",
+              "WAR",
+              "WOC",
+              "WOE",
+              "WOT",
+              "WTH",
+              "WWK",
+              "XLN",
+              "Y22",
+              "Y23",
+              "Y24",
+              "Y25",
+              "Y26",
+              "ZEN",
+              "ZNR"
+            ]
+          },
+          {
+            "groupName": "Historic",
+            "sets": [
+              "10E",
+              "2X2",
+              "2XM",
+              "5DN",
+              "7ED",
+              "8ED",
+              "9ED",
+              "A25",
+              "ACR",
+              "AER",
+              "AFR",
+              "AKH",
+              "AKR",
+              "ALA",
+              "ANA",
+              "ANB",
+              "APC",
+              "ARB",
+              "AVR",
+              "BFZ",
+              "BIG",
+              "BLB",
+              "BLC",
+              "BNG",
+              "BOK",
+              "BRO",
+              "BRR",
+              "C13",
+              "C16",
+              "C18",
+              "C20",
+              "C21",
+              "CC2",
+              "CHK",
+              "CLB",
+              "CLU",
+              "CM2",
+              "CMA",
+              "CMD",
+              "CMR",
+              "CN2",
+              "CONF",
+              "CSP",
+              "DAR",
+              "DDD",
+              "DDK",
+              "DDL",
+              "DDU",
+              "DFT",
+              "DGM",
+              "DIS",
+              "DKA",
+              "DMC",
+              "DMR",
+              "DMU",
+              "DRC",
+              "DSK",
+              "DST",
+              "DTK",
+              "ECC",
+              "ECL",
+              "ELD",
+              "EMN",
+              "EOC",
+              "EOE",
+              "EOS",
+              "EVE",
+              "EXO",
+              "FCA",
+              "FDC",
+              "FDN",
+              "FEM",
+              "FIC",
+              "FIN",
+              "FRA",
+              "FRC",
+              "FRF",
+              "FUT",
+              "G18",
+              "GRN",
+              "GTC",
+              "HBG",
+              "HOB",
+              "HOC",
+              "HOU",
+              "ICE",
+              "IKO",
+              "IMA",
+              "INR",
+              "INV",
+              "ISD",
+              "J21",
+              "J25",
+              "JMP",
+              "JOU",
+              "JUD",
+              "KHM",
+              "KLD",
+              "KLR",
+              "KTK",
+              "LCC",
+              "LCI",
+              "LEA",
+              "LGN",
+              "LRW",
+              "LTC",
+              "LTR",
+              "M10",
+              "M11",
+              "M12",
+              "M13",
+              "M14",
+              "M15",
+              "M19",
+              "M20",
+              "M21",
+              "M3C",
+              "MAR",
+              "MAT",
+              "MBS",
+              "ME2",
+              "ME4",
+              "MH1",
+              "MH2",
+              "MH3",
+              "MID",
+              "MIR",
+              "MKM",
+              "MMA",
+              "MMQ",
+              "MOC",
+              "MOM",
+              "MOR",
+              "MRD",
+              "MSC",
+              "MSH",
+              "MUL",
+              "NCC",
+              "NEC",
+              "NEM",
+              "NEO",
+              "NPH",
+              "ODY",
+              "OGW",
+              "OMB",
+              "ONC",
+              "ONE",
+              "ONS",
+              "ORI",
+              "OTC",
+              "OTJ",
+              "OTP",
+              "PIO",
+              "PIP",
+              "PLC",
+              "PLS",
+              "PRM",
+              "PZA",
+              "RAV",
+              "REX",
+              "RIX",
+              "RNA",
+              "ROE",
+              "RTR",
+              "RVR",
+              "SCG",
+              "SHM",
+              "SIR",
+              "SIS",
+              "SLD",
+              "SNC",
+              "SOA",
+              "SOC",
+              "SOI",
+              "SOK",
+              "SOM",
+              "SOS",
+              "SPG",
+              "SPM",
+              "STA",
+              "STH",
+              "STX",
+              "TDC",
+              "TDM",
+              "THB",
+              "THS",
+              "TLA",
+              "TLE",
+              "TMC",
+              "TMP",
+              "TMT",
+              "TOR",
+              "TSP",
+              "UDS",
+              "ULG",
+              "UMA",
+              "UND",
+              "UNF",
+              "USG",
+              "UST",
+              "VIS",
+              "VMA",
+              "VOW",
+              "WAR",
+              "WOC",
+              "WOE",
+              "WOT",
+              "WTH",
+              "WWK",
+              "XLN",
+              "Y22",
+              "Y23",
+              "Y24",
+              "Y25",
+              "Y26",
+              "ZEN",
+              "ZNR"
+            ]
+          }
+        ],
+        "storeSetGroups": [],
+        "setCollectionGroup": []
+      }
+    },
+    "EventGetActiveMatches": {
+      "format": "json",
+      "payload": {
+        "MatchesV3": []
+      }
+    },
+    "GetKillSwitchData": {
+      "format": "json",
+      "payload": {
+        "KillSwitches": {},
+        "UxKillSwitches": {}
+      }
+    },
+    "GetPlayerInbox": {
+      "format": "protobuf",
+      "payload": {
+        "inbox": []
+      },
+      "type": "Wizards.Arena.Models.Network.GetPlayerInboxResp"
+    },
+    "GetWpnNotificationPreferences": {
+      "format": "protobuf",
+      "payload": {
+        "defaultWpnNotificationPreference": {
+          "anyMessagesEnabled": false,
+          "marketingMessagesEnabled": false,
+          "carouselsEnabled": false
+        },
+        "globalNotificationPreference": {
+          "anyMessagesEnabled": false,
+          "marketingMessagesEnabled": false,
+          "carouselsEnabled": false
+        },
+        "organizationNotificationPreferences": {}
+      },
+      "type": "Wizards.Arena.Models.Network.GetWpnNotificationPreferencesResp"
+    },
+    "GetAllPrizeWalls": {
+      "format": "json",
+      "payload": {
+        "ActivePrizeWalls": []
+      }
+    },
+    "ChallengeReconnectAll": {
+      "format": "protobuf",
+      "payload": {
+        "challenge": []
+      },
+      "type": "Wizards.Arena.Models.Network.ChallengeReconnectAllResp"
+    },
+    "LogBusinessEventsV2": {
+      "format": "json",
+      "payload": "",
+      "evidence": "FrontDoorConnectionAWS.LogBusinessEvents uses StringUtils.DeserializeString; transport is JSON-byte payload, no telemetry forwarded to official services."
+    },
+    "EventGetActiveEventsV2": {
+      "format": "json",
+      "payload": {
+        "CacheVersion": 2,
+        "DynamicFilterTags": [],
+        "Events": [
+          {
+            "InternalEventName": "AIBotMatch",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "AIBotMatch",
+              "DisplayPriority": 0,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Historic",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Modes/Play"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Modes/Play"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "CommanderAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "CommanderAI",
+              "DisplayPriority": 1,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Commander",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Modes/Commander"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Modes/Commander"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "CommanderAI4",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "CommanderAI4",
+              "DisplayPriority": 2,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Commander",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Modes/Commander4"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Modes/Commander4"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          }
+        ],
+        "Challenges": [
+          {
+            "ChallengeName": "DirectGame",
+            "Format": "Historic",
+            "ChallengeType": "Challenge",
+            "WinCondition": "SingleElimination",
+            "StartingPlayer": "Random",
+            "TimerPackage": "Default"
+          }
+        ],
+        "AiBotMatches": []
+      }
+    },
+    "EventGetActiveEvents": {
+      "format": "json",
+      "payload": {
+        "CacheVersion": 1,
+        "DynamicFilterTags": [],
+        "Events": [],
+        "Challenges": [
+          {
+            "ChallengeName": "DirectGame",
+            "Format": "Historic",
+            "ChallengeType": "Challenge",
+            "WinCondition": "SingleElimination",
+            "StartingPlayer": "Random",
+            "TimerPackage": "Default"
+          }
+        ],
+        "AiBotMatches": [
+          {
+            "PublicEventName": "Bot Match",
+            "InternalEventName": "BotMatch",
+            "Format": "Historic",
+            "WinCondition": "SingleElimination",
+            "StartingPlayer": "Random",
+            "TimerPackage": "Default",
+            "DeckIds": [],
+            "DisplayPriority": 1
+          }
+        ]
+      }
+    },
+    "EventGetCoursesV2": {
+      "format": "json",
+      "payload": {
+        "Courses": []
+      }
+    },
+    "EventGetCourses": {
+      "format": "json",
+      "payload": {
+        "Courses": []
+      }
+    },
+    "CarouselGetCarouselItems": {
+      "format": "json",
+      "payload": []
+    },
+    "QuestGetQuests": {
+      "format": "json",
+      "payload": {
+        "canSwap": false,
+        "newQuests": 0,
+        "quests": []
+      }
+    },
+    "PeriodicRewardsGetStatus": {
+      "format": "json",
+      "payload": {
+        "_dailyRewardSequenceId": 1,
+        "_dailyRewardResetTimestamp": "2099-01-01T00:00:00Z",
+        "_weeklyRewardSequenceId": 1,
+        "_weeklyRewardResetTimestamp": "2099-01-01T00:00:00Z",
+        "_dailyRewardChestDescriptions": {},
+        "_weeklyRewardChestDescriptions": {}
+      }
+    },
+    "RankEvaluatePayoutsV2": {
+      "format": "json",
+      "payload": {
+        "currentSeasonOrdinal": 1,
+        "oldConstructedOrdinal": 1,
+        "oldLimitedOrdinal": 1,
+        "constructedReset": null,
+        "constructedPayout": null,
+        "limitedReset": null,
+        "limitedPayout": null,
+        "inventoryInfoWithNoDeltas": null
+      }
+    },
+    "SetPlayerPreferences": {
+      "format": "json",
+      "payload": {
+        "Preferences": {}
+      }
+    },
+    "CosmeticsSetPreferredAvatar": {
+      "format": "json",
+      "payload": {}
+    },
+    "EventJoin": {
+      "format": "json",
+      "payload": {
+        "Course": {
+          "InternalEventName": "BotMatch",
+          "CurrentWins": 0,
+          "CurrentLosses": 0,
+          "CurrentGames": 0,
+          "CourseDeck": null,
+          "CardPool": []
+        },
+        "InventoryInfo": null
+      }
+    },
+    "EventSetDeckV3": {
+      "format": "json",
+      "payload": {
+        "InternalEventName": "BotMatch"
+      }
+    }
+  },
+  "evidence": {
+    "graph": ".tools/rules-GraphManager.cs Initialized requires definitions.Count>0; .tools/rules-NodeNpe.cs requires NPE_Tutorial; .tools/rules-NodeGraphUtil.cs IsCompleted searches Completed_Group nodes with Completed status.",
+    "staticContent": ".tools/rules-StaticDto.cs and .tools/rules-StaticContentController.cs: legacy JSON nullable HashableObject wrappers with Hash/Object.",
+    "cache": ".tools/rules-CardsDto.cs + .tools/startup-Inventory.cs: CardGetAllCards lowerCamel cacheVersion/cards dictionary; served dynamically by backend.",
+    "startHook": ".tools/connection-StartHook.cs: typed protobuf StartHookResponseV2 served dynamically, not a static fixture.",
+    "startup": ".tools/connection-WrapperController.cs startup batch and exact service wrappers in .tools/rules-*.cs.",
+    "limitations": "Source checked DTO structure. Actual stock-client startup and native deckbuilder require runtime verification. No arbitrary success fallback for unknown commands.",
+    "transportAudit": "Explicit object-null overloads produce legacy JSON. IMessage request overload produces Any response for Inbox/Wpn/Challenge. GetVoucherDefinitions and GetSets use dual migration bridge: preserve incoming payload format and use protobufType/protobufPayload only for binary requests.",
+    "newCommands": ".tools/rules-audit-*ServiceWrapper.cs plus exact legacy DTO and protobuf generated classes. GetSets has empty local set metadata; native collection filters may require real client metadata later."
+  }
+}
