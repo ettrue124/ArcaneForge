@@ -45,10 +45,49 @@ static class BattleNativeMenus
         if(input.GetProperty("type").GetString()!="InputGuiChoice")return null;
         var message=new GREToClientMessage {MsgId=msgId,GameStateId=stateId,SystemSeatIds={1},Prompt=new Prompt {PromptId=23}};
         string nativeKind=input.TryGetProperty("nativeKind",out var native)?native.GetString()??"":"";
+        if(nativeKind=="kicker") {
+            uint source=input.GetProperty("sourceId").GetUInt32();
+            var card=snapshot.GetProperty("cards").EnumerateArray().FirstOrDefault(c=>c.GetProperty("instanceId").GetUInt32()==source);
+            uint ability=card.ValueKind==JsonValueKind.Object?BattlePresentation.SingleKickerAbility(card.GetProperty("grpId").GetUInt32()):0;
+            if(ability==0)return null;
+            message.Type=GREMessageType.CastingTimeOptionsReq;message.AllowCancel=AllowCancel.No;
+            message.CastingTimeOptionsReq=new CastingTimeOptionsReq();
+            foreach(bool kicked in new[]{false,true}) {
+                var option=new CastingTimeOptionReq {
+                    CtoId=snapshot.GetProperty("buttonEventId").GetUInt32(),
+                    CastingTimeOptionType=kicked?CastingTimeOptionType.Kicker:CastingTimeOptionType.Done,
+                    AffectorId=source,AffectedId=source,GrpId=kicked?ability:card.GetProperty("grpId").GetUInt32(),
+                    PlayerIdToPrompt=1,IsRequired=true};
+                string prefix=kicked?"kicked":"base";
+                if(!MatchDoorHost.TryParseManaCost(input.GetProperty(prefix+"ManaCost").GetString()!,option.ManaCost))return null;
+                // The browser uses this solution for affordability and hover
+                // highlights; actual payment remains Forge's next input.
+                if(input.GetProperty(prefix+"Payable").GetBoolean()) {
+                    option.AutoTapSolution=new AutoTapSolution();
+                    if(input.TryGetProperty(prefix+"AutoTapSources",out var sources))
+                        foreach(var manaSource in sources.EnumerateArray())
+                            option.AutoTapSolution.AutoTapActions.Add(new AutoTapAction {InstanceId=manaSource.GetUInt32()});
+                    if(input.TryGetProperty(prefix+"AutoTapPool",out var pool))
+                        foreach(var mana in pool.EnumerateArray()) {
+                            var info=new ManaInfo {ManaId=mana.GetProperty("manaId").GetUInt32(),
+                                Color=(ManaColor)mana.GetProperty("color").GetInt32(),
+                                SrcInstanceId=mana.GetProperty("srcInstanceId").GetUInt32(),Count=mana.GetProperty("count").GetUInt32()};
+                            if(mana.TryGetProperty("restricted",out var restricted) && restricted.GetBoolean())
+                                info.Specs.Add(new ManaInfo.Types.Spec {Type=ManaSpecType.Restricted});
+                            option.AutoTapSolution.AutoTapActions.Add(new AutoTapAction {ManaId=info.ManaId,
+                                ManaPaymentOption=new ManaPaymentOption {Mana={info}}});
+                        }
+                }
+                message.CastingTimeOptionsReq.CastingTimeOptionReq.Add(option);
+            }
+            return message;
+        }
         if(nativeKind=="modes" && AbilityChoices(snapshot,input,true) is {} modes) {
             uint source=input.GetProperty("sourceId").GetUInt32();
             var card=snapshot.GetProperty("cards").EnumerateArray().Single(c=>c.GetProperty("instanceId").GetUInt32()==source);
             var modal=new ModalReq {MinSel=input.GetProperty("modeMin").GetUInt32(),MaxSel=input.GetProperty("modeMax").GetUInt32()};
+            if(input.TryGetProperty("modeDescription",out var parentDescription))
+                modal.AbilityGrpId=BattlePresentation.AbilityId(card.GetProperty("grpId").GetUInt32(),parentDescription.GetString()??"",card.GetProperty("name").GetString()??"");
             modal.ModalOptions.AddRange(modes.Keys.Select(id=>new ModalOption {GrpId=id}));
             message.Type=GREMessageType.CastingTimeOptionsReq;
             // This is a blocking Forge choice, not a cancellable Input proxy.
@@ -58,7 +97,7 @@ static class BattleNativeMenus
                 AffectorId=source,AffectedId=source,GrpId=card.GetProperty("grpId").GetUInt32(),PlayerIdToPrompt=1,IsRequired=true,ModalReq=modal}}};
             return message;
         }
-        if(nativeKind=="manaType") {
+        if(nativeKind is "manaType" or "manaProduction") {
             uint source=input.GetProperty("sourceId").GetUInt32();
             var card=snapshot.GetProperty("cards").EnumerateArray().FirstOrDefault(c=>c.GetProperty("instanceId").GetUInt32()==source);
             if(card.ValueKind!=JsonValueKind.Object)return null;
@@ -229,6 +268,13 @@ static class BattleNativeMenus
     }
     public static bool TryAnswer(ClientToGREMessage message,JsonElement snapshot,out object? answer) {
         answer=null;
+        // Current Arena sends the repeated response field even for one color.
+        // Normalize only the response matching this pending choice.
+        if(message.CastingTimeOptionsResp is {} casting && casting.CastingTimeOptionResp==null) {
+            uint pending=snapshot.GetProperty("buttonEventId").GetUInt32();
+            var matching=casting.CastingTimeOptionResps.Where(r=>r.CtoId==pending).ToArray();
+            if(matching.Length==1)casting.CastingTimeOptionResp=matching[0];
+        }
         if(!snapshot.TryGetProperty("input",out var input))return false;
         if(input.GetProperty("type").GetString()!="InputGuiChoice")return false;
         if(message.SelectNResp is {} selection && StaticChoices(input,out _,out var map)) {
@@ -236,6 +282,14 @@ static class BattleNativeMenus
             return true;
         }
         string kind=input.TryGetProperty("nativeKind",out var k)?k.GetString()??"":"";
+        if(kind=="kicker" && message.CastingTimeOptionsResp?.CastingTimeOptionResp is {} kicker) {
+            if(kicker.CtoId!=snapshot.GetProperty("buttonEventId").GetUInt32()
+                || kicker.CastingTimeOptionType is not (CastingTimeOptionType.Kicker or CastingTimeOptionType.Done))
+                throw new InvalidDataException("Kicker response does not match the pending request");
+            bool paid=kicker.CastingTimeOptionType==CastingTimeOptionType.Kicker;
+            if(!input.GetProperty(paid?"kickedPayable":"basePayable").GetBoolean())throw new InvalidDataException("Selected kicker option is not payable");
+            answer=new uint[]{paid?1u:2u};return true;
+        }
         if(kind=="modes" && message.CastingTimeOptionsResp?.CastingTimeOptionResp is {} modal && AbilityChoices(snapshot,input,true) is {} modes) {
             if(modal.CtoId!=snapshot.GetProperty("buttonEventId").GetUInt32() || modal.CastingTimeOptionType!=CastingTimeOptionType.Modal || modal.ChooseModalResp==null)
                 throw new InvalidDataException("Modal response does not match the pending request");
@@ -244,9 +298,17 @@ static class BattleNativeMenus
             if(combo.ValueKind!=JsonValueKind.Object)throw new InvalidDataException("Illegal combination of modes");
             answer=new[]{combo.GetProperty("id").GetUInt32()};return true;
         }
-        if(kind=="manaType" && message.CastingTimeOptionsResp?.CastingTimeOptionResp is {} manaTypeResp) {
+        if(kind is "manaType" or "manaProduction" && message.CastingTimeOptionsResp?.CastingTimeOptionResp is {} manaTypeResp) {
             if(manaTypeResp.CtoId!=snapshot.GetProperty("buttonEventId").GetUInt32() || manaTypeResp.CastingTimeOptionType!=CastingTimeOptionType.ManaType || manaTypeResp.SelectManaTypeResp==null)
                 throw new InvalidDataException("ManaType response does not match the pending request");
+            if(kind=="manaProduction") {
+                uint selectedColor=(uint)manaTypeResp.SelectManaTypeResp.ManaColor;
+                var selected=input.GetProperty("options").EnumerateArray().Where(o=>
+                    EnumId<ManaColor>(o.TryGetProperty("nativeValue",out var value)?value.GetString()!:o.GetProperty("label").GetString()!,out uint color)
+                    && color==selectedColor).ToArray();
+                if(selected.Length!=1)throw new InvalidDataException("Unknown mana production color");
+                answer=new[]{selected[0].GetProperty("id").GetUInt32()};return true;
+            }
             if(manaTypeResp.SelectManaTypeResp.ManaColor==ManaColor.Phyrexian)
                 answer=new uint[] { 2 };
             else

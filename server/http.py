@@ -41,7 +41,7 @@ def resolve_deck(store, catalogue, uid, deck_id):
                 body = json.loads(row["body_json"])
                 format_name = commander.deck_format(summary)
                 if format_name in commander.FORMATS:
-                    commander.validate(body, catalogue, complete=True)
+                    commander.validate(body, catalogue, complete=True, format_name=format_name)
                 command_cards = body.get('CommandZone', [])
                 companions = body.get('Companions', [])
                 for item in body.get("MainDeck", []):
@@ -79,15 +79,18 @@ def resolve_deck(store, catalogue, uid, deck_id):
 
 def match_decks(player_deck, ai_deck, mode=None, catalogue=None):
     """The selected queue controls seats; either Commander queue uses the same deck."""
-    if mode not in (None, 'play', 'commander', 'commander4'):
+    if mode not in (None, 'play', 'commander', 'commander4', 'commander-unbanned'):
         raise StorageError('Unknown game mode')
     is_commander = player_deck['format'] in commander.FORMATS
-    if mode in ('commander', 'commander4') and not is_commander:
+    if mode in ('commander', 'commander4', 'commander-unbanned') and not is_commander:
         raise StorageError('Select a 100-card Commander deck with a commander')
     if mode == 'play' and is_commander:
         raise StorageError('Select a Commander game mode for this deck')
     if is_commander and ai_deck['format'] not in commander.FORMATS:
         raise StorageError('The AI also needs a Commander deck')
+    if mode == 'commander-unbanned' or player_deck['format'] == 'CommanderUnbanned':
+        player_deck = dict(player_deck, format='CommanderUnbanned')
+        ai_deck = dict(ai_deck, format='CommanderUnbanned')
     count = 4 if mode == 'commander4' or mode is None and player_deck['format'] == 'Commander4' else 2
     if count == 4 and is_commander and catalogue:
         bot_pool = bot_decks.get_multiple_random_bot_decks(catalogue, count=3, format_name='Commander', exclude_name=player_deck.get('name'))
@@ -242,7 +245,7 @@ class Handler(BaseHTTPRequestHandler):
                             raise StorageError("deckId or decks required", 400)
                         player_deck = resolve_deck(store, self.server.catalogue, uid, deck_id)
                         bot_deck_id = data.get("botDeckId")
-                        is_cmdr = player_deck['format'] in commander.FORMATS or data.get('mode') in ('commander', 'commander4')
+                        is_cmdr = player_deck['format'] in commander.FORMATS or data.get('mode') in ('commander', 'commander4', 'commander-unbanned')
                         if bot_deck_id:
                             ai_deck = resolve_deck(store, self.server.catalogue, uid, bot_deck_id)
                         elif is_cmdr:

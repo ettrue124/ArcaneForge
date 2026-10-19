@@ -85,6 +85,15 @@ def refresh():
 
 def formats(data):
     catalogue = json.loads((ROOT / 'data/catalogue.json').read_text(encoding='utf8'))
+    # Rebuild title-specific exceptions whenever installed printings change.
+    from export_rulebreakers import export
+    rulebreaker_table = export(catalogue)
+    configuration = ROOT / 'data/local-client/configuration-state.json'
+    if configuration.exists():
+        installation = Path(json.loads(configuration.read_text(encoding='utf-8-sig'))['installation'])
+        destination = installation / 'MTGA_Data/StreamingAssets/ArcaneForgeCards/rulebreaker-decks.tsv'
+        if destination.parent.exists():
+            destination.write_bytes(rulebreaker_table.read_bytes())
     banned = set(data['bannedNames'])
     ban_ids = sorted({c['arenaMetadata']['TitleId'] for c in catalogue if c['name'] in banned})
     # Arena shares title IDs between some paper and digital printings, including
@@ -106,11 +115,13 @@ def formats(data):
                      bannedTitleIds=sorted(set(ban_ids) | digital_ids), allowedCommanderTitleIds=commander_ids,
                      restrictToCommandZoneCardTypeInternal=[], useRebalancedCards=False)
     multiplayer = dict(commander, name='Commander4')
+    unbanned = dict(commander, name='CommanderUnbanned', bannedTitleIds=[],
+                    allowedCommanderTitleIds=sorted({c['arenaMetadata']['TitleId'] for c in catalogue if c['name'] in eligible}))
     response = fixture['GetFormatsResponse']
-    response['formats'] = [f for f in response['formats'] if f['name'] not in ('Commander', 'Commander4')] + [commander, multiplayer]
+    response['formats'] = [f for f in response['formats'] if f['name'] not in ('Commander', 'Commander4', 'CommanderUnbanned')] + [commander, multiplayer, unbanned]
     for group in response['formatGroups']:
         values = group.get('formats', group.get('formatNames', []))
-        for name in ('Commander', 'Commander4'):
+        for name in ('Commander', 'Commander4', 'CommanderUnbanned'):
             if name not in values:
                 values.append(name)
     fixture['commanderBanSources'] = data['sources']
@@ -121,7 +132,8 @@ def formats(data):
     modes_fixture = json.loads(modes_path.read_text(encoding='utf8'))
     modes = [('AIBotMatch', 'ArenaLab/Modes/Play', 'Historic', 'ArenaLab/DeckSize/60'),
              ('CommanderAI', 'ArenaLab/Modes/Commander', 'Commander', 'ArenaLab/DeckSize/100'),
-             ('CommanderAI4', 'ArenaLab/Modes/Commander4', 'Commander', 'ArenaLab/DeckSize/100')]
+             ('CommanderAI4', 'ArenaLab/Modes/Commander4', 'Commander', 'ArenaLab/DeckSize/100'),
+             ('CommanderUnbannedAI', 'ArenaLab/Modes/CommanderUnbanned', 'CommanderUnbanned', 'ArenaLab/DeckSize/100')]
     modes_fixture['commands']['GetPlayBladeQueueConfig']['payload'] = [
         {'Id': event, 'QueueType': 'Unranked', 'LocTitle': title,
          'EventNameBO1': event, 'EventNameBO3': None, 'DeckSizeBO1': size,

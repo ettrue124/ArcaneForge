@@ -1,6 +1,28 @@
+param([switch]$Restart)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
+if ($Restart) {
+    Write-Output 'Restarting local services. Any current match will end.'
+    $localProcesses = Get-CimInstance Win32_Process | Where-Object {
+        $_.CommandLine -and $_.CommandLine.Contains($PSScriptRoot, [System.StringComparison]::OrdinalIgnoreCase) -and (
+            ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'ProtocolHost.dll') -or
+            ($_.Name -eq 'java.exe' -and $_.CommandLine -match 'ForgeEngineMain'))
+    }
+    $backendListeners = Get-NetTCPConnection -State Listen -LocalPort 8787 -ErrorAction SilentlyContinue
+    foreach ($listener in $backendListeners) {
+        $backendProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$($listener.OwningProcess)"
+        if ($backendProcess.Name -match '^python' -and $backendProcess.CommandLine -match '-m server') {
+            Stop-Process -Id $backendProcess.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+    }
+    $localProcesses | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+}
 $stateDirectory = Join-Path $PSScriptRoot 'data\local-client'
+& python (Join-Path $PSScriptRoot 'tools\install_custom_arena_cards.py')
+if ($LASTEXITCODE -ne 0) { throw 'Could not load the local Arena card pack. Close Arena before installing or updating it.' }
+Write-Output 'Checking the card catalogue. A refresh after updates can take a few minutes...'
+& python -u (Join-Path $PSScriptRoot 'tools\sync_card_catalogue.py')
+if ($LASTEXITCODE -ne 0) { throw 'Could not synchronize the installed card catalogue. See the card sync diagnostic above.' }
 $manifestVersionPath = Join-Path $stateDirectory 'manifest-version.json'
 if (Test-Path -LiteralPath $manifestVersionPath) {
     $manifestIdentity = Get-Content -LiteralPath $manifestVersionPath -Raw | ConvertFrom-Json

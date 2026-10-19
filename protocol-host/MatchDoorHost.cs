@@ -564,6 +564,7 @@ static class MatchDoorHost
         BattlePresentation.StateTargets(snapDoc.RootElement,board,ref state.NextAnnotationId);
         var playback=BattlePresentation.Playback(snapDoc.RootElement,state.PreviousBoard,board,state.LastPlaybackId,ref state.NextAnnotationId);
         BattlePresentation.Transitions(state.PreviousBoard, board, ref state.NextAnnotationId,playback);
+        BattlePresentation.BatchMillAnimations(board);
         bool completed=board.GameInfo.Stage==GameStage.GameOver && board.GameInfo.Results.Count>0;
         if(completed)BattleCompletion.LossAnnotation(snapDoc.RootElement,board,ref state.NextAnnotationId);
         state.InputType = snapDoc.RootElement.GetProperty("input").GetProperty("type").GetString() ?? "";

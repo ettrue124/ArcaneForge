@@ -3,9 +3,25 @@ using Wotc.Mtgo.Gre.External.Messaging;
 
 static class BattleRequests
 {
-    static uint TargetPrompt(JsonElement input)
+    static uint TargetPrompt(JsonElement snapshot, JsonElement input)
     {
         uint min = input.GetProperty("min").GetUInt32(), max = input.GetProperty("max").GetUInt32();
+        uint generic = min == 1 && max == 1 ? 1072u : 10u;
+        var targetIds = input.GetProperty("targets").EnumerateArray().Select(t => t.GetUInt32()).ToHashSet();
+        if (input.TryGetProperty("selected", out var selected))
+            targetIds.UnionWith(selected.EnumerateArray().Select(t => t.GetUInt32()));
+        bool playerTargets = targetIds.Any(id => id >= 1 && id <= 4);
+        bool cardTargets = targetIds.Any(id => id > 4);
+        // Forge's aura restriction includes Player.CanBeEnchantedBy even for
+        // artifact-only auras. Actual legal candidates determine whether the
+        // player-specific prompt applies. Mixed targets keep a general prompt.
+        if (playerTargets) return cardTargets ? generic : 1019u;
+        bool allArtifacts = false;
+        if (cardTargets && snapshot.TryGetProperty("cards", out var cards)) {
+            var candidates = cards.EnumerateArray().Where(c => targetIds.Contains(c.GetProperty("instanceId").GetUInt32())).ToArray();
+            allArtifacts = candidates.Length == targetIds.Count && candidates.All(c =>
+                c.TryGetProperty("cardTypes", out var kinds) && kinds.EnumerateArray().Any(k => k.GetString() == "Artifact"));
+        }
         string desc = input.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
         if (desc.Contains("+1/+1 counter", StringComparison.OrdinalIgnoreCase)) return 1463u; // "Target a creature on which to put a +1/+1 counter."
         // A fight spell's subability shares the root description. Use this
@@ -20,20 +36,21 @@ static class BattleRequests
             || desc.Contains("creature you don't control", StringComparison.OrdinalIgnoreCase)) return 1014u; // "Target a creature an opponent controls."
         if (desc.Contains("artifact or enchantment", StringComparison.OrdinalIgnoreCase)
             || desc.Contains("artifact and/or enchantment", StringComparison.OrdinalIgnoreCase)) return 1064u; // "Target an artifact or enchantment."
-        if (desc.Contains("target player", StringComparison.OrdinalIgnoreCase)
-            || desc.Contains("target opponent", StringComparison.OrdinalIgnoreCase)) return 1019u; // "Target a player."
+        if (!cardTargets && (desc.Contains("target player", StringComparison.OrdinalIgnoreCase)
+            || desc.Contains("target opponent", StringComparison.OrdinalIgnoreCase))) return 1019u; // "Target a player."
         if (input.TryGetProperty("validTargetTypes", out var types)) {
             var valid = types.EnumerateArray().Select(t => t.GetString() ?? "").ToArray();
             if (valid.Any(t => t.Contains("Creature", StringComparison.OrdinalIgnoreCase)) && max == 1)
                 return 1010u; // "Target a creature."
+            if (allArtifacts) return 1023u; // Installed native prompt: "Target an artifact."
             if (valid.Any(t => t.Contains("Artifact", StringComparison.OrdinalIgnoreCase) || t.Contains("Enchantment", StringComparison.OrdinalIgnoreCase)))
                 return 1064u; // "Target an artifact or enchantment."
             if (valid.Any(t => t.Contains("Permanent", StringComparison.OrdinalIgnoreCase)))
                 return 1006u; // "Target a permanent."
-            if (valid.Any(t => t.Contains("Player", StringComparison.OrdinalIgnoreCase) || t.Contains("Opponent", StringComparison.OrdinalIgnoreCase)))
+            if (!cardTargets && valid.All(t => t.StartsWith("Player", StringComparison.OrdinalIgnoreCase) || t.StartsWith("Opponent", StringComparison.OrdinalIgnoreCase)))
                 return 1019u; // "Target a player."
         }
-        return min == 1 && max == 1 ? 1072u : 10u; // 1072 = "Choose a target.", 10 = "Choose targets."
+        return generic; // 1072 = "Choose a target.", 10 = "Choose targets."
     }
     static DamageRecipient Recipient(uint id) => id <= 4
         ? new DamageRecipient { Type = (DamageRecType)2, PlayerSystemSeatId = id }
@@ -66,11 +83,19 @@ static class BattleRequests
                     }
                 }
                 uint costSourceId = input.TryGetProperty("sourceId", out var src) ? src.GetUInt32() : 0;
+                if(snapshot.TryGetProperty("stack",out var paymentStack))
+                    foreach(var item in paymentStack.EnumerateArray())
+                        if(item.GetProperty("parentId").GetUInt32()==costSourceId) {
+                            costSourceId=item.GetProperty("instanceId").GetUInt32();break;
+                        }
                 foreach (var req in payCosts.ManaCost) {
                     req.ObjectId = costSourceId;
                 }
                 payCosts.PaymentActions = new ActionsAvailableReq();
-                payCosts.PaymentActions.Actions.AddRange(BattlePresentation.Actions(snapshot));
+                foreach(var offered in BattlePresentation.Actions(snapshot)) {
+                    if(offered.Highlight==HighlightType.Cold)payCosts.PaymentActions.InactiveActions.Add(offered);
+                    else payCosts.PaymentActions.Actions.Add(offered);
+                }
                 var autoTapReq = new AutoTapActionsAvailableReq();
                 var solution = new AutoTapSolution();
                 if (input.TryGetProperty("autoTapSources", out var autoTapSources)) {
@@ -78,10 +103,18 @@ static class BattleRequests
                         solution.AutoTapActions.Add(new AutoTapAction { InstanceId = source.GetUInt32() });
                     }
                 }
-                if (solution.AutoTapActions.Count > 0) {
-                    autoTapReq.AutoTapSolutions.Add(solution);
-                    payCosts.AutoTapActionsReq = autoTapReq;
+                if(input.TryGetProperty("autoTapPool",out var paymentPool))foreach(var mana in paymentPool.EnumerateArray()) {
+                    var info=new ManaInfo {ManaId=mana.GetProperty("manaId").GetUInt32(),Color=(ManaColor)mana.GetProperty("color").GetInt32(),
+                        SrcInstanceId=mana.GetProperty("srcInstanceId").GetUInt32(),Count=mana.GetProperty("count").GetUInt32()};
+                    if(mana.TryGetProperty("restricted",out var restricted) && restricted.GetBoolean())
+                        info.Specs.Add(new ManaInfo.Types.Spec {Type=ManaSpecType.Restricted});
+                    solution.AutoTapActions.Add(new AutoTapAction {ManaId=info.ManaId,ManaPaymentOption=new ManaPaymentOption {Mana={info}}});
                 }
+                if (solution.AutoTapActions.Count > 0)autoTapReq.AutoTapSolutions.Add(solution);
+                // Keep the native payment workflow present even when Forge
+                // cannot propose a complete automatic solution. No empty
+                // solution is advertised as though the cost had been paid.
+                payCosts.AutoTapActionsReq = autoTapReq;
                 result.PayCostsReq = payCosts;
                 result.Prompt = new Prompt { PromptId = 23 };
                 result.AllowCancel = input.TryGetProperty("mandatory", out var payMand) && payMand.GetBoolean() ? AllowCancel.No : AllowCancel.Abort;
@@ -89,6 +122,20 @@ static class BattleRequests
                 break;
             }
             case "InputChooseNumber":
+                if(!input.GetProperty("isX").GetBoolean() && input.GetProperty("max").GetUInt32()<=10
+                    && input.GetProperty("min").GetUInt32()<=input.GetProperty("max").GetUInt32()) {
+                    var first=input.GetProperty("min").GetUInt32();
+                    var last=input.GetProperty("max").GetUInt32();
+                    var permitted=input.TryGetProperty("allowed",out var offeredNumbers) && offeredNumbers.GetArrayLength()>0
+                        ?offeredNumbers.EnumerateArray().Select(v=>v.GetUInt32()).ToHashSet():null;
+                    var options=Enumerable.Range((int)first,(int)(last-first+1))
+                        .Where(v=>permitted==null || permitted.Contains((uint)v))
+                        .Select(v=>new {id=v+1,label=v.ToString()}).ToArray();
+                    using var choice=JsonDocument.Parse(JsonSerializer.Serialize(new {type="InputGuiChoice",min=1,max=1,
+                        sourceId=input.GetProperty("sourceId").GetUInt32(),entityChoices=false,
+                        title=input.TryGetProperty("title",out var nt)?nt.GetString():"Choose a number",options}));
+                    return BattleGuiRequests.Choice(choice.RootElement,msgId,stateId);
+                }
                 var numeric=new NumericInputReq {MinValue=input.GetProperty("min").GetUInt32(),MaxValue=input.GetProperty("max").GetUInt32(),StepSize=1,
                     SourceId=input.GetProperty("sourceId").GetUInt32(),NumericInputType=input.GetProperty("isX").GetBoolean()?NumericInputType.ChooseX:NumericInputType.ChooseAnyAmount};
                 if(input.TryGetProperty("allowed",out var allowed) && allowed.GetArrayLength()>0) {
@@ -100,6 +147,9 @@ static class BattleRequests
                     result.Type=GREMessageType.NumericInputReq;
                     result.NumericInputReq=numeric;
                     result.AllowCancel=AllowCancel.No;
+                    if(input.TryGetProperty("title",out var numberQuestion) && !string.IsNullOrWhiteSpace(numberQuestion.GetString()))
+                        result.Prompt=new Prompt {PromptId=2920000,Parameters={new PromptParameter {
+                            ParameterName="question",Type=ParameterType.NonLocalizedString,StringValue=numberQuestion.GetString()!}}};
                     if(input.TryGetProperty("promptId",out var pId)) {
                         result.Prompt=new Prompt {PromptId=pId.GetUInt32()};
                     } else if(input.TryGetProperty("readAhead",out var ra) && ra.GetBoolean()) {
@@ -110,7 +160,8 @@ static class BattleRequests
                 result.Type=GREMessageType.CastingTimeOptionsReq;
                 result.CastingTimeOptionsReq=new CastingTimeOptionsReq {CastingTimeOptionReq={new CastingTimeOptionReq {
                     CtoId=checked((uint)snapshot.GetProperty("buttonEventId").GetInt64()),
-                    CastingTimeOptionType=CastingTimeOptionType.ChooseX,GrpId=input.GetProperty("grpId").GetUInt32(),PlayerIdToPrompt=1,NumericInputReq=numeric}}};
+                    CastingTimeOptionType=CastingTimeOptionType.ChooseX,GrpId=input.GetProperty("grpId").GetUInt32(),
+                    AffectorId=numeric.SourceId,AffectedId=numeric.SourceId,PlayerIdToPrompt=1,IsRequired=true,NumericInputReq=numeric}}};
                 // NumberPending is a blocking decision, not an Input proxy
                 // that can receive selectButtonCancel.
                 result.AllowCancel=AllowCancel.No;
@@ -131,6 +182,28 @@ static class BattleRequests
                 if (!input.GetProperty("startingPlayer").GetBoolean()) {
                     uint source = input.GetProperty("sourceId").GetUInt32();
                     string msg = input.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+                    if(input.TryGetProperty("optionalDraw",out var optionalDraw) && optionalDraw.GetBoolean()) {
+                        uint drawSource=source;
+                        if(snapshot.TryGetProperty("stack",out var drawStack))
+                            foreach(var item in drawStack.EnumerateArray())
+                                if(item.GetProperty("parentId").GetUInt32()==source)drawSource=item.GetProperty("instanceId").GetUInt32();
+                        result.Type=GREMessageType.OptionalActionMessage;
+                        result.Prompt=new Prompt {PromptId=1001};
+                        result.OptionalActionMessage=new OptionalActionMessage {SourceId=drawSource,Prompt=result.Prompt,
+                            Highlight=HighlightType.Hot,HighlightIds={source}};
+                        return result;
+                    }
+                    if(input.TryGetProperty("optionalSacrificePrompt",out var sacrificePrompt)) {
+                        uint resolvingSource=source;
+                        if(snapshot.TryGetProperty("stack",out var sacrificeStack))
+                            foreach(var item in sacrificeStack.EnumerateArray())
+                                if(item.GetProperty("parentId").GetUInt32()==source)resolvingSource=item.GetProperty("instanceId").GetUInt32();
+                        result.Type=GREMessageType.OptionalActionMessage;
+                        result.Prompt=new Prompt {PromptId=sacrificePrompt.GetUInt32()};
+                        result.OptionalActionMessage=new OptionalActionMessage {SourceId=resolvingSource,Prompt=result.Prompt,
+                            OptionalActionTypes={CardMechanicType.SacrificePermanent},Highlight=HighlightType.Hot,HighlightIds={source}};
+                        return result;
+                    }
                     if(input.TryGetProperty("optionalTrigger",out var optionalTrigger) && optionalTrigger.GetBoolean()) {
                         uint triggerSource=source;
                         if(snapshot.TryGetProperty("stack",out var triggerStack))
@@ -186,7 +259,7 @@ static class BattleRequests
                     }
                     if(!msg.StartsWith("Sacrifice ",StringComparison.OrdinalIgnoreCase) && !msg.Contains("command zone",StringComparison.OrdinalIgnoreCase)
                         && input.TryGetProperty("options",out var confirmOptions)) {
-                        using var choice=JsonDocument.Parse(JsonSerializer.Serialize(new {sourceId=source,min=1,max=1,entityChoices=false,
+                        using var choice=JsonDocument.Parse(JsonSerializer.Serialize(new {sourceId=source,title=msg,min=1,max=1,entityChoices=false,
                             options=confirmOptions.EnumerateArray().Select((o,i)=>new {id=i+1,label=o.GetString()})}));
                         return BattleGuiRequests.Choice(choice.RootElement,msgId,stateId);
                     }
@@ -229,19 +302,30 @@ static class BattleRequests
             case "InputSelectCardsFromList":
             case "InputSelectEntitiesFromList":
                 result.Type = (GREMessageType)22;
-                result.Prompt = new Prompt { PromptId = 2428 };
+                string purpose=input.TryGetProperty("selectionPurpose",out var selectionPurpose)?selectionPurpose.GetString()??"":"";
+                bool fixedDiscard=purpose=="discard" && input.GetProperty("min").GetInt32()==input.GetProperty("max").GetInt32();
+                result.Prompt = new Prompt { PromptId = fixedDiscard?14u:purpose=="sacrificeCreature"?1029u:2428u };
+                if(fixedDiscard)result.Prompt.Parameters.Add(new PromptParameter {Type=ParameterType.Number,ParameterName="1",NumberValue=input.GetProperty("min").GetInt32()});
                 result.SelectNReq = new SelectNReq { MinSel = input.GetProperty("min").GetInt32(), MaxSel = input.GetProperty("max").GetUInt32(),
-                    IdType = IdType.InstanceId, ListType = SelectionListType.Dynamic, Context = SelectionContext.Resolution,
+                    SourceId=input.TryGetProperty("sourceId",out var selectionSource)?selectionSource.GetUInt32():0u,
+                    IdType = IdType.InstanceId, ListType = SelectionListType.Dynamic, Context = purpose=="discard"?SelectionContext.Discard:SelectionContext.Resolution,
                     OptionContext = OptionContext.Resolution, Prompt = result.Prompt };
                 result.SelectNReq.Ids.AddRange(input.GetProperty("choices").EnumerateArray().Select(id => id.GetUInt32()));
-                result.AllowCancel = input.GetProperty("min").GetInt32() == 0 ? AllowCancel.Continue : AllowCancel.Abort;
+                result.SelectNReq.UnfilteredIds.AddRange(result.SelectNReq.Ids);
+                result.SelectNReq.HotIds.AddRange(result.SelectNReq.Ids);
+                // Sacrifices are chosen as one batch and confirmed by the player.
+                // HotIds can be treated as an initial selection by the client.
+                if(purpose.StartsWith("sacrifice",StringComparison.Ordinal))result.SelectNReq.HotIds.Clear();
+                result.AllowCancel = input.GetProperty("min").GetInt32() == 0 ? AllowCancel.Continue : AllowCancel.No;
                 break;
             case "InputSelectTargets":
             case "InputGuiStackTargets":
+                if(input.TryGetProperty("readableStackTargets",out var readable) && readable.GetBoolean())
+                    return BattleGuiRequests.Choice(input,msgId,stateId);
                 result.Type = GREMessageType.SelectTargetsReq;
                 var selection = new TargetSelection { TargetIdx = input.TryGetProperty("targetIndex",out var index)?index.GetUInt32():0, MinTargets = input.GetProperty("min").GetUInt32(),
                     MaxTargets = input.GetProperty("max").GetUInt32(), TargetingPlayer = input.TryGetProperty("targetingPlayer",out var player)?player.GetUInt32():1,
-                    Prompt = new Prompt { PromptId = TargetPrompt(input) } };
+                    Prompt = new Prompt { PromptId = TargetPrompt(snapshot, input) } };
                 var selectedTargetIds=input.GetProperty("selected").EnumerateArray().Select(id=>id.GetUInt32()).ToHashSet();
                 foreach (uint target in input.GetProperty("targets").EnumerateArray().Select(id=>id.GetUInt32()).Concat(selectedTargetIds).Distinct())
                     selection.Targets.Add(new Target { TargetInstanceId = target,
@@ -261,6 +345,12 @@ static class BattleRequests
                             if(individual!=0)ability=individual;
                         }
                         result.SelectTargetsReq.AbilityGrpId=ability; selection.TargetingAbilityGrpId=ability;
+                    }
+                    if(result.SelectTargetsReq.AbilityGrpId==0 && input.TryGetProperty("abilityIdentity",out var copyTargetIdentity)
+                        && input.TryGetProperty("sourceIsSpellCopy",out var copyTarget) && copyTarget.GetBoolean()) {
+                        uint ability=BattlePresentation.AbilityId(copyTargetIdentity.GetProperty("sourceGrpId").GetUInt32(),
+                            input.GetProperty("description").GetString()!,input.GetProperty("cardName").GetString()!);
+                        result.SelectTargetsReq.AbilityGrpId=ability;selection.TargetingAbilityGrpId=ability;
                     }
                     var targetList = input.GetProperty("targets").EnumerateArray().Select(id => id.GetUInt32()).ToList();
                     bool anyPlayerTarget = targetList.Any(id => id <= 4);

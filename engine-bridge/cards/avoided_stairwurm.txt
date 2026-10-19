@@ -1,0 +1,9 @@
+Name:Avoided Stairwurm
+ManaCost:B
+Types:Artifact Creature Wurm
+PT:5/5
+K:Menace
+S:Mode$ Continuous | Affected$ Card.Self | AddPower$ Y | AddToughness$ Y | Description$ CARDNAME gets -1/-1 for each creature card in your library.
+SVar:X:Count$ValidLibrary Creature.YouOwn
+SVar:Y:SVar$X/Negative
+Oracle:Menace\nAvoided Stairwurm gets -1/-1 for each creature card in your library.

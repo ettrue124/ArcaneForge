@@ -67,6 +67,18 @@ public final class ForgePlayback {
         entry.put("isAbility",!ability.isSpell()); entry.put("controllerSeat",seat(ability.getActivatingPlayer().getView()));
         entry.put("description",abilityDescription(ability)); entry.put("cardName",card.getName());
         entry.put("abilityIdentity",ForgeEngineMain.abilityIdentity(ability,identities));
+        BattleTriggerLinks.add(ability,entry);
+        if(ability.isSpell()) {
+            var paidKickers=new ArrayList<Integer>();
+            if(ability.isOptionalCostPaid(forge.game.spellability.OptionalCost.Kicker1))paidKickers.add(0);
+            if(ability.isOptionalCostPaid(forge.game.spellability.OptionalCost.Kicker2))paidKickers.add(1);
+            if(!paidKickers.isEmpty())entry.put("paidKickers",paidKickers);
+        }
+        var selectedModes=new ArrayList<String>();
+        for(var mode=ability.getSubAbility();mode!=null;mode=mode.getSubAbility())
+            if(mode.getSVarInt("CharmOrder")!=null && mode.getSVarInt("CharmOrder")>0)
+                selectedModes.add(mode.getParamOrDefault("SpellDescription",mode.toUnsuppressedString()));
+        if(!selectedModes.isEmpty())entry.put("selectedModes",selectedModes);
         if(ability.isSpell() && ability.costHasManaX() && ability.getXManaCostPaid()!=null)
             entry.put("xValue",ability.getXManaCostPaid());
         List<Object> targets=new ArrayList<>(); int index=1;
@@ -118,9 +130,15 @@ public final class ForgePlayback {
                 int cardId=id(card);boolean newlyKnown=knownTo.computeIfAbsent(cardId,k->new HashSet<>()).add(viewer);
                 int owner=seat(reveal.owner());
                 if(owner==0)owner=seat(card.getOwner());
-                if(viewer==1 && owner!=1 && newlyKnown) {
+                // Tutor reveals are sometimes sent only to the opponents:
+                // Forge assumes the searching owner already knows the card.
+                // Arena still needs that owner's persistent library visibility.
+                if(reveal.zone()==forge.game.zone.ZoneType.Library && owner==1 && viewer!=1)
+                    knownTo.computeIfAbsent(cardId,k->new HashSet<>()).add(1);
+                if(viewer==1 && (owner!=1 || reveal.zone()==forge.game.zone.ZoneType.Library) && newlyKnown) {
                     int sourceZone=switch(reveal.zone()) {case Hand->owner*100+2;case Library->owner*100+1;case Graveyard->owner*100+5;case Exile->60;default->30;};
-                    revealed.put(cardId,Map.of("instanceId",cardId,"ownerSeat",owner,"sourceZone",sourceZone));
+                    revealed.put(cardId,Map.of("instanceId",cardId,"ownerSeat",owner,"sourceZone",sourceZone,
+                        "grpId",identities.getOrDefault(card.getId(),0)));
                     add("reveal","targetId",cardId,"ownerSeat",owner,"sourceZone",sourceZone);
                 }
             }
@@ -185,7 +203,8 @@ public final class ForgePlayback {
             add("damage","sourceId",id(e.source()),"targetId",id(e.card()),"amount",e.amount(),"damageType",combat?1:2);
         } else if(event instanceof GameEventCardChangeZone e && zone(e.to())>0) {
             String from=zone(e.from())>0?e.from().zoneType().name():"None", to=e.to().zoneType().name();
-            if(to.equals("Library")) {knownTo.remove(id(e.card()));revealed.remove(id(e.card()));}
+            forge.game.ArenaCardIds.exileZoneChanged(e.card().getId(),from,to);
+            if(to.equals("Library") && !from.equals("Library")) {knownTo.remove(id(e.card()));revealed.remove(id(e.card()));}
             else if(to.equals("Hand") && !from.equals("Library"))knownTo.put(id(e.card()),new HashSet<>(seats.values()));
             String category=from.equals("Hand") && to.equals("Stack") ? "CastSpell"
                 : from.equals("Hand") && to.equals("Battlefield") && e.card().getCurrentState().getType().isLand() ? "PlayLand"
@@ -201,9 +220,13 @@ public final class ForgePlayback {
             if(explicit!=null)category=explicit;
             int oldId=id(e.card());
             if(to.equals("Battlefield") && !from.equals("Battlefield")) {
-                int newId=forge.game.ArenaCardIds.enterBattlefield(e.card().getId());
+                Integer preparedOld=forge.game.ArenaCardIds.finishBattlefield(e.card().getId());
+                int newId;
+                if(preparedOld!=null) {oldId=preparedOld;newId=id(e.card());}
+                else newId=forge.game.ArenaCardIds.enterBattlefield(e.card().getId());
                 if(knownTo.containsKey(oldId))knownTo.put(newId,knownTo.remove(oldId));
-                revealed.remove(oldId);
+                // Keep the reveal panel even when the revealed permanent gets
+                // its new battlefield identity before the next snapshot.
                 if(zone(e.from())>0)add("objectIdChanged","sourceId",oldId,"targetId",newId);
             }
             if(zone(e.from())>0)add("zoneTransfer","targetId",id(e.card()),"oldId",oldId,"fromZone",zone(e.from()),"toZone",zone(e.to()),"category",category);
@@ -223,6 +246,7 @@ public final class ForgePlayback {
             add("shuffle","playerId",seat(e.player()));
         }
         else if(event instanceof GameEventSpellResolved e && e.spell()!=null) {
+            forge.game.ArenaCardIds.clearPendingExileSelections();
             // No intermediate event is required for an empty/fizzled resolution.
             if(resolvingAbility != e.spell().getId()) {
                 add("resolutionStart","sourceId",stackIds.getOrDefault(e.spell().getId(),id(e.spell().getHostCard())));

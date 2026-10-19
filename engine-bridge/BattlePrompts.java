@@ -78,9 +78,20 @@ final class BattlePrompts {
             && choices.stream().allMatch(c->c instanceof StackItemView || "[FINISH TARGETING]".equals(c))) {
             boolean finish=choices.contains("[FINISH TARGETING]");
             var targets=choices.stream().filter(c->c instanceof StackItemView).map(c->id(c,seats)).toList();
+            var menu=new ArrayList<Object>();
+            var totals=new HashMap<String,Integer>();var positions=new HashMap<String,Integer>();
+            for(Object choice:choices)if(choice instanceof StackItemView stack)
+                totals.merge(stack.getSourceCard().getName(),1,Integer::sum);
+            for(Object choice:choices)if(choice instanceof StackItemView stack) {
+                String name=stack.getSourceCard().getName();
+                int number=positions.merge(name,1,Integer::sum);
+                boolean yours=seats.entrySet().stream().anyMatch(e->e.getValue()==1 && e.getKey().getId()==stack.getActivatingPlayer().getId());
+                String label=(yours?"YOURS: ":"Opponent: ")+name+(totals.get(name)>1?" ("+number+")":"");
+                menu.add(obj("id",id(stack,seats),"label",label));
+            }
             out.putAll(obj("type","InputGuiStackTargets","targets",targets,"selected",List.of(),
                 "min",finish?0:Math.max(0,(Integer)a[1]),"max",1,"targetIndex",0,"targetingPlayer",1,
-                "finish",finish,"entityChoices",true));
+                "finish",finish,"entityChoices",false,"options",menu,"readableStackTargets",true));
             return out;
         }
         if(method.equals("getAbilityToPlay"))min=0;
@@ -154,6 +165,10 @@ final class BattlePrompts {
         }
         out.put("options",described);
         if(entities)out.put("choices",choices.stream().map(c->id(c,seats)).toList());
+        // Actual cards use Arena's face-up search lineup, rather than a generic
+        // text list. Player and stack choices retain their own presentation.
+        if(max>0 && !choices.isEmpty() && choices.stream().allMatch(c->c instanceof CardView))
+            out.put("nativeKind","search");
         return out;
     }
     static Object answer(GuiGameEvent event,JsonElement value,Map<Player,Integer> seats) {

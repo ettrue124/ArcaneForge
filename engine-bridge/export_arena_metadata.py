@@ -1,10 +1,16 @@
 """Export installed Arena printing metadata for full GRE state messages."""
 import json
+import argparse
 import sqlite3
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-database = root / 'analysis/decompiled-rules/card-database.mtga'
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--database',type=Path,default=root / 'analysis/decompiled-rules/card-database.mtga')
+parser.add_argument('--output-dir',type=Path,default=root/'data')
+args=parser.parse_args()
+database=args.database.resolve()
+output_dir=args.output_dir.resolve();output_dir.mkdir(parents=True,exist_ok=True)
 connection = sqlite3.connect(database.as_uri() + '?mode=ro', uri=True)
 connection.row_factory = sqlite3.Row
 records = {}
@@ -59,10 +65,10 @@ for row in connection.execute('SELECT c.GrpId,c.AbilityIds FROM Cards c'):
     if all_entries: all_abilities[str(row['GrpId'])] = all_entries
 definitions = [{'id':row['Id'], 'text':row['Loc'], 'loyalty':row['LoyaltyCost']}
     for row in connection.execute('SELECT a.Id,l.Loc,a.LoyaltyCost FROM Abilities a JOIN Localizations_enUS l ON l.LocId=a.TextId WHERE a.Category IN (1,2,3,4,7,8)')]
-(root / 'data/arena-granted-ability-definitions.json').write_text(json.dumps(definitions,separators=(',',':')),encoding='utf8')
+(output_dir / 'arena-granted-ability-definitions.json').write_text(json.dumps(definitions,separators=(',',':')),encoding='utf8')
 connection.close()
-(root / 'data/arena-activated-abilities.json').write_text(json.dumps(abilities,separators=(',',':')),encoding='utf8')
-(root / 'data/arena-ability-text.json').write_text(json.dumps(all_abilities,separators=(',',':')),encoding='utf8')
-(root / 'data/arena-card-metadata.json').write_text(
+(output_dir / 'arena-activated-abilities.json').write_text(json.dumps(abilities,separators=(',',':')),encoding='utf8')
+(output_dir / 'arena-ability-text.json').write_text(json.dumps(all_abilities,separators=(',',':')),encoding='utf8')
+(output_dir / 'arena-card-metadata.json').write_text(
     json.dumps(records, separators=(',', ':')), encoding='utf-8')
 print(f'Exported {len(records)} Arena printing metadata records')

@@ -4,6 +4,53 @@ using Action = Wotc.Mtgo.Gre.External.Messaging.Action;
 
 static class BattlePresentation
 {
+    public static void BatchMillAnimations(GameStateMessage state) {
+        AnnotationInfo? batch=null;
+        foreach(var annotation in state.Annotations.ToArray()) {
+            bool mill=annotation.Type.Contains(AnnotationType.ZoneTransfer)
+                && annotation.Details.Any(d=>d.Key=="category" && d.ValueString.Contains("Mill"));
+            if(!mill) {batch=null;continue;}
+            // Keep player zones, effect attribution and intervening events separate.
+            // One ZoneTransfer with multiple affected cards is one mill animation.
+            if(batch!=null && batch.AffectorId==annotation.AffectorId
+                && batch.Details.SequenceEqual(annotation.Details)) {
+                batch.AffectedIds.AddRange(annotation.AffectedIds.Where(id=>!batch.AffectedIds.Contains(id)));
+                state.Annotations.Remove(annotation);
+            } else batch=annotation;
+        }
+    }
+    public static void StatePlayerProtection(JsonElement snapshot,GameStateMessage current) {
+        if(!snapshot.TryGetProperty("players",out var players))return;
+        foreach(var player in players.EnumerateArray()) {
+            uint seat=player.GetProperty("seat").GetUInt32();
+            if(!current.Players.Any(p=>p.SystemSeatNumber==seat) || !player.TryGetProperty("protection",out var protections))continue;
+            foreach(uint ability in protections.EnumerateArray().Select(p=>ProtectionAbilityId(p.GetString()??"")).Where(id=>id!=0).Distinct())
+                current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(3_900_000_000u+seat*200000+ability),
+                    Type={AnnotationType.AddAbility},AffectorId=seat,AffectedIds={seat},Details={IntDetail("grpid",checked((int)ability))}});
+        }
+    }
+    static readonly Dictionary<string,uint> ProtectionIds=new(StringComparer.OrdinalIgnoreCase) {
+            ["Protection from each of your opponents"]=368,["Protection:Player.Opponent:each of your opponents"]=368,
+            ["Protection from everything"]=266,["Protection from white"]=185,["Protection from blue"]=186,
+            ["Protection from black"]=187,["Protection from red"]=188,["Protection from green"]=189,
+            ["Protection from colorless"]=288,["Protection from artifacts"]=4736,["Protection from creatures"]=38324,
+            ["Protection from enchantments"]=9414,["Protection from lands"]=6471,["Protection from planeswalkers"]=138008,
+            ["Protection from instants"]=339,["Protection from sorceries"]=340
+    };
+    static uint ProtectionAbilityId(string keyword) {
+        string value=keyword.Trim();
+        uint direct=ProtectionIds.GetValueOrDefault(value);
+        if(direct!=0)return direct;
+        if(!value.StartsWith("Protection:",StringComparison.OrdinalIgnoreCase))return 0;
+        string descriptor=value[11..].ToLowerInvariant();
+        string name=descriptor switch {
+            "artifact"=>"artifacts", "creature"=>"creatures", "enchantment"=>"enchantments",
+            "land"=>"lands", "planeswalker"=>"planeswalkers", "instant"=>"instants", "sorcery"=>"sorceries",
+            "white" or "blue" or "black" or "red" or "green" or "colorless" or "everything"=>descriptor,
+            _=>""
+        };
+        return ProtectionIds.GetValueOrDefault("Protection from "+name);
+    }
     public static void StateEntryPayment(JsonElement snapshot,GameStateMessage current) {
         if(!snapshot.TryGetProperty("input",out var input) || !input.TryGetProperty("entryReplacementDescription",out var description)
             || !input.TryGetProperty("sourceId",out var source))return;
@@ -27,10 +74,28 @@ static class BattlePresentation
     // Exact shared keyword IDs only. Build once; never scan the full catalogue
     // on each board update and never select an ambiguous text match.
     static readonly Lazy<Dictionary<string,uint>> SharedKeywordIds=new(()=>AllAbilityText.Value.Values
-        .SelectMany(v=>v.EnumerateArray()).GroupBy(a=>a.GetProperty("text").GetString()!.Trim(),StringComparer.OrdinalIgnoreCase)
-        .Select(g=>(Text:g.Key,Ids:g.Select(a=>a.GetProperty("id").GetUInt32()).Distinct().ToArray()))
+        .SelectMany(v=>v.EnumerateArray()).GroupBy(a=>KeywordKey(a.GetProperty("text").GetString()!),StringComparer.OrdinalIgnoreCase)
+        .Select(g=> {
+            var ids=g.Select(a=>a.GetProperty("id").GetUInt32()).Distinct().ToArray();
+            // Imported printed rules have per-card IDs. They must not make a
+            // canonical Arena keyword (and its icon) appear ambiguous.
+            var native=ids.Where(id=>id<1_800_000u).ToArray();
+            return (Text:g.Key,Ids:native.Length>0?native:new[]{ids.Min()});
+        })
         .Where(g=>g.Ids.Length==1).ToDictionary(g=>g.Text,g=>g.Ids[0],StringComparer.OrdinalIgnoreCase));
-    public static uint KeywordAbilityId(string keyword)=>SharedKeywordIds.Value.GetValueOrDefault(keyword.Trim());
+    public static uint KeywordAbilityId(string keyword) {
+        uint protection=ProtectionAbilityId(keyword);
+        return protection!=0?protection:SharedKeywordIds.Value.GetValueOrDefault(KeywordKey(keyword));
+    }
+    static string KeywordKey(string text) {
+        // Forge uses Absorb:1 / Unearth:2; Arena uses Absorb 1 / Unearth {o2}.
+        // Reminder text is explanatory and must not prevent an exact keyword match.
+        text=System.Text.RegularExpressions.Regex.Replace(text,@"^TypeCycling:([^:]+):(.+)$","$1cycling $2",System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        int reminder=text.IndexOf(" (",StringComparison.Ordinal);
+        if(reminder>=0)text=text[..reminder];
+        text=System.Text.RegularExpressions.Regex.Replace(text,@"\{([^}]+)\}",m=>m.Groups[1].Value.Replace("o",""));
+        return System.Text.RegularExpressions.Regex.Replace(text,@"[\s:]+","").Trim();
+    }
     static readonly Lazy<Dictionary<uint,int>> SharedAbilityReferences=new(()=>AllAbilityText.Value.Values
         .SelectMany(v=>v.EnumerateArray().Select(a=>a.GetProperty("id").GetUInt32()).Distinct())
         .GroupBy(id=>id).ToDictionary(g=>g.Key,g=>g.Count()));
@@ -40,6 +105,15 @@ static class BattlePresentation
     static readonly System.Collections.Concurrent.ConcurrentDictionary<(uint Card,string Text,string Name,bool Activated,string Loyalty),uint> AbilityIdCache=new();
     static uint FindAbilityId(uint cardGrp,string description,string cardName,bool activatedOnly,string loyaltyCost)
     {
+        // A granted keyword's attack trigger belongs to the attacking creature,
+        // whose printed rules need not contain the keyword at all.
+        if(!activatedOnly) {
+            var annihilator=System.Text.RegularExpressions.Regex.Match(description,@"^\s*Annihilator\s+(\d+)\b",System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if(annihilator.Success) {
+                uint keyword=KeywordAbilityId("Annihilator "+annihilator.Groups[1].Value);
+                if(keyword!=0)return keyword;
+            }
+        }
         uint Match(Dictionary<string,JsonElement> catalogue) {
             if((string.IsNullOrWhiteSpace(description) && string.IsNullOrWhiteSpace(loyaltyCost)) || !catalogue.TryGetValue(cardGrp.ToString(),out var abilities))return 0;
             string Text(string value) {
@@ -151,7 +225,10 @@ static class BattlePresentation
         if (id == 0 && activatedOnly) id = Match(AllAbilityText.Value);
         return id;
     }
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<(string Text,bool KeepCost),string> NormalizedTextCache=new();
     static string Normalize(string text,bool keepCost=false)
+        => NormalizedTextCache.GetOrAdd((text,keepCost),key=>NormalizeUncached(key.Text,key.KeepCost));
+    static string NormalizeUncached(string text,bool keepCost)
     {
         text=System.Text.RegularExpressions.Regex.Replace(text,"<[^>]*>","");
         // Forge includes reminder text; Arena stores it separately. Strip
@@ -189,9 +266,15 @@ static class BattlePresentation
         _=AbilityText.Value;
         _=AllAbilityText.Value;
         _=GrantedByLoyalty.Value;
+        foreach(var definition in GrantedDefinitions.Value.EnumerateArray())
+            _=Normalize(definition.GetProperty("text").GetString()!);
     }
     public static object[] EmblemAbilities(JsonElement card) {
         string text=card.TryGetProperty("emblemGrantText",out var grant)?grant.GetString()??"":"";
+        if(card.TryGetProperty("manaEffect",out var manaEffect) && manaEffect.GetBoolean()
+            && AllAbilityText.Value.TryGetValue(card.GetProperty("grpId").GetUInt32().ToString(),out var sourceRules))
+            return sourceRules.EnumerateArray().Where(a=>Normalize(a.GetProperty("text").GetString()!)==Normalize(text))
+                .Select(a=>(object)new {grpId=a.GetProperty("id").GetUInt32()}).ToArray();
         var quotes=System.Text.RegularExpressions.Regex.Matches(text,"[\"“]([^\"”]+)[\"”]").Select(m=>Normalize(m.Groups[1].Value)).ToHashSet();
         return GrantedDefinitions.Value.EnumerateArray().Where(a=>quotes.Contains(Normalize(a.GetProperty("text").GetString()!)))
             .GroupBy(a=>Normalize(a.GetProperty("text").GetString()!)).Select(g=>(object)new {grpId=g.Min(a=>a.GetProperty("id").GetUInt32())}).ToArray();
@@ -208,10 +291,67 @@ static class BattlePresentation
                 Type={AnnotationType.InstanceRevealedToOpponent},AffectedIds={id}});
         }
     }
+    public static void StateExileLinks(JsonElement snapshot,GameStateMessage current) {
+        var visible=current.GameObjects.Where(c=>c.GrpId!=0 && c.Visibility!=Visibility.Hidden).Select(c=>c.InstanceId).ToHashSet();
+        foreach(var group in snapshot.GetProperty("cards").EnumerateArray()
+            .Where(c=>(c.TryGetProperty("displayUnder",out _) || c.TryGetProperty("exiledWith",out _)) && c.GetProperty("zone").GetString()=="Exile")
+            .GroupBy(c=>c.TryGetProperty("displayUnder",out var parent)?parent.GetUInt32():c.GetProperty("exiledWith").GetUInt32())) {
+            if(!visible.Contains(group.Key))continue;
+            var linked=group.Select(c=>c.GetProperty("instanceId").GetUInt32()).Where(id=>id!=group.Key && visible.Contains(id)).Distinct().ToArray();
+            if(linked.Length==0)continue;
+            current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(3_800_000_000u+group.Key),
+                AffectorId=group.Key,AffectedIds={linked},Type={AnnotationType.LinkInfo},
+                Details={IntDetail("LinkType",(int)LinkType.Exile)}});
+            // Exile provenance is not a physical under-card relationship.
+            // Only explicit active-effect display links belong on the board;
+            // ordinary exile (including Ulamog's attack) stays in its browser.
+            var displayLinked=group.Where(c=>c.TryGetProperty("displayUnder",out var under) && under.GetUInt32()==group.Key)
+                .Select(c=>c.GetProperty("instanceId").GetUInt32()).Where(linked.Contains).Distinct().ToArray();
+            var parent=current.GameObjects.First(c=>c.InstanceId==group.Key);
+            if(displayLinked.Length>0 && current.Zones.Any(z=>z.ZoneId==parent.ZoneId && z.Type==ZoneType.Battlefield))
+                current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(3_850_000_000u+group.Key),
+                    AffectorId=group.Key,AffectedIds={displayLinked},Type={AnnotationType.DisplayCardUnderCard},
+                    Details={IntDetail("Disable",0),IntDetail("DisplayUnderObjects",checked((int)group.Key))}});
+        }
+    }
+    public static void StateAdventures(JsonElement snapshot,GameStateMessage current) {
+        foreach(var card in snapshot.GetProperty("cards").EnumerateArray()) {
+            if(card.GetProperty("zone").GetString()!="Exile" || !card.TryGetProperty("onAdventure",out var adventure)
+                || !adventure.GetBoolean())continue;
+            uint id=card.GetProperty("instanceId").GetUInt32(),grp=card.GetProperty("grpId").GetUInt32();
+            var displayed=current.GameObjects.FirstOrDefault(c=>c.InstanceId==id && c.GrpId!=0 && c.Visibility!=Visibility.Hidden);
+            if(displayed==null)continue;
+            current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(3_950_000_000u+id),AffectorId=id,AffectedIds={id},
+                Type={AnnotationType.Qualification},Details={IntDetail("QualificationType",(int)QualificationType.MayPlay),
+                    IntDetail("grpid",196),IntDetail("parent_grpid",checked((int)grp)),IntDetail("SourceParent",checked((int)id))}});
+            // Public preview metadata, not an extra player decision. Native
+            // near-hand holders use ActionInfo even for the opponent's cards.
+            if(!current.Actions.Any(a=>a.Action?.InstanceId==id))
+                current.Actions.Add(new ActionInfo {ActionId=checked(8_000_000u+id),SeatId=displayed.ControllerSeatId,
+                    Action=new Wotc.Mtgo.Gre.External.Messaging.Action {ActionType=ActionType.Cast,InstanceId=id,GrpId=grp,
+                        SourceId=id,Visibility=Visibility.Public,Highlight=HighlightType.Cold}});
+        }
+    }
     public static void StateChosenTypes(JsonElement snapshot,GameStateMessage current) {
         var visible=current.GameObjects.Where(c=>c.GrpId!=0).Select(c=>c.InstanceId).ToHashSet();
+        var lifeLosses=snapshot.GetProperty("players").EnumerateArray()
+            .Select(p=>p.TryGetProperty("lifeLostThisTurn",out var loss)?loss.GetInt32():-1).ToArray();
         foreach(var card in snapshot.GetProperty("cards").EnumerateArray()) {
             uint id=card.GetProperty("instanceId").GetUInt32();
+            if(card.GetProperty("zone").GetString()=="Battlefield" && lifeLosses.Length>0 && lifeLosses.All(n=>n>=0)
+                && current.GameObjects.Any(c=>c.InstanceId==id && c.UniqueAbilities.Any(a=>a.GrpId==192435)))
+                current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(4_150_000_000u+id),
+                    Type={AnnotationType.AbilityWordActive},AffectorId=id,AffectedIds={id},Details={
+                        new KeyValuePairInfo {Key="AbilityWordName",Type=KeyValuePairValueType.String,ValueString={"LifeLostThisTurn"}},
+                        IntDetail("value",lifeLosses.Max()),IntDetail("isActive",1),IntDetail("AbilityGrpId",192435),
+                        new KeyValuePairInfo {Key="ShowOnMiniCDC",Type=KeyValuePairValueType.String,ValueString={"true"}}}});
+            if(visible.Contains(id) && card.TryGetProperty("metalcraftActive",out var metalcraft))
+                current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(2_450_000_000u+id),
+                    Type={AnnotationType.AbilityWordActive},AffectorId=id,AffectedIds={id},
+                    Details={new KeyValuePairInfo {Key="AbilityWordName",Type=KeyValuePairValueType.String,ValueString={"Metalcraft"}},
+                        IntDetail("isActive",metalcraft.GetBoolean()?1:0),IntDetail("threshold",3),
+                        IntDetail("value",card.GetProperty("metalcraftCount").GetInt32()),
+                        new KeyValuePairInfo {Key="ShowOnMiniCDC",Type=KeyValuePairValueType.String,ValueString={"true"}}}});
             if(visible.Contains(id) && card.TryGetProperty("devotion",out var devotion))
                 current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(2_400_000_000u+id),Type={AnnotationType.AbilityWordActive},AffectorId=id,AffectedIds={id},
                     Details={new KeyValuePairInfo {Key="AbilityWordName",Type=(KeyValuePairValueType)6,ValueString={"Devotion"}},
@@ -240,7 +380,9 @@ static class BattlePresentation
         }
     }
     public static void StateStatModifications(JsonElement snapshot,GameStateMessage current) {
-        var visible=current.GameObjects.Where(c=>c.GrpId!=0 && c.GrpId!=3).Select(c=>c.InstanceId).ToHashSet();
+        // Face-down creatures use printing 3 but their current stats and
+        // stat modifications are public, just like face-up creatures'.
+        var visible=current.GameObjects.Where(c=>c.GrpId!=0).Select(c=>c.InstanceId).ToHashSet();
         foreach(var card in snapshot.GetProperty("cards").EnumerateArray()) {
             uint target=card.GetProperty("instanceId").GetUInt32();
             if(!visible.Contains(target) || card.GetProperty("zone").GetString() is not ("Battlefield" or "PhasedOut"))continue;
@@ -276,7 +418,8 @@ static class BattlePresentation
                 if(ability==0)continue;
                 current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(3_600_000_000u+target*16+slot++),AffectorId=target,AffectedIds={target},
                     Type={AnnotationType.Qualification},Details={IntDetail("QualificationType",(int)QualificationType.CantBeBlocked),
-                        IntDetail("grpid",checked((int)ability)),IntDetail("parent_grpid",checked((int)sourceGrp)),IntDetail("SourceParent",checked((int)target))}});
+                        IntDetail("grpid",checked((int)ability)),IntDetail("parent_grpid",checked((int)sourceGrp)),
+                        IntDetail("SourceParent",checked((int)(restriction.TryGetProperty("sourceId",out var restrictionSource)?restrictionSource.GetUInt32():target)))}});
             }
         }
     }
@@ -409,6 +552,54 @@ static class BattlePresentation
         if(loyalty.Length>0)return 0;
         return 0;
     }
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<(uint Ability,int Cost),uint> LoyaltyDisplayIds=new();
+    static int nextLoyaltyDisplayId;
+    static uint? AdjustedLoyalty(uint source,uint ability,JsonElement action) {
+        if(!action.TryGetProperty("adjustedLoyaltyCost",out var costValue)
+            || !AllAbilityText.Value.TryGetValue(source.ToString(),out var definitions))return null;
+        int cost=costValue.GetInt32();
+        if(cost is < -128 or > 127)return null;
+        var printed=definitions.EnumerateArray().FirstOrDefault(a=>a.GetProperty("id").GetUInt32()==ability);
+        if(printed.ValueKind!=JsonValueKind.Object || !printed.TryGetProperty("loyalty",out var loyalty)
+            || !int.TryParse(loyalty.GetString(),out int original) || original==cost)return null;
+        return LoyaltyDisplayIds.GetOrAdd((ability,cost),key=>{
+            int slot=System.Threading.Interlocked.Increment(ref nextLoyaltyDisplayId);
+            if(slot>=0x100000)throw new InvalidOperationException("Loyalty display identity space exhausted");
+            return 0x70000000u|((uint)slot<<8)|(uint)(key.Cost+128);
+        });
+    }
+    static (uint Id,string Cost)? AdjustedActivation(uint source,uint ability,string cost) {
+        if(!AbilityText.Value.TryGetValue(source.ToString(),out var definitions))return null;
+        var printed=definitions.EnumerateArray().FirstOrDefault(a=>a.GetProperty("id").GetUInt32()==ability);
+        if(printed.ValueKind!=JsonValueKind.Object)return null;
+        var original=System.Text.RegularExpressions.Regex.Match(printed.GetProperty("text").GetString()!,@"^\s*\{o(\d+)\}\s*:");
+        var adjusted=System.Text.RegularExpressions.Regex.Match(cost,@"^\{(\d+)\}$");
+        if(!original.Success || !adjusted.Success || original.Groups[1].Value==adjusted.Groups[1].Value)return null;
+        if(!uint.TryParse(adjusted.Groups[1].Value,out uint value) || value>255)return null;
+        return (checked(200_000_000u+ability*256u+value),"o"+value);
+    }
+    public static void StateActivationCosts(JsonElement snapshot,GameStateMessage current) {
+        var slots=new Dictionary<uint,uint>();
+        var actions=snapshot.GetProperty("cards").EnumerateArray().Where(c=>c.TryGetProperty("activationCosts",out _))
+            .SelectMany(c=>c.GetProperty("activationCosts").EnumerateArray());
+        foreach(var action in actions) {
+            if(action.GetProperty("actionType").GetInt32()!=2)continue;
+            uint source=action.GetProperty("grpId").GetUInt32(),id=action.GetProperty("instanceId").GetUInt32();
+            string loyalty=action.TryGetProperty("abilityIdentity",out var identity) && identity.TryGetProperty("loyaltyCost",out var lc)?lc.GetString()??"":"";
+            uint ability=AbilityId(source,action.GetProperty("description").GetString()!,action.GetProperty("cardName").GetString()!,true,loyalty);
+            var loyaltyId=AdjustedLoyalty(source,ability,action);
+            (uint Id,string Cost)? adjusted=loyaltyId.HasValue?(loyaltyId.Value,"{}"):AdjustedActivation(source,ability,action.GetProperty("manaCost").GetString()!);
+            if(adjusted==null)continue;
+            uint slot=slots.GetValueOrDefault(id);slots[id]=slot+1;
+            current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(2_700_000_000u+id*32+slot),
+                AffectorId=id,AffectedIds={id},Type={AnnotationType.DynamicAbility},Details={
+                    IntDetail("grpid",checked((int)adjusted.Value.Id)),IntDetail("base_grpid",checked((int)ability)),
+                    new KeyValuePairInfo {Key="cost",Type=KeyValuePairValueType.String,ValueString={adjusted.Value.Cost}}}});
+            var card=current.GameObjects.FirstOrDefault(c=>c.InstanceId==id);
+            if(card!=null)foreach(var rule in card.UniqueAbilities)
+                if(rule.GrpId==ability)rule.GrpId=adjusted.Value.Id;
+        }
+    }
     public static List<Action> Actions(JsonElement snapshot)
     {
         var result = new List<Action>();
@@ -435,6 +626,12 @@ static class BattlePresentation
                 if (c.TryGetProperty("abilityIdentity", out var identity) && identity.TryGetProperty("loyaltyCost", out var lcProp))
                     loyaltyCost = lcProp.GetString() ?? "";
                 action.AbilityGrpId=AbilityId(action.GrpId,description.GetString()!,c.TryGetProperty("cardName",out var name)?name.GetString()!:"",true,loyaltyCost);
+                var manaEffectCard=snapshot.GetProperty("cards").EnumerateArray().FirstOrDefault(card=>card.GetProperty("instanceId").GetUInt32()==action.InstanceId
+                    && card.TryGetProperty("manaEffect",out var effect) && effect.GetBoolean());
+                if(manaEffectCard.ValueKind==JsonValueKind.Object) {
+                    var rules=JsonSerializer.SerializeToElement(EmblemAbilities(manaEffectCard));
+                    if(rules.GetArrayLength()==1)action.AbilityGrpId=rules[0].GetProperty("grpId").GetUInt32();
+                }
                 if(c.TryGetProperty("cycling",out var cycling) && cycling.GetBoolean()
                     && AbilityText.Value.TryGetValue(action.GrpId.ToString(),out var cardAbilities)) {
                     var cycleIds=cardAbilities.EnumerateArray().Where(a=>System.Text.RegularExpressions.Regex.IsMatch(
@@ -448,6 +645,10 @@ static class BattlePresentation
                     if (grantedId != 0) action.AbilityGrpId = grantedId;
                 }
                 if(action.AbilityGrpId!=0)action.SourceId=action.InstanceId;
+                if(action.ActionType==ActionType.Activate && AdjustedActivation(action.GrpId,action.AbilityGrpId,c.GetProperty("manaCost").GetString()!) is {} adjusted)
+                    action.AbilityGrpId=adjusted.Id;
+                if(action.ActionType==ActionType.Activate && AdjustedLoyalty(action.GrpId,action.AbilityGrpId,c) is {} loyaltyDisplay)
+                    action.AbilityGrpId=loyaltyDisplay;
             }
             if (action.ActionType is ActionType.CastMdfc or ActionType.PlayMdfc
                 || action.ActionType is ActionType.CastLeft or ActionType.CastRight
@@ -456,6 +657,11 @@ static class BattlePresentation
                 action.SourceId = action.InstanceId;
             }
             if (!land && !MatchDoorHost.TryManaCost(c.GetProperty("manaCost").GetString() ?? "", action)) continue;
+            if(c.TryGetProperty("lifeCost",out var lifeCost) && lifeCost.GetInt32()>0)
+                action.Costs.Add(new Cost {Type=CostType.Life,ObjectId=action.InstanceId,LifeCost=new LifeCost {Count=lifeCost.GetInt32()}});
+            if(c.TryGetProperty("adjustedLoyaltyCost",out var loyaltyPayment))
+                action.Costs.Add(new Cost {Type=CostType.Loyalty,ObjectId=action.InstanceId,AbilityGrpId=action.AbilityGrpId,
+                    LoyaltyCost=new LoyaltyCost {Count=loyaltyPayment.GetInt32()}});
             var solution = new AutoTapSolution();
             if (c.TryGetProperty("autoTapSources", out var sources))
                 foreach (var source in sources.EnumerateArray()) solution.AutoTapActions.Add(new AutoTapAction { InstanceId = source.GetUInt32() });
@@ -463,6 +669,8 @@ static class BattlePresentation
                 foreach (var mana in pool.EnumerateArray()) {
                     var info = new ManaInfo { ManaId = mana.GetProperty("manaId").GetUInt32(), Color = (ManaColor)mana.GetProperty("color").GetInt32(),
                         SrcInstanceId = mana.GetProperty("srcInstanceId").GetUInt32(), Count = mana.GetProperty("count").GetUInt32() };
+                    if(mana.TryGetProperty("restricted",out var restricted) && restricted.GetBoolean())
+                        info.Specs.Add(new ManaInfo.Types.Spec {Type=ManaSpecType.Restricted});
                     solution.AutoTapActions.Add(new AutoTapAction { ManaId = info.ManaId, ManaPaymentOption = new ManaPaymentOption { Mana = { info } } });
                 }
             if (solution.AutoTapActions.Count > 0) action.AutoTapSolution = solution;
@@ -471,15 +679,41 @@ static class BattlePresentation
         return result;
     }
     public sealed record PlaybackResult(long Cursor, HashSet<uint> Taps, HashSet<uint> Zones);
+    public static uint SingleKickerAbility(uint cardGrp)
+    {
+        if(!AllAbilityText.Value.TryGetValue(cardGrp.ToString(),out var rules))return 0;
+        var candidates=rules.EnumerateArray().Where(rule=>System.Text.RegularExpressions.Regex
+            .Replace(rule.GetProperty("text").GetString()??"","<[^>]*>","").TrimStart()
+            .StartsWith("Kicker",StringComparison.OrdinalIgnoreCase)).ToArray();
+        return candidates.Length==1?candidates[0].GetProperty("id").GetUInt32():0;
+    }
     public static void StateCastingChoices(JsonElement snapshot,GameStateMessage current)
     {
         if(!snapshot.TryGetProperty("stack",out var stack))return;
         foreach(var entry in stack.EnumerateArray()) {
-            if(entry.GetProperty("isAbility").GetBoolean() || !entry.TryGetProperty("xValue",out var x))continue;
+            if(entry.GetProperty("isAbility").GetBoolean())continue;
             uint source=entry.GetProperty("instanceId").GetUInt32();
+            if(entry.TryGetProperty("xValue",out var x))
             current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(2_000_000_000u+source),
                 Type={AnnotationType.CastingTimeOption},AffectedIds={source},
                 Details={IntDetail("type",(int)CastingTimeOptionType.ChooseX),IntDetail("value",x.GetInt32())}});
+            if(entry.TryGetProperty("paidKickers",out var paid)
+                && AllAbilityText.Value.TryGetValue(entry.GetProperty("sourceGrpId").GetUInt32().ToString(),out var rules)) {
+                var kickerRules=rules.EnumerateArray().Where(rule=>System.Text.RegularExpressions.Regex
+                    .Replace(rule.GetProperty("text").GetString()??"","<[^>]*>","")
+                    .TrimStart().StartsWith("Kicker",StringComparison.OrdinalIgnoreCase)).ToArray();
+                foreach(var kicker in paid.EnumerateArray()) {
+                    int index=kicker.GetInt32();
+                    // A combined two-kicker definition is shared by both costs.
+                    if(kickerRules.Length==0 || index>=kickerRules.Length && kickerRules.Length!=1)continue;
+                    uint ability=kickerRules[Math.Min(index,kickerRules.Length-1)].GetProperty("id").GetUInt32();
+                    if(current.PersistentAnnotations.Any(a=>a.Type.Contains(AnnotationType.CastingTimeOption)
+                        && a.AffectedIds.Contains(source) && a.Details.Any(d=>d.Key=="kickerAbilityGrpId" && d.ValueInt32.Contains((int)ability))))continue;
+                    current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(2_900_000_000u+source*2+(uint)index),
+                        Type={AnnotationType.CastingTimeOption},AffectorId=source,AffectedIds={source},
+                        Details={IntDetail("type",(int)CastingTimeOptionType.Kicker),IntDetail("kickerAbilityGrpId",checked((int)ability))}});
+                }
+            }
         }
     }
     public static void StateAttachments(JsonElement snapshot,GameStateMessage current)
@@ -574,6 +808,21 @@ static class BattlePresentation
                 Details={IntDetail("DesignationType",(int)Designation.Commander),IntDetail("CostIncrease",checked(casts*2)),
                     IntDetail("grpid",(int)native.GrpId),IntDetail("ControllerId",(int)native.ControllerSeatId)}
             });
+        }
+    }
+    public static void StateBattleProtectors(JsonElement snapshot,GameStateMessage current)
+    {
+        var visible=current.GameObjects.ToDictionary(c=>c.InstanceId);
+        foreach(var card in snapshot.GetProperty("cards").EnumerateArray()) {
+            uint id=card.GetProperty("instanceId").GetUInt32();
+            if(!card.TryGetProperty("protectorSeat",out var protector) || protector.ValueKind!=JsonValueKind.Number
+                || !visible.TryGetValue(id,out var native) || card.GetProperty("zone").GetString()!="Battlefield")continue;
+            // Native designation parsing assigns ProtectorId without changing
+            // ownership/control; its battlefield holder uses the protector.
+            current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(4_100_000_000u+id),
+                Type={AnnotationType.Designation},AffectorId=id,AffectedIds={protector.GetUInt32()},
+                Details={IntDetail("DesignationType",(int)Designation.Protector),IntDetail("CostIncrease",0),
+                    IntDetail("grpid",(int)native.GrpId)}});
         }
     }
     public static void StateLoyaltyActivations(JsonElement snapshot, GameStateMessage current)
@@ -903,7 +1152,7 @@ static class BattlePresentation
                 continue;
             }
             if (playback?.Zones.Contains(card.InstanceId)!=true && before.ZoneId != card.ZoneId && zones.TryGetValue(before.ZoneId, out var from) && zones.TryGetValue(card.ZoneId, out var to)) {
-                string category = from == ZoneType.Hand && to == ZoneType.Stack ? "CastSpell"
+                string category = from == ZoneType.Hand && (to == ZoneType.Stack || to == ZoneType.Pending) ? "CastSpell"
                     : from == ZoneType.Hand && to == ZoneType.Battlefield && card.CardTypes.Contains(CardType.Land) ? "PlayLand"
                     : from == ZoneType.Library && to == ZoneType.Hand ? current.GameInfo.Stage == GameStage.Start ? "OpeningHand" : "Draw"
                     : from == ZoneType.Stack && to == ZoneType.Battlefield ? "Resolve"

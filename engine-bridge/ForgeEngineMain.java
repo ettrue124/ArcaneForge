@@ -38,30 +38,31 @@ public final class ForgeEngineMain {
         JsonArray specifications=input.getAsJsonArray("decks");
         if (specifications==null || (specifications.size()!=2 && specifications.size()!=4)) throw new IllegalArgumentException("Exactly two or four decks required");
         String format=specifications.get(0).getAsJsonObject().has("format")?string(specifications.get(0).getAsJsonObject(),"format"):"Historic";
-        boolean commander=format.equals("Commander") || format.equals("Commander4");
+        boolean unbanned=format.equals("CommanderUnbanned");
+        boolean commander=format.equals("Commander") || format.equals("Commander4") || unbanned;
         if(specifications.size()==4 && !commander)throw new IllegalArgumentException("Four-player matches require Commander decks");
         JsonObject commanderPolicy=null;
         if(commander) {
             try { commanderPolicy=JsonParser.parseString(Files.readString(Path.of(assets).getParent().getParent().getParent().resolve("data/commander-bans.json"))).getAsJsonObject(); }
             catch(IOException error){throw new IllegalStateException("Verified Commander bans are missing",error);}
-            Set<String> banned=new HashSet<>();for(var name:commanderPolicy.getAsJsonArray("bannedNames"))banned.add(name.getAsString());
+            Set<String> banned=new HashSet<>();if(!unbanned)for(var name:commanderPolicy.getAsJsonArray("bannedNames"))banned.add(name.getAsString());
             StaticData.instance().setCommanderPredicate(card->!banned.contains(card.getName()) && !card.getRules().isCustom() && !card.getRules().isVariant());
         }
         List<Deck> decks=new ArrayList<>();
         List<Map<String,Integer>> groupIds=new ArrayList<>();
         for(JsonElement specification:specifications) {
             JsonObject spec=specification.getAsJsonObject();
-            if(commander && (!spec.has("format") || !(string(spec,"format").equals("Commander") || string(spec,"format").equals("Commander4"))))
+            if(commander && (!spec.has("format") || !(string(spec,"format").equals("Commander") || string(spec,"format").equals("Commander4") || string(spec,"format").equals("CommanderUnbanned"))))
                 throw new IllegalArgumentException("All players must use Commander decks");
             Deck deck=new Deck(string(spec,"name"));
             Map<String,Integer> map=new HashMap<>();
             JsonArray entries=spec.getAsJsonArray("cards");
-            if(entries==null || entries.size()>250)throw new IllegalArgumentException("Deck cards required, maximum 250 entries");
+            if(entries==null || entries.size()>10000)throw new IllegalArgumentException("Deck cards required, maximum 10000 entries");
             int count=0;
             for(JsonElement entry:entries) {
                 JsonObject cardSpec=entry.getAsJsonObject();
                 int quantity=integer(cardSpec,"quantity",0);
-                if(quantity<1 || quantity>250 || (count+=quantity)>250)throw new IllegalArgumentException("Invalid deck quantity");
+                if(quantity<1 || quantity>10000 || (count+=quantity)>10000)throw new IllegalArgumentException("Invalid deck quantity");
                 String name=string(cardSpec,"name");PaperCard card=findCard(name);
                 if(card==null)throw new IllegalArgumentException("Unsupported Forge card: "+name);
                 deck.getMain().add(card,quantity);
@@ -76,12 +77,13 @@ public final class ForgeEngineMain {
                     if(extra!=null)for(var value:extra) {
                         var cardSpec=value.getAsJsonObject();String name=string(cardSpec,"name");PaperCard card=findCard(name);
                         if(card==null || integer(cardSpec,"quantity",0)!=1)throw new IllegalArgumentException("Invalid "+pile+" card: "+name);
-                        if(pile.equals("companions"))for(var forbidden:commanderPolicy.getAsJsonArray("bannedAsCompanion"))
+                        if(!unbanned && pile.equals("companions"))for(var forbidden:commanderPolicy.getAsJsonArray("bannedAsCompanion"))
                             if(name.equals(forbidden.getAsString()))throw new IllegalArgumentException(name+" is banned as a companion");
                         deck.getOrCreate(pile.equals("commanders")?DeckSection.Commander:DeckSection.Sideboard).add(card,1);
                         map.put(card.getName(),cardSpec.get("grpId").getAsInt());
                     }
                 }
+                applyRulebreakerColors(deck);
                 String problem=forge.deck.DeckFormat.Commander.getDeckConformanceProblem(deck);
                 if(problem!=null)throw new IllegalArgumentException("Illegal Commander deck: "+problem);
             }
@@ -104,6 +106,7 @@ public final class ForgeEngineMain {
             @Override public String getAssetsDir() { return assets; }
         });
         FModel.initialize(null, null);
+        BattleAdditionalCards.load();
         FModel.getPreferences().setPref(forge.localinstance.properties.ForgePreferences.FPref.UI_SELECT_FROM_CARD_DISPLAYS, "true");
         FModel.getPreferences().setPref(forge.localinstance.properties.ForgePreferences.FPref.YIELD_SKIP_PHASE_DELAY, "true");
         FModel.getPreferences().setPref(forge.localinstance.properties.ForgePreferences.FPref.YIELD_SKIP_RESOLVE_DELAY, "true");
@@ -124,6 +127,8 @@ public final class ForgeEngineMain {
     }
     private static PaperCard findCard(String name) {
         PaperCard card=StaticData.instance().getCommonCards().getCard(name);
+        if(card==null && name.contains("///"))
+            card=StaticData.instance().getCommonCards().getCard(name.replaceAll("\\s*/{3}\\s*"," // "));
         // No automatic stripping of A- prefixes or other substitution for Arena variants.
         return card;
     }
@@ -147,6 +152,7 @@ public final class ForgeEngineMain {
     static Object snapshot(Game game, Map<Integer,Integer> identities, Map<Player,Integer> seats, JsonObject input) {
         List<Object> players=new ArrayList<>(), cards=new ArrayList<>();
         Set<Integer> seen=new HashSet<>();
+        var displayUnder=BattleExilePresentation.underPermanents(game);
         int omitted=0;
         for (Player p:seats.keySet()) {
             Map<String,Map<String,Object>> pool=new LinkedHashMap<>();
@@ -156,12 +162,16 @@ public final class ForgeEngineMain {
                     case "R" -> 4; case "G" -> 5; default -> 12;
                 };
                 int source=forge.game.ArenaCardIds.id(mana.getSourceCard().getId());
-                String key=source+":"+color;
-                var entry=pool.computeIfAbsent(key,k->object("manaId",source*16+color,
-                    "color",color,"srcInstanceId",source,"count",0));
+                int manaId=manaWireId(mana,color);
+                String key=Integer.toString(manaId);
+                var entry=pool.computeIfAbsent(key,k->object("manaId",manaId,
+                    "color",color,"srcInstanceId",source,"count",0,
+                    "specs",mana.isRestricted()?List.of(object("type",3)):List.of()));
                 entry.put("count",(Integer)entry.get("count")+1);
             }
-            players.add(object("seat",seat(seats,p),"life",p.getLife(),"manaPool",pool.values(),"lost",p.hasLost(),
+            players.add(object("seat",seat(seats,p),"life",p.getLife(),"lifeLostThisTurn",p.getLifeLostThisTurn(),"manaPool",pool.values(),"lost",p.hasLost(),
+                "protection",p.getKeywords().getValues().stream().filter(k->k.getKeyword()==forge.game.keyword.Keyword.PROTECTION)
+                    .map(k->k.getOriginal()).distinct().toList(),
                 "maxHandSize",p.getMaxHandSize(),"unlimitedHandSize",p.isUnlimitedHandSize(),
                 "monarch",p.isMonarch(),"citysBlessing",p.hasBlessing(),
                 "counters",p.getCounters().entrySet().stream().map(e->object("type",e.getElement().toString(),"count",e.getCount())).toList(),
@@ -174,6 +184,11 @@ public final class ForgeEngineMain {
                 for (Card c:p.getCardsIn(zone,false)) {
                     if (!seen.add(c.getId())) continue;
                     Integer grpId=identities.get(c.getId());
+                    boolean manaEffect=c.isImmutable() && c.isInZone(ZoneType.Command) && !c.getManaAbilities().isEmpty() && c.getEffectSource()!=null;
+                    if(grpId==null && manaEffect) {
+                        grpId=identities.get(c.getEffectSource().getId());
+                        if(grpId!=null)identities.put(c.getId(),grpId);
+                    }
                     if(grpId==null && c.isToken()) {grpId=BattleGeneratedCards.printing(c,identities);if(grpId!=null)identities.put(c.getId(),grpId);}
                     if (grpId==null) { omitted++; continue; }
                     int currentPrinting=BattleFaces.printing(grpId,c.getName());
@@ -190,17 +205,32 @@ public final class ForgeEngineMain {
                             "manaCost",c.getManaCost().toString(),
                             "power",c.getNetPower(),"toughness",c.getNetToughness(),
                             "summoningSick",c.isSick(),"damage",c.getDamage());
+                    BattleTurnHistory.add(c,encoded);
                     encoded.put("chosenType",c.getChosenType());
+                    encoded.put("onAdventure",c.isInZone(ZoneType.Exile) && c.isOnAdventure() && !c.isFaceDown());
+                    if(c.isInZone(forge.game.zone.ZoneType.Exile)) {
+                        if(displayUnder.containsKey(c.getId()))encoded.put("displayUnder",displayUnder.get(c.getId()));
+                        Card exiler=c.getExiledWith();
+                        Card currentExiler=exiler==null?null:game.getCardState(exiler,null);
+                        if(currentExiler!=null && exiler.equalsWithGameTimestamp(currentExiler))
+                            encoded.put("exiledWith",forge.game.ArenaCardIds.id(exiler.getId()));
+                        else if(exiler==null && forge.game.ArenaCardIds.exileSource(c.getId())!=null)
+                            encoded.put("exiledWith",forge.game.ArenaCardIds.exileSource(c.getId()));
+                    }
                     List<Object> blockingRestrictions=new ArrayList<>();
                     if(c.isInPlay() && !c.isPhasedOut())
-                        for(var restriction:c.getStaticAbilities()) {
+                        for(var restrictionSource:game.getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES))
+                        for(var restriction:restrictionSource.getStaticAbilities()) {
                             if(restriction.getKeyword()!=null || !restriction.checkConditions(forge.game.staticability.StaticAbilityMode.CantBlockBy)
                                 || !restriction.matchesValidParam("ValidAttacker",c))continue;
-                            blockingRestrictions.add(object("sourceGrpId",currentPrinting,"cardName",c.getName(),
+                            Integer restrictionPrinting=identities.get(restrictionSource.getId());
+                            if(restrictionPrinting==null)continue;
+                            blockingRestrictions.add(object("sourceGrpId",restrictionPrinting,"cardName",restrictionSource.getName(),
+                                "sourceId",forge.game.ArenaCardIds.id(restrictionSource.getId()),
                                 "description",restriction.getParamOrDefault("Description","")));
                         }
                     encoded.put("blockingRestrictions",blockingRestrictions);
-                    if(c.isInPlay() && c.isCreature() && !c.isFaceDown()) {
+                    if(c.isInPlay() && c.isCreature()) {
                         var powerStats=c.getNetPowerBreakdown();
                         var toughnessStats=c.getNetToughnessBreakdown();
                         encoded.put("powerModified",powerStats.tempBoost!=0 || powerStats.currentValue!=c.getBasePower());
@@ -211,7 +241,8 @@ public final class ForgeEngineMain {
                     encoded.put("chosenColors",chosenColors);
                     if(c.hasChosenNumber())encoded.put("chosenNumber",c.getChosenNumber());
                     encoded.put("enteredZoneThisTurn",c.enteredThisTurn());
-                    encoded.put("hasNoAbilities",c.isInPlay() && !c.isLand() && c.hasNoAbilities());
+                    encoded.put("hasNoAbilities",c.isInPlay() && !c.isLand() && c.hasNoAbilities()
+                        && c.getSpellAbilities().stream().noneMatch(a->a.isActivatedAbility()));
                     encoded.put("monstrous",c.isMonstrous());
                     encoded.put("renowned",c.isRenowned());
                     var activeAbilities=c.getSpellAbilities();
@@ -235,8 +266,9 @@ public final class ForgeEngineMain {
                         encoded.put("isCopy",true);
                         encoded.put("copyFromGrpId",copyPrinting);
                     }
-                    if(c.isEmblem()) {
+                    if(c.isEmblem() || manaEffect) {
                         encoded.put("isEmblem",true);
+                        if(manaEffect)encoded.put("manaEffect",true);
                         encoded.put("emblemText",c.getAbilityText());
                         if(c.getEffectSourceAbility()!=null)encoded.put("emblemGrantText",ForgePlayback.abilityDescription(c.getEffectSourceAbility()));
                     }
@@ -251,6 +283,10 @@ public final class ForgeEngineMain {
                         encoded.put("loyaltyActivationsRemaining",c.planeswalkerActivationLimitUsed()?0:1);
                     }
                     String devotionRule=c.getSVar("X");
+                    if(activeAbilities.stream().anyMatch(a->"Metalcraft".equals(a.getParamOrDefault("Activation","")))) {
+                        encoded.put("metalcraftActive",c.getController().hasMetalcraft());
+                        encoded.put("metalcraftCount",c.getController().getCardsIn(ZoneType.Battlefield).stream().filter(Card::isArtifact).count());
+                    }
                     if(devotionRule.startsWith("Count$Devotion.")) {
                         String[] devotionColors=devotionRule.substring("Count$Devotion.".length()).split("\\.");
                         byte devotionMask=0;
@@ -272,7 +308,24 @@ public final class ForgeEngineMain {
                         if (ability.isIntrinsic() || ability.isLandAbility()) continue;
                         granted.add(abilityIdentity(ability, identities));
                     }
+                    // Copy exceptions such as Sakashima/Joo Dee retain static
+                    // rules that are absent from the copied printing's text.
+                    for(var ability:c.getStaticAbilities()) {
+                        if(!ability.checkConditions(forge.game.staticability.StaticAbilityMode.IgnoreLegendRule))continue;
+                        granted.add(BattleInputs.obj("abilityId",ability.getId(),"sourceGrpId",identities.getOrDefault(c.getId(),0),
+                            "granted",true,"hostCardName",c.getName(),"cardName",c.getName(),
+                            "loyaltyCost","","description",ability.getParamOrDefault("Description","")));
+                    }
                     encoded.put("grantedAbilities", granted);
+                    if(c.isInPlay())encoded.put("activationCosts",activeAbilities.stream()
+                        .filter(a->a.isActivatedAbility() && !a.isManaAbility() && a.getPayCosts()!=null && (a.isPwAbility() || a.getPayCosts().hasManaCost() && (interactive==null || interactive.canPreviewActions())))
+                        .map(a->{a.setActivatingPlayer(c.getController());var entry=object("actionType",2,
+                            "instanceId",forge.game.ArenaCardIds.id(c.getId()),"grpId",encoded.get("grpId"),"cardName",c.getName(),
+                            "description",ForgePlayback.abilityDescription(a),"abilityIdentity",abilityIdentity(a,identities),
+                            "manaCost",a.getPayCosts().hasManaCost()?BattlePlayerControllerHuman.displayManaCost(a,c.getController()):"{0}");
+                            var loyalty=BattlePlayerControllerHuman.displayLoyaltyCost(a);
+                            if(loyalty!=null)entry.put("adjustedLoyaltyCost",loyalty);
+                            return entry;}).toList());
                     List<Integer> colors=new ArrayList<>();byte[] colorBits=forge.card.MagicColor.WUBRG;
                     for(int i=0;i<colorBits.length;i++)if(c.getColor().hasAnyColor(colorBits[i]))colors.add(i+1);
                     encoded.put("colors",colors);
@@ -280,10 +333,13 @@ public final class ForgeEngineMain {
                         encoded.put("commander",true);
                         encoded.put("commanderCastCount",c.getOwner().getCommanderCast(c));
                     }
+                    if(c.isBattle() && c.getProtectingPlayer()!=null)
+                        encoded.put("protectorSeat",seats.get(c.getProtectingPlayer()));
                     // Static permissions follow the actual current top card after
                     // draws, shuffles and zone changes; never reveal the whole deck.
                     encoded.put("viewers",seats.entrySet().stream()
-                            .filter(e->c.getView().canBeShownTo(e.getKey().getView()))
+                            .filter(e->c.getView().canBeShownTo(e.getKey().getView())
+                                || c.isInZone(ZoneType.Exile) && c.isOnAdventure() && !c.isFaceDown())
                             .map(Map.Entry::getValue).toList());
                     if(c.isAttachedToEntity())
                         encoded.put("attachedTo",BattleInputs.id(c.getEntityAttachedTo(),seats));
@@ -323,12 +379,16 @@ public final class ForgeEngineMain {
                         "activeSeat",active,"prioritySeat",priority),
                 "players",players,"cards",cards,"omittedUnmappedCards",omitted);
     }
+    static int manaWireId(forge.game.mana.Mana mana,int color) {
+        return forge.game.ArenaCardIds.id(mana.getSourceCard().getId())*16+color+(mana.isRestricted()?20_000_000:0);
+    }
     static Map<String,Object> abilityIdentity(forge.game.spellability.SpellAbility ability, Map<Integer,Integer> identities) {
         var grantor = ability.getGrantorStatic();
         var original = ability.getOriginalAbility();
         Card source = grantor != null ? grantor.getHostCard()
                 : original != null ? original.getHostCard() : ability.getOriginalHost();
         if (source == null) source = ability.getHostCard();
+        source = BattleExilePresentation.printedSource(source);
         return object("abilityId", ability.getId(), "sourceGrpId", identities.getOrDefault(source.getId(), 0),
                 "granted", !ability.isIntrinsic(),
                 "hostCardName", ability.getHostCard().getName(),
@@ -434,6 +494,29 @@ public final class ForgeEngineMain {
                 "turns",outcome.getLastTurnNumber(),"endReason",outcome.getWinCondition().name(),
                 "logs",logs,"logsTruncated",entries.size()>200,"initialSnapshot",capture.initialSnapshot,
                 "snapshot",snapshot(game,identities,seats,input));
+    }
+    private static void applyRulebreakerColors(Deck deck) {
+        byte identity=0;for(var commander:deck.getCommanders())identity|=commander.getRules().getColorIdentity().getColor();
+        var commanders=new ArrayList<PaperCard>(deck.getCommanders());
+        for(int index=0;index<commanders.size();index++) {
+            var commander=commanders.get(index);
+            var rules=forge.deck.DeckRule.parseAll(commander);
+            var ci=rules.stream().filter(r->r instanceof forge.deck.DeckRuleColorIdentity && r.isActiveFor(DeckSection.Commander))
+                .map(r->(forge.deck.DeckRuleColorIdentity)r).toList();
+            for(String raw:commander.getRules().getDeckRules()) {
+                var budget=java.util.regex.Pattern.compile("AllowedAdditionalColor\\$\\s*(\\d+)").matcher(raw);
+                var branch=java.util.regex.Pattern.compile("AllowedAdditionalColorType\\$\\s*([^|]+)").matcher(raw);
+                if(!budget.find() || !branch.find())continue;
+                var predicate=forge.card.CardRulesPredicates.restrictionList(branch.group(1).trim());byte chosen=0;
+                for(var candidate:deck.getMain())if(predicate.test(candidate.getKey().getRules())
+                    && !forge.deck.DeckFormat.allowsOffColorIdentity(ci,candidate.getKey().getRules()))
+                    chosen|=(byte)(candidate.getKey().getRules().getColorIdentity().getColor() & ~identity);
+                if(forge.card.ColorSet.fromMask(chosen).countColors()<=Integer.parseInt(budget.group(1)))
+                    commanders.set(index,commander.copyWithMarkedColors(forge.card.ColorSet.fromMask(chosen)));
+            }
+        }
+        var commandZone=deck.getOrCreate(DeckSection.Commander);commandZone.clear();
+        for(var commander:commanders)commandZone.add(commander,1);
     }
     public static void main(String[] arguments) throws Exception {
         // Windows may give System.out a legacy console encoding even with

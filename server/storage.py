@@ -187,15 +187,15 @@ class Store:
         return self._deck_dict(row)
 
     def _validate_cards(self, db, cards):
-        if not isinstance(cards, list) or not 1 <= len(cards) <= 250:
-            raise StorageError('Deck requires 1 to 250 card entries')
+        if not isinstance(cards, list) or not 1 <= len(cards) <= 10000:
+            raise StorageError('Deck requires 1 to 10000 card entries')
         totals = {}
         for card in cards:
-            if not isinstance(card, dict) or type(card.get('grpId')) is not int or not 1 <= card['grpId'] <= 9223372036854775807 or type(card.get('quantity')) is not int or not 1 <= card['quantity'] <= 250:
-                raise StorageError('Cards require integer grpId and quantity from 1 to 250')
+            if not isinstance(card, dict) or type(card.get('grpId')) is not int or not 1 <= card['grpId'] <= 9223372036854775807 or type(card.get('quantity')) is not int or not 1 <= card['quantity'] <= 10000:
+                raise StorageError('Cards require integer grpId and quantity from 1 to 10000')
             totals[card['grpId']] = totals.get(card['grpId'], 0) + card['quantity']
-        if sum(totals.values()) > 250:
-            raise StorageError('Deck exceeds 250 cards')
+        if sum(totals.values()) > 10000:
+            raise StorageError('Deck exceeds the local engine resource limit of 10000 cards')
         canonical_totals = {}
         for gid, quantity in totals.items():
             row = db.execute('SELECT name,card_limit FROM cards WHERE grp_id=?', (gid,)).fetchone()

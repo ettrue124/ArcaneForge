@@ -4,12 +4,53 @@ using Wotc.Mtgo.Gre.External.Messaging;
 /// <summary>Native requests for Forge's blocking GUI decisions.</summary>
 static class BattleGuiRequests
 {
+    static string ChoiceLabel(JsonElement input,JsonElement option)
+    {
+        string label=option.GetProperty("label").GetString()??"";
+        // Siege entry replacements are actions, not full reminder paragraphs.
+        // Keep their original option IDs while fitting the native buttons.
+        if(label.Contains("As a Siege enters",StringComparison.OrdinalIgnoreCase)
+            && label.Contains("protect it",StringComparison.OrdinalIgnoreCase))return "Choose a protector";
+        if(label.Contains("enters with six defense counters",StringComparison.OrdinalIgnoreCase))return "Place six defense counters";
+        if(!input.TryGetProperty("title",out var titleValue))return label;
+        string title=titleValue.GetString()?.Trim()??"";
+        if(title.Length==0)return label;
+        var options=input.GetProperty("options");
+        bool yesNo=options.GetArrayLength()==2
+            && options[0].GetProperty("label").GetString()?.Equals("Yes",StringComparison.OrdinalIgnoreCase)==true
+            && options[1].GetProperty("label").GetString()?.Equals("No",StringComparison.OrdinalIgnoreCase)==true;
+        if(!yesNo)return label;
+        bool yes=option.GetProperty("id").GetUInt32()==options[0].GetProperty("id").GetUInt32();
+        // Search confirmations include Forge's shuffle and alternate-zone
+        // explanation. Native buttons cannot fit that full paragraph.
+        if(title.Contains("search your library",StringComparison.OrdinalIgnoreCase)
+            && title.Contains("library will be shuffled",StringComparison.OrdinalIgnoreCase))
+            return yes?"Search and shuffle":"Skip searching";
+        if(title.StartsWith("Apply replacement effect of Copy Enchantment?",StringComparison.OrdinalIgnoreCase)
+            && title.Contains("as a copy",StringComparison.OrdinalIgnoreCase))
+            return yes?"Choose an enchantment to copy":"Enter without copying";
+        if(title.StartsWith("Apply replacement effect of Time Vault?",StringComparison.OrdinalIgnoreCase)
+            && title.Contains("skip that turn instead",StringComparison.OrdinalIgnoreCase)
+            && title.Contains("untap this artifact",StringComparison.OrdinalIgnoreCase))
+            return yes?"Skip this turn and untap Time Vault":"Take this turn; keep Time Vault tapped";
+        // The resolving ability already shows the target, stats and duration.
+        // Forge's optional animation question repeats that paragraph; native
+        // choice buttons have room for the decision, not the rules text.
+        if(title.Contains("has base power and toughness",StringComparison.OrdinalIgnoreCase)
+            && title.Contains("becomes a creature",StringComparison.OrdinalIgnoreCase)
+            && title.Contains("Elemental",StringComparison.OrdinalIgnoreCase)
+            && title.Contains("haste and menace",StringComparison.OrdinalIgnoreCase))
+            return yes?"Yes — animate the land":"No — leave it as a land";
+        // Native SelectN has a fixed heading. Keep the actual Forge question
+        // in its affirmative button so a generic Yes/No never loses context.
+        return label;
+    }
     public static GREToClientMessage? Choice(JsonElement input,uint msgId,uint stateId)
     {
         uint max=input.GetProperty("max").GetUInt32();
-        if(max==0)return null;
+        if(max==0 && !(input.TryGetProperty("privateLook",out var privateLook) && privateLook.GetBoolean()))return null;
         bool bottomChoice=input.TryGetProperty("title",out var choiceTitle) && (choiceTitle.GetString()??"").Contains("put on the bottom",StringComparison.OrdinalIgnoreCase);
-        var prompt=new Prompt {PromptId=bottomChoice?41u:23u};
+        var prompt=new Prompt {PromptId=input.TryGetProperty("promptId",out var explicitPrompt)?explicitPrompt.GetUInt32():bottomChoice?41u:23u};
         bool entities=input.TryGetProperty("entityChoices",out var e) && e.GetBoolean();
         var req=new SelectNReq {MinSel=input.GetProperty("min").GetInt32(),MaxSel=max,
             SourceId=input.GetProperty("sourceId").GetUInt32(),ListType=SelectionListType.Dynamic,
@@ -18,17 +59,26 @@ static class BattleGuiRequests
         foreach(var option in input.GetProperty("options").EnumerateArray()) {
             uint id=option.GetProperty("id").GetUInt32();req.Ids.Add(id);req.UnfilteredIds.Add(id);req.HotIds.Add(id);
         }
+        // Arena's proliferate workflow preselects HotIds. Offer every legal
+        // entity without deciding which counters the human wants to increase.
+        if(input.TryGetProperty("proliferateSelection",out var proliferate) && proliferate.GetBoolean())req.HotIds.Clear();
         if(!entities) {
             foreach(var option in input.GetProperty("options").EnumerateArray()) {
                 uint id=option.GetProperty("id").GetUInt32();
                 prompt.Parameters.Add(new PromptParameter {
                     ParameterName = id.ToString(),
                     Type = ParameterType.NonLocalizedString,
-                    StringValue = option.GetProperty("label").GetString()!
+                    StringValue = ManaMenuSymbols.Format(ChoiceLabel(input,option))
                 });
             }
         }
         if(entities && req.MinSel==0 && req.MaxSel==0) {req.UnfilteredIds.Clear();req.HotIds.Clear();}
+        if(!entities && input.TryGetProperty("title",out var question) && !string.IsNullOrWhiteSpace(question.GetString())
+            && !input.TryGetProperty("promptId",out _) && prompt.Parameters.Count<=64) {
+            prompt.PromptId=2920000u+(uint)prompt.Parameters.Count;
+            prompt.Parameters.Add(new PromptParameter {ParameterName="question",Type=ParameterType.NonLocalizedString,
+                StringValue=question.GetString()!});
+        }
         return new GREToClientMessage {Type=(GREMessageType)22,MsgId=msgId,GameStateId=stateId,SystemSeatIds={1},Prompt=prompt,SelectNReq=req,
             AllowCancel=req.MinSel==0?AllowCancel.Continue:AllowCancel.No};
     }
@@ -49,6 +99,9 @@ static class BattleGuiRequests
                 break;
             case "InputGuiText":
                 message.Type=GREMessageType.StringInputReq;message.StringInputReq=new StringInputReq {SourceId=input.GetProperty("sourceId").GetUInt32()};
+                if(input.TryGetProperty("title",out var textQuestion))message.Prompt=new Prompt {PromptId=2920000,
+                    Parameters={new PromptParameter {ParameterName="question",Type=ParameterType.NonLocalizedString,
+                        StringValue=textQuestion.GetString()??"Choose a card name"}}};
                 break;
             case "InputGuiGroups":
                 message.Type=GREMessageType.GroupReq;message.Prompt=new Prompt {PromptId=40};
