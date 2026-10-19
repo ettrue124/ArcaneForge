@@ -75,8 +75,21 @@ sealed class BattleFlow
         uint turn = snapshot.GetProperty("turn").GetProperty("number").GetUInt32();
         if ((int)Mode is 1 or 3 && modeTurn != 0 && turn != modeTurn) { Mode = DefaultMode; PassAfterAction = false; settingsRevision++; }
         if ((int)Mode == 7 || snapshot.TryGetProperty("pendingCount", out var pending) && pending.GetInt32() != 0) return false;
-        if (type.StartsWith("InputPayMana", StringComparison.Ordinal)) return (int)PaymentStops != 1;
+        if (type.StartsWith("InputPayMana", StringComparison.Ordinal))
+            return (int)PaymentStops != 1 && (input.TryGetProperty("autoTapSources",out var paymentSources)
+                && paymentSources.GetArrayLength()>0 || input.TryGetProperty("autoTapPool",out var paymentPool)
+                && paymentPool.GetArrayLength()>0);
         if (type != "InputPassPriority" && type != "InputAttack" && type != "InputBlock") return false;
+        // Floating mana represents an unfinished player decision. Do not
+        // advance priority/phase merely because affordability sees no play.
+        // Explicit Pass actions still go directly to Forge.
+        if(type=="InputPassPriority" && snapshot.TryGetProperty("players",out var manaPlayers)
+            && manaPlayers.EnumerateArray().Any(p=>p.GetProperty("seat").GetUInt32()==1
+                && p.TryGetProperty("manaPool",out var pool)
+                && pool.EnumerateArray().Any(m=>m.GetProperty("count").GetUInt32()>0))) {
+            PassAfterAction=false;
+            return false;
+        }
         var phase = snapshot.GetProperty("turn").GetProperty("phase").GetString();
         int stopType = phase switch {
             "UPKEEP" => 1, "DRAW" => 2, "MAIN1" => 3, "COMBAT_BEGIN" => 4,
@@ -90,6 +103,7 @@ sealed class BattleFlow
         var stack=snapshot.TryGetProperty("stack",out var stackEntries)?stackEntries.EnumerateArray().ToArray():Array.Empty<JsonElement>();
         var spellCards=snapshot.GetProperty("cards").EnumerateArray().Where(c=>c.GetProperty("zone").GetString()=="Stack").ToArray();
         bool ownTop=stack.Length>0?stack[0].GetProperty("controllerSeat").GetUInt32()==1:spellCards.Length>0 && spellCards.All(c=>c.GetProperty("controllerSeat").GetUInt32()==1);
+        bool ownAbility=ownTop && stack.Length>0 && stack[0].TryGetProperty("isAbility",out var abilityTop) && abilityTop.GetBoolean();
         bool opponentTop=onStack && !ownTop;
         if(stackMode==AutoPassOption.ResolveAll && !onStack && type=="InputPassPriority") {
             stackMode=AutoPassOption.Clear;settingsRevision++;
@@ -106,14 +120,18 @@ sealed class BattleFlow
             && (!a.TryGetProperty("cycling",out var cycling) || !cycling.GetBoolean() || onStack
                 || active==1 && phase is "MAIN1" or "MAIN2")
             && (!a.TryGetProperty("actionType",out var availableType) || availableType.GetInt32() is 1 or 2
-                || availableType.GetInt32()==4 && opponentTop
+                || availableType.GetInt32()==4 && onStack
                 || availableType.GetInt32()==3 && active==1 && phase is "MAIN1" or "MAIN2")
             && (!a.TryGetProperty("isLand",out var land) || !land.GetBoolean()
                 || a.TryGetProperty("actionType",out var landAction) && (landAction.GetInt32()==2
-                    || landAction.GetInt32()==4 && opponentTop
+                    || landAction.GetInt32()==4 && onStack
                     || landAction.GetInt32()==3 && active==1 && phase is "MAIN1" or "MAIN2")));
         // Normal play should not require a click at a phase stop when all
         // spells/abilities are unusable. Full control is handled above.
+        bool annihilatorTrigger=stack.Any(e=>e.TryGetProperty("isAbility",out var isAbility) && isAbility.GetBoolean()
+            && e.TryGetProperty("description",out var description)
+            && (description.GetString()??"").TrimStart().StartsWith("Annihilator ",StringComparison.OrdinalIgnoreCase));
+        if(type=="InputPassPriority" && annihilatorTrigger && (int)Mode is 5 or 6 && stackMode!=AutoPassOption.ResolveAll)return false;
         if(type=="InputPassPriority" && !hasPlay)return true;
         if(type=="InputPassPriority" && onStack && stackMode==AutoPassOption.ResolveAll)return true;
         if (stops.Values.Any(Matches) || transientStops.Values.Any(Matches)) return false;
@@ -123,12 +141,14 @@ sealed class BattleFlow
         if (type == "InputBlock") return input.GetProperty("blockers").GetArrayLength() == 0;
         // Casting can pause at targeting/payment before the object reaches the stack.
         // Keep the client's pass intent until priority returns over that object.
-        if (PassAfterAction && ownTop) return true;
+        if (PassAfterAction && ownTop && !ownAbility) return true;
         if ((int)Mode == 1) return true;
         if ((int)Mode == 3) return phase != "END_OF_TURN";
         if ((int)Mode == 9 && onStack) return true;
-        if ((int)Mode == 6 && ownTop) return true;
-        if ((int)Mode == 5) return !onStack || ownTop;
+        // Your triggered/activated ability is a response window too (for
+        // example Tainted Pact over your Thassa's Oracle trigger).
+        if ((int)Mode == 6 && ownTop) return !ownAbility;
+        if ((int)Mode == 5) return !onStack || ownTop && !ownAbility;
         if ((int)Mode is not (2 or 6 or 9)) return false;
         // Forge legality is authoritative even if a display adapter cannot yet
         // represent an advanced cost. Do not skip that response opportunity.

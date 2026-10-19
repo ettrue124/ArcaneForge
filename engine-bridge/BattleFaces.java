@@ -11,7 +11,10 @@ final class BattleFaces {
     }
     static int printing(int original,String currentName) {
         var linked=faces.getAsJsonObject(Integer.toString(original));
-        return linked!=null && linked.has(currentName)?linked.get(currentName).getAsInt():original;
+        if(linked==null)return original;
+        if(linked.has(currentName))return linked.get(currentName).getAsInt();
+        String tokenName=currentName.replaceAll(" Token$","");
+        return linked.has(tokenName)?linked.get(tokenName).getAsInt():original;
     }
     static Integer copiedPrinting(forge.game.card.Card card,java.util.Map<Integer,Integer> identities) {
         return copiedPrinting(card,identities,new java.util.HashSet<>());

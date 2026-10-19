@@ -114,14 +114,14 @@ class Arena:
             entries = raw.get(pile, [])
             if entries is None:
                 entries = []
-            if not isinstance(entries, list) or len(entries) > 250:
+            if not isinstance(entries, list) or len(entries) > 10000:
                 raise StorageError('Invalid deck ' + pile)
             totals = {}
             for entry in entries:
                 if not isinstance(entry, dict):
                     raise StorageError('Invalid deck card')
                 card_id, quantity = entry.get('cardId'), entry.get('quantity')
-                if type(card_id) is not int or not 1 <= card_id <= 4294967295 or type(quantity) is not int or not 1 <= quantity <= 250:
+                if type(card_id) is not int or not 1 <= card_id <= 4294967295 or type(quantity) is not int or not 1 <= quantity <= 10000:
                     raise StorageError('Invalid deck card ID or quantity')
                 totals[card_id] = totals.get(card_id, 0) + quantity
             normalized = [{'grpId': gid, 'quantity': qty} for gid, qty in totals.items()]
@@ -225,7 +225,12 @@ class Arena:
             if name == 'DeckGetDeck':
                 return json.loads(self._get(db, uid, payload.get('DeckId'))['body_json'])
             if name == 'DeckDeleteDeck':
-                row = self._get(db, uid, payload.get('DeckId'))
+                guid = self._guid(payload.get('DeckId'))
+                row = db.execute('SELECT * FROM arena_decks WHERE arena_id=? AND user_id=?', (guid, uid)).fetchone()
+                # Arena can retain a summary after an earlier deletion or retry
+                # the same request. The requested final state already exists.
+                if row is None:
+                    return 'success'
                 if row['deck_id'] is not None:
                     db.execute('DELETE FROM decks WHERE id=? AND user_id=?', (row['deck_id'], uid))
                 db.execute('DELETE FROM arena_decks WHERE arena_id=? AND user_id=?', (row['arena_id'], uid))
@@ -233,7 +238,7 @@ class Arena:
             summary = self._summary(payload.get('Summary'))
             body = self._body(db, payload.get('Deck'))
             if commander.deck_format(summary) in commander.FORMATS:
-                commander.validate(body, self.catalogue)
+                commander.validate(body, self.catalogue, format_name=commander.deck_format(summary))
             action = payload.get('ActionType', 0)
             if isinstance(action, str):
                 action_names = ('None', 'CreatedNew', 'Imported', 'Cloned', 'CopyLimited', 'PreconCopied', 'Exported', 'Updated')

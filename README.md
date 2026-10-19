@@ -2,6 +2,12 @@
 
 For publication status, confirmed gaps and required visual acceptance, see [RELEASE-READINESS.md](RELEASE-READINESS.md). Full Arena animation parity is not release-ready.
 
+## Import more Magic cards
+
+Finish your match, close Arena, and double-click **Import-All-Magic-Cards.bat**. It refreshes the full Scryfall Oracle catalogue, imports compatible missing paper cards with artwork, and reports cards needing additional rules or display support. Existing printings and deck IDs are preserved. Downloads are cached for repeat runs. Restart the local server after installation, then reopen Arena.
+
+For a catalogue refresh during a match, use `python tools/import_magic_cards.py --catalog-only`; this leaves the active pack and installed client unchanged. See [ALL-MAGIC-CARDS.md](ALL-MAGIC-CARDS.md) for selected-deck imports and other options.
+
 ## Repair builds and check gameplay
 
 Double-click **`Repair-And-Check-Arena.bat`**. Leave the window open until it prints the report path. This can take several minutes, especially after a client update.
@@ -163,3 +169,7 @@ python scripts/forge_coverage.py --timeout 180
 ```
 
 Restart the local backend and protocol host after refreshing. The refresh preserves the old inputs under `data/client-snapshots` and imports a new catalogue; local accounts and saved decks survive. A saved deck containing removed card IDs must be revised before pairing. Updating inputs does not redirect the installed client to this service.
+
+To reload compiled fixes, close Arena and run `./Start-PrivateServer.ps1 -Restart`, then reopen Arena. This ends any current match. Running the script without `-Restart` reuses existing services.
+
+Recent changes include card selection lineups, separate choice questions, explicit Bargain decisions, full-catalogue card naming, token previews, adjusted loyalty costs, and linked exile displays. Hand mana abilities can be selected during payment or activated to float mana; AI Phyrexian-payment preferences no longer restrict human choices. These changes compile, but not every card interaction has been checked in a live match.

@@ -11,10 +11,15 @@ static class BattleGuiResponses
             if(snapshot.RootElement.TryGetProperty("input",out var input) && BattleNativeMenus.TryAnswer(message,snapshot.RootElement,out answer))return true;
         }
         switch(inputType) {
+            case "InputGuiStackTargets" when message.SelectNResp is { } stackSelect:
+                answer=stackSelect.Ids.ToArray();return true;
             case "InputGuiStackTargets" when message.SelectTargetsResp is { } target:
                 answer=target.Target.Targets.Select(t=>t.TargetInstanceId).ToArray();return true;
             case "InputGuiStackTargets" when message.CancelActionReq is not null || message.Type is (ClientMessageType)37:
                 answer=Array.Empty<uint>();return true;
+            case "InputChooseNumber" when message.SelectNResp is { } numbered:
+                if(numbered.Ids.Count!=1)throw new InvalidDataException("Choose one number");
+                answer=checked((int)numbered.Ids[0]-1);return true;
             case "InputChooseNumber" when message.NumericInputResp is { } numeric:
                 answer=numeric.NumericInputValue;return true;
             case "InputGuiChoice" when message.SelectNResp is { } select:

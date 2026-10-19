@@ -32,7 +32,7 @@ def classify(card, resolution):
         reasons.append('digital_only')
     if flagged(metadata.get('IsRebalanced', card.get('isRebalanced', 0))) or name.startswith('A-'):
         reasons.append('rebalanced')
-    if supported and forge_name != name:
+    if supported and forge_name != name and forge_name != name.replace(' /// ', ' // '):
         reasons.append('name_mismatch')
     return {'grpId': card['grpId'], 'name': name, 'nameResolved': supported,
             'forgeName': forge_name, 'edition': resolution.get('edition'),

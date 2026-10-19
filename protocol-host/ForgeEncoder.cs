@@ -4,6 +4,9 @@ using Wotc.Mtgo.Gre.External.Messaging;
 
 static class ForgeEncoder
 {
+    static readonly Lazy<Dictionary<string,SubType>> LocalPlaneswalkerSubtypes=new(()=>
+        JsonSerializer.Deserialize<Dictionary<string,uint>>(File.ReadAllText("data/custom-arena-cards/planeswalker-subtypes.json"))!
+        .ToDictionary(p=>System.Text.RegularExpressions.Regex.Replace(p.Key,"[^a-zA-Z0-9]",""),p=>(SubType)p.Value,StringComparer.OrdinalIgnoreCase));
     static readonly Lazy<Dictionary<string, JsonElement>> CardMetadata = new(() =>
         JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(
             Path.Combine(Environment.CurrentDirectory, "data", "arena-card-metadata.json")))
@@ -37,9 +40,11 @@ static class ForgeEncoder
         if (players.Length is not (2 or 4) || !seats.Order().SequenceEqual(Enumerable.Range(1,players.Length).Select(i=>(uint)i)) || !seats.Contains(viewer))
             throw new InvalidDataException("Matches require two or four distinct consecutive seats");
         var zones = new Dictionary<uint, Dictionary<string, object>>();
-        // Shared zones: Battlefield (3), Stack (4), Exile (6), Command (7), Limbo (9)
-        foreach (int type in new[] { 3, 4, 6, 7, 9, 12 }) {
-            uint zoneId = (uint)(type * 10);
+        // Pending is the client's casting area while costs/X are announced.
+        foreach (int type in new[] { 3, 4, 6, 7, 9, 12, (int)ZoneType.Pending }) {
+            // Pending's enum value would otherwise collide with seat one's
+            // sideboard ID (110) in this adapter's per-player numbering.
+            uint zoneId = type==(int)ZoneType.Pending ? 80u : (uint)(type * 10);
             zones[zoneId] = new() { ["zoneId"] = zoneId, ["type"] = type, ["visibility"] = 1, ["ownerSeatId"] = 0u, ["objectInstanceIds"] = new List<uint>() };
         }
         // Per-player zones: Library (1), Hand (2), Graveyard (5), Revealed (8), Sideboard (10)
@@ -57,9 +62,16 @@ static class ForgeEncoder
         foreach (var c in root.GetProperty("cards").EnumerateArray()) {
             uint id = c.GetProperty("instanceId").GetUInt32(), owner = c.GetProperty("ownerSeat").GetUInt32(), controller = c.GetProperty("controllerSeat").GetUInt32();
             int type = Zone(c.GetProperty("zone").GetString()!);
+            // ChooseX draws only the selector. Pending uses the stack card
+            // holder; Limbo instead hides the casting card in library storage.
+            if(type==2 && root.TryGetProperty("input",out var castingInput)
+                && castingInput.GetProperty("type").GetString()=="InputChooseNumber"
+                && castingInput.TryGetProperty("isX",out var choosingX) && choosingX.GetBoolean()
+                && castingInput.GetProperty("sourceId").GetUInt32()==id)
+                type=(int)ZoneType.Pending;
             if (id == 0 || zones.ContainsKey(id) || !ids.Add(id) || !seats.Contains(owner) || !seats.Contains(controller)) throw new InvalidDataException("Invalid/duplicate card IDs, zone ID collision or seats");
-            bool isShared = type is 3 or 4 or 6 or 7 or 9 or 12;
-            uint zoneId = isShared ? (uint)(type * 10) : (owner * 100 + (uint)type);
+            bool isShared = type is 3 or 4 or 6 or 7 or 9 or 12 || type==(int)ZoneType.Pending;
+            uint zoneId = type==(int)ZoneType.Pending ? 80u : isShared ? (uint)(type * 10) : (owner * 100 + (uint)type);
             ((List<uint>)zones[zoneId]["objectInstanceIds"]).Add(id);
             var viewers=c.TryGetProperty("viewers",out var permitted)
                 ? permitted.EnumerateArray().Select(v=>v.GetUInt32()).ToArray() : Array.Empty<uint>();
@@ -103,7 +115,7 @@ static class ForgeEncoder
                 if(c.TryGetProperty("colors",out var currentColors))obj["color"]=currentColors.EnumerateArray().Select(v=>v.GetInt32()).ToArray();
                 if(c.TryGetProperty("subtypes",out var currentSubtypes))obj["subtypes"]=currentSubtypes.EnumerateArray()
                     .Select(t=>System.Text.RegularExpressions.Regex.Replace(t.GetString()!,"[^a-zA-Z0-9]",""))
-                    .Select(t=>Enum.TryParse<SubType>(t,true,out var parsed) && Enum.IsDefined(parsed)?parsed:SubType.None)
+                    .Select(t=>Enum.TryParse<SubType>(t,true,out var parsed) && Enum.IsDefined(parsed)?parsed:LocalPlaneswalkerSubtypes.Value.GetValueOrDefault(t,SubType.None))
                     .Where(t=>t!=SubType.None).Distinct().ToArray();
                 if(c.TryGetProperty("supertypes",out var currentSupertypes))obj["superTypes"]=currentSupertypes.EnumerateArray()
                     .Select(t=>Enum.TryParse<SuperType>(t.GetString(),true,out var parsed) && Enum.IsDefined(parsed)?parsed:SuperType.None)
@@ -168,13 +180,42 @@ static class ForgeEncoder
                 }
             }
             objects.Add(obj);
+            // Adventure text is read from a separate linked spell panel.
+            if(visible && !publicFaceDown && LinkedFaces.Value.TryGetValue(c.GetProperty("grpId").GetUInt32().ToString(),out var adventureFaces)) {
+                foreach(uint face in adventureFaces.Values.Distinct()) {
+                    if(face==c.GetProperty("grpId").GetUInt32() || !CardMetadata.Value.TryGetValue(face.ToString(),out var adventure)
+                        || !adventure.GetProperty("subtypes").EnumerateArray().Any(s=>s.GetUInt32()==(uint)SubType.Adventure))continue;
+                    var panel=new Dictionary<string,object> { ["instanceId"]=checked(10_000_000u+id*2),
+                        ["type"]=(int)GameObjectType.Adventure,["grpId"]=face,["parentId"]=id,["zoneId"]=zoneId,
+                        ["ownerSeatId"]=owner,["controllerSeatId"]=controller,["visibility"]=1 };
+                    foreach(var property in adventure.EnumerateObject())panel[property.Name]=property.Value;
+                    objects.Add(panel);
+                }
+            }
+        }
+        // A spell copy chooses targets before Forge adds it to a game zone.
+        // Give Arena a pending casting preview for that authoritative copy ID.
+        if(root.TryGetProperty("input",out var copyInput)
+            && copyInput.TryGetProperty("sourceIsSpellCopy",out var isPendingCopy) && isPendingCopy.GetBoolean()
+            && copyInput.TryGetProperty("abilityIdentity",out var copyIdentity)) {
+            uint copyId=copyInput.GetProperty("sourceId").GetUInt32(),printing=copyIdentity.GetProperty("sourceGrpId").GetUInt32();
+            uint controller=copyInput.TryGetProperty("targetingPlayer",out var copyingPlayer)?copyingPlayer.GetUInt32():viewer;
+            if(!ids.Contains(copyId) && !zones.ContainsKey(copyId) && seats.Contains(controller)
+                && CardMetadata.Value.TryGetValue(printing.ToString(),out var metadata)) {
+                var preview=new Dictionary<string,object> { ["instanceId"]=copyId,["grpId"]=printing,
+                    ["type"]=(int)GameObjectType.Card,["zoneId"]=80u,["ownerSeatId"]=controller,
+                    ["controllerSeatId"]=controller,["visibility"]=(int)Visibility.Public,["isCopy"]=true };
+                foreach(var property in metadata.EnumerateObject())preview[property.Name]=property.Value;
+                ids.Add(copyId);objects.Add(preview);((List<uint>)zones[80]["objectInstanceIds"]).Add(copyId);
+            }
         }
         if(viewer==1 && root.TryGetProperty("revealedCards",out var revealedCards))foreach(var reveal in revealedCards.EnumerateArray()) {
             uint source=reveal.GetProperty("instanceId").GetUInt32(),id=checked(100_000_000u+source);
             var original=root.GetProperty("cards").EnumerateArray().FirstOrDefault(c=>c.GetProperty("instanceId").GetUInt32()==source);
-            if(original.ValueKind==JsonValueKind.Undefined)continue;
+            if(original.ValueKind==JsonValueKind.Undefined && !reveal.TryGetProperty("grpId",out _))continue;
             uint owner=reveal.GetProperty("ownerSeat").GetUInt32(),zoneId=owner*100+8;
-            uint revGrp=original.GetProperty("grpId").GetUInt32();
+            uint revGrp=reveal.TryGetProperty("grpId",out var revealPrinting)?revealPrinting.GetUInt32():original.GetProperty("grpId").GetUInt32();
+            if(revGrp==0)continue;
             var obj=new Dictionary<string,object> { ["instanceId"]=id,["grpId"]=revGrp,
                 ["type"]=(int)GameObjectType.RevealedCard,["zoneId"]=zoneId,["ownerSeatId"]=owner,["controllerSeatId"]=owner,["visibility"]=1 };
             if(CardMetadata.Value.TryGetValue(revGrp.ToString(),out var metadata))
@@ -196,7 +237,8 @@ static class ForgeEncoder
             uint id=entry.GetProperty("instanceId").GetUInt32(), parent=entry.GetProperty("parentId").GetUInt32();
             uint source=entry.GetProperty("sourceGrpId").GetUInt32(), controller=entry.GetProperty("controllerSeat").GetUInt32();
             uint ability=BattlePresentation.AbilityId(source,entry.GetProperty("description").GetString()!,entry.GetProperty("cardName").GetString()!);
-            if(entry.TryGetProperty("abilityIdentity",out var grantedIdentity) && (ability==0
+            bool annihilatorKeyword=ability!=0 && (entry.GetProperty("description").GetString()??"").TrimStart().StartsWith("Annihilator ",StringComparison.OrdinalIgnoreCase);
+            if(!annihilatorKeyword && entry.TryGetProperty("abilityIdentity",out var grantedIdentity) && (ability==0
                 || grantedIdentity.TryGetProperty("granted",out var isGranted) && isGranted.GetBoolean())) {
                 ability=BattlePresentation.GrantedAbilityId(grantedIdentity);
                 source=grantedIdentity.GetProperty("sourceGrpId").GetUInt32();
@@ -209,6 +251,17 @@ static class ForgeEncoder
                 ["abilityOriginalCardGrpIds"]=new[]{source},["uniqueAbilities"]=new[]{new{grpId=ability}} };
             if(CardMetadata.Value.TryGetValue(source.ToString(),out var metadata)) { obj["name"]=metadata.GetProperty("name"); obj["color"]=metadata.GetProperty("color"); }
             objects.Add(obj);
+        }
+        foreach(var entry in stackEntries.Values) {
+            if(!entry.TryGetProperty("selectedModes",out var selectedModes))continue;
+            uint source=entry.GetProperty("sourceGrpId").GetUInt32();
+            var selected=selectedModes.EnumerateArray().Select(mode=>BattlePresentation.AbilityId(source,mode.GetString()!,entry.GetProperty("cardName").GetString()!)).ToArray();
+            if(selected.Length==0 || selected.Any(id=>id==0))continue;
+            var stackObject=objects.FirstOrDefault(obj=>(uint)obj["instanceId"]==entry.GetProperty("instanceId").GetUInt32());
+            if(stackObject==null)continue;
+            // Use the native child ability definitions, which carry the chosen
+            // text, rather than the parent list containing every possible mode.
+            stackObject["uniqueAbilities"]=selected.Select(id=>new {grpId=id}).ToArray();
         }
         // Forge lists these piles oldest first; Arena displays the first
         // instance at the front of the graveyard/exile browser.
@@ -238,7 +291,7 @@ static class ForgeEncoder
         var state = new {
             type = 1, gameStateId = stateId,
             gameInfo = new { matchID = matchId, gameNumber = 1, stage = gameStage, type = players.Length>2?2:1,
-                variant = root.TryGetProperty("format",out var format) && format.GetString() is "Commander" or "Commander4"?4:1,
+                variant = root.TryGetProperty("format",out var format) && format.GetString() is "Commander" or "Commander4" or "CommanderUnbanned"?4:1,
                 matchState = gameStage == 3 ? 3 : 1, matchWinCondition = 1, mulliganType = 3, results },
             teams = players.Select(p => new { id = p.seat, playerIds = new[] { p.seat } }),
             players = players.Select(p => new { lifeTotal = p.life, systemSeatNumber = p.seat, manaPool = p.manaPool,
@@ -256,6 +309,8 @@ static class ForgeEncoder
         var messageJson = JsonSerializer.Serialize(new { type = 1, systemSeatIds = new[] { viewer }, msgId, gameStateId = stateId, gameStateMessage = state });
         var gre = JsonParser.Default.Parse< GREToClientMessage>(messageJson);
         BattlePresentation.StateCounters(root,gre.GameStateMessage);
+        BattleTurnHistory.Apply(root,gre.GameStateMessage);
+        BattlePresentation.StatePlayerProtection(root,gre.GameStateMessage);
         BattlePresentation.StateEntryPayment(root,gre.GameStateMessage);
         BattlePresentation.StateStatModifications(root,gre.GameStateMessage);
         BattlePresentation.StateBlockingRestrictions(root,gre.GameStateMessage);
@@ -271,13 +326,18 @@ static class ForgeEncoder
         }
         BattlePresentation.StateAttachments(root,gre.GameStateMessage);
         BattlePresentation.StateCastingChoices(root,gre.GameStateMessage);
+        BattleTriggerLinks.Apply(root,gre.GameStateMessage);
         BattlePresentation.StateCommanders(root,gre.GameStateMessage);
+        BattlePresentation.StateBattleProtectors(root,gre.GameStateMessage);
         BattlePresentation.StateChosenTypes(root,gre.GameStateMessage);
+        BattlePresentation.StateExileLinks(root,gre.GameStateMessage);
         BattlePresentation.StateOpponentKnowledge(root,gre.GameStateMessage,viewer);
         BattlePresentation.StateLoyaltyActivations(root,gre.GameStateMessage);
         BattlePresentation.StateCostModifications(root,gre.GameStateMessage);
+        BattlePresentation.StateActivationCosts(root,gre.GameStateMessage);
         foreach (var action in BattlePresentation.Actions(root))
             gre.GameStateMessage.Actions.Add(new ActionInfo { ActionId = action.Selection, SeatId = viewer, Action = action });
+        BattlePresentation.StateAdventures(root,gre.GameStateMessage);
         var result = new MatchServiceToClientMessage { GreToClientEvent = new GreToClientEvent() };
         result.GreToClientEvent.GreToClientMessages.Add(gre);
         return result;

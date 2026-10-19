@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Buffers.Binary;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using Wizards.Arena.Models.Network;
 using Wizards.Arena.Protocol;
@@ -27,7 +28,7 @@ sealed class LocalStartup : IDisposable
     internal static string EventName(JToken payload, string fallback) =>
         payload["EventName"]?.ToString() ?? payload["eventName"]?.ToString() ?? payload["InternalEventName"]?.ToString() ?? fallback;
     internal static string? GameMode(string eventName) => eventName switch {
-        "AIBotMatch" => "play", "CommanderAI" => "commander", "CommanderAI4" => "commander4", _ => null
+        "AIBotMatch" => "play", "CommanderAI" => "commander", "CommanderAI4" => "commander4", "CommanderUnbannedAI" => "commander-unbanned", _ => null
     };
     static object Course(string eventName, object? summary = null, object? deck = null) => new {
         InternalEventName=eventName, CurrentModule=Wizards.Arena.Enums.Event.EModule.WinNoGate,
@@ -36,6 +37,11 @@ sealed class LocalStartup : IDisposable
         CurrentWins=0, CurrentLosses=0, CardPool=Array.Empty<uint>()
     };
     private static JToken? _cachedCards;
+    private static int CacheVersion(string content)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(content));
+        return Math.Max(2, BinaryPrimitives.ReadInt32BigEndian(hash) & int.MaxValue);
+    }
     private static readonly HashSet<string> BackendCommands = new(StringComparer.Ordinal) {
         "DeckGetDeckSummariesV3", "DeckGetDeck", "DeckUpsertDeckV3", "DeckDeleteDeck", "CardGetAllCards", "CardGetCardSet"
     };
@@ -115,7 +121,14 @@ sealed class LocalStartup : IDisposable
                 Avatar = new CosmeticsAvatarEntry { Id = "Avatar_Default" }
             }, frame.Version);
         } else if (BackendCommands.Contains(name)) {
-            reply = JsonReply(cmd, await BackendCommand(name, RequestJson(cmd), ct), frame.Version);
+            var payload=await BackendCommand(name, RequestJson(cmd), ct);
+            // Arena uses StringUtils.DeserializeString (raw UTF-8) for deletion.
+            // JSON quoting turns success into a failed client-side deletion.
+            if(cmd.Type==CmdType.DeckDeleteDeck) {
+                if(payload.Type!=JTokenType.String)throw new InvalidDataException("Invalid deck deletion reply");
+                reply=new Frame(frame.Version,1,2,new Response {RawTransId=cmd.RawTransId,
+                    JsonPayload=ByteString.CopyFromUtf8(payload.Value<string>()!)}.ToByteArray());
+            } else reply=JsonReply(cmd,payload,frame.Version);
         } else {
             if (fixture!["payload"] is null) throw new InvalidDataException("Startup fixture payload missing");
             reply = fixture["format"]?.Value<string>() switch {
@@ -209,7 +222,7 @@ sealed class LocalStartup : IDisposable
         var response = new StartHookResponseV2 {
             InventoryInfo = new InventoryInfo { SeqId = 1, Cosmetics = new CosmeticsClient() },
             PreferredCosmetics = new PreferredCosmetics(), HomePageAchievements = new HomePageAchievements(),
-            DeckSummariesCacheVersion = 1, DecksCacheVersion = 1, PreferredCosmeticsCacheVersion = 1,
+            PreferredCosmeticsCacheVersion = 1,
             TokenDefinitionsCacheVersion = 1, KillSwitchNotificationCacheVersion = 1, ClientPeriodicRewardsCacheVersion = 1,
             KillSwitchNotification = new KillSwitchNotification(), CardMetadataInfo = new CardMetadataInfo(),
             DeckLimit = 250, ServerTime = DateTimeOffset.UtcNow
@@ -217,6 +230,8 @@ sealed class LocalStartup : IDisposable
         var native = await BackendCommand("DeckGetDeckSummariesV3", new JObject(), ct);
         var summaries = native.ToObject<Wizards.Unification.Models.Deck.GetDeckSummariesResponseV3>()?.Summaries ?? throw new InvalidDataException("Deck summary list missing");
         if (summaries.Count > 250) throw new InvalidDataException("Local deck count exceeds limit");
+        response.DeckSummariesCacheVersion = CacheVersion(native.ToString(Formatting.None));
+        var deckVersions = new StringBuilder();
         foreach (var summary in summaries) {
             var proto = new DeckSummaryV3 { DeckId = summary.DeckId, Name = summary.Name ?? "", Mana = summary.Mana ?? "", Description = summary.Description ?? "",
                 DeckTileId = summary.DeckTileId, DeckArtId = summary.DeckArtId, IsCompanionValid = summary.IsCompanionValid,
@@ -224,6 +239,7 @@ sealed class LocalStartup : IDisposable
             foreach (var attr in summary.Attributes ?? new()) proto.Attributes.Add(new Wizards.Arena.Models.Network.DeckAttribute { Name = attr.name, Value = attr.value });
             response.DeckSummaries.Add(proto);
             var body = (await BackendCommand("DeckGetDeck", JObject.FromObject(new { DeckId = summary.DeckId }), ct)).ToObject<Wizards.Unification.Models.Deck.Deck>() ?? throw new InvalidDataException("Deck body missing");
+            deckVersions.Append(summary.DeckId.ToString("D")).Append(':').Append(JsonConvert.SerializeObject(body)).Append('\n');
             var deck = new Wizards.Arena.Models.Network.Deck();
             foreach (var card in body.MainDeck) deck.MainDeck.Add(new Wizards.Arena.Models.Network.DeckCard { CardId = card.cardId, Quantity = card.quantity });
             foreach (var card in body.Sideboard) deck.Sideboard.Add(new Wizards.Arena.Models.Network.DeckCard { CardId = card.cardId, Quantity = card.quantity });
@@ -232,6 +248,7 @@ sealed class LocalStartup : IDisposable
             foreach (var skin in body.CardSkins) deck.CardSkins.Add(new Wizards.Arena.Models.Network.CardSkin { GrpId = skin.GrpId, CCV = skin.CCV ?? "" });
             response.DecksInternal[summary.DeckId.ToString("D")] = deck;
         }
+        response.DecksCacheVersion = CacheVersion(deckVersions.ToString());
         return response;
     }
     async Task<Frame> HandleMatchmaking(Cmd cmd, byte version, CancellationToken ct)

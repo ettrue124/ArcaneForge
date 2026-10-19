@@ -51,10 +51,31 @@ final class BattleInputs {
             result.put("options",List.of(field(current,"yesButtonText"),field(current,"noButtonText")));
             Object source=field(current,"sa");
             Object card=field(current,"card");
+            if(source instanceof SpellAbility sa && sa.getApi()==forge.game.ability.ApiType.Draw
+                && forge.game.ability.AbilityUtils.calculateAmount(sa.getHostCard(),sa.getParamOrDefault("NumCards","1"),sa)==1
+                && cleanMsg.startsWith("Do you want to draw "))
+                result.put("optionalDraw",true);
+            if(source instanceof SpellAbility sa && sa.getApi()==forge.game.ability.ApiType.Sacrifice
+                && sa.hasParam("Optional") && "True".equalsIgnoreCase(sa.getParam("Optional"))) {
+                String valid=sa.getParamOrDefault("SacValid","");
+                int sacrificePrompt=switch(valid) {
+                    case "Creature" -> 5014;
+                    case "Artifact" -> 4805;
+                    case "Land" -> 5192;
+                    case "Artifact,Creature,Enchantment,Land,Planeswalker", "Permanent" -> 1781;
+                    case "Permanent.sharesCardTypeWith RememberedCard" -> 11151;
+                    default -> 0;
+                };
+                if(sacrificePrompt!=0)result.put("optionalSacrificePrompt",sacrificePrompt);
+            }
             if(source instanceof forge.game.trigger.WrappedAbility || cleanMsg.startsWith("Use triggered ability of")) {
-                result.put("optionalTrigger",true);
+                result.put("optionalTrigger",!(source instanceof SpellAbility costed
+                    && costed.hasParam("Cost") && !"0".equals(costed.getParam("Cost"))));
                 if(source instanceof forge.game.trigger.WrappedAbility wrapper) {
                     var effect=wrapper.getWrappedAbility();
+                    if(effect.getPayCosts()!=null && effect.getPayCosts().getCostParts().stream().anyMatch(part ->
+                        part instanceof forge.game.cost.CostSacrifice sacrifice && sacrifice.payCostFromSource()))
+                        result.put("optionalSacrificePrompt",effect.getHostCard().isLand()?5192:1781);
                     if(effect.getApi()==forge.game.ability.ApiType.ChangeZone && effect.hasParam("Imprint")
                         && "Hand".equals(effect.getParam("Origin")) && "Exile".equals(effect.getParam("Destination"))
                         && "Card.nonArtifact+nonLand".equals(effect.getParam("ChangeType")))
@@ -80,6 +101,13 @@ final class BattleInputs {
             List<Integer> choices=new ArrayList<>();
             for(Object value:(Iterable<?>)field(current,"validChoices"))choices.add(id((GameEntity)value,seats));
             result.put("choices",choices);result.put("min",field(current,"min"));result.put("max",field(current,"max"));
+            Object selectionAbility=field(current,"sa");
+            if(selectionAbility instanceof SpellAbility sa) {
+                result.put("sourceId",forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
+                if(sa.getApi()==forge.game.ability.ApiType.Discard)result.put("selectionPurpose","discard");
+                  else if(sa.getApi()==forge.game.ability.ApiType.Sacrifice)
+                      result.put("selectionPurpose",sa.hasParam("SacValid") && sa.getParam("SacValid").equals("Creature")?"sacrificeCreature":"sacrificePermanent");
+            }
         }
         if(current instanceof InputSelectTargets) {
             SpellAbility sa=(SpellAbility)field(current,"sa");
@@ -88,6 +116,7 @@ final class BattleInputs {
             for(GameEntity candidate:sa.getTargetRestrictions().getAllCandidates(sa))targets.add(id(candidate,seats));
             result.put("targets",targets);result.put("sourceId",forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
             result.put("description",ForgePlayback.abilityDescription(sa)); result.put("cardName",sa.getHostCard().getName());
+            result.put("sourceIsSpellCopy",sa.isSpell() && sa.isCopied());
             result.put("validTargetTypes",Arrays.asList(sa.getTargetRestrictions().getValidTgts()));
             int targetIndex=0;
             for(var group=sa.getRootAbility();group!=null && group!=sa;group=group.getSubAbility())
@@ -135,6 +164,20 @@ final class BattleInputs {
             Object mc=field(payment,"manaCost");
             if(mc!=null) {
                 result.put("manaCost",mc.toString());
+            }
+            if(mc instanceof forge.game.mana.ManaCostBeingPaid manaCost && sa instanceof SpellAbility ability
+                && field(payment,"player") instanceof Player payer && payer.getManaPool().totalMana()>0) {
+                var spent=new ArrayList<forge.game.mana.Mana>();
+                try {
+                    if(payer.getManaPool().payManaCostFromPool(new forge.game.mana.ManaCostBeingPaid(manaCost),ability,false,spent))
+                        result.put("autoTapPool",spent.stream().map(m->{
+                            int color=switch(forge.card.MagicColor.toShortString(m.getColor())) {
+                                case "W"->1;case "U"->2;case "B"->3;case "R"->4;case "G"->5;default->12;
+                            };
+                            return obj("manaId",ForgeEngineMain.manaWireId(m,color),"color",color,
+                                "srcInstanceId",forge.game.ArenaCardIds.id(m.getSourceCard().getId()),"count",1,"restricted",m.isRestricted());
+                        }).toList());
+                } finally {payer.getManaPool().refundMana(spent);}
             }
             result.put("mandatory",field(payment,"mandatory"));
             Object autoSources=field(payment,"autoPayManaSources");

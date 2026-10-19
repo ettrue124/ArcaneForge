@@ -108,6 +108,7 @@ public class GameAction {
 
         // dev mode
         if (zoneFrom == null && !c.isToken()) {
+            if(zoneTo.is(ZoneType.Battlefield))ArenaCardIds.prepareBattlefield(c.getId());
             zoneTo.add(c, position, CardCopyService.getLKICopy(c));
             checkStaticAbilities();
             game.getTriggerHandler().registerActiveTrigger(c, true);
@@ -515,6 +516,7 @@ public class GameAction {
                 }
                 if (card == c) {
                     storeChangesZoneAll(copied, zoneFrom, zoneTo, params);
+                    if(toBattlefield && !fromBattlefield)ArenaCardIds.prepareBattlefield(copied.getId());
                     zoneTo.add(copied, position, toBattlefield ? null : lastKnownInfo); // the modified state of the card is also reported here (e.g. for Morbid + Awaken)
                 } else {
                     storeChangesZoneAll(card, zoneFrom, zoneTo, params);
@@ -532,6 +534,7 @@ public class GameAction {
             }
             // "enter the battlefield as a copy" - apply code here
             // but how to query for input here and continue later while the callers assume synchronous result?
+            if(toBattlefield && !fromBattlefield)ArenaCardIds.prepareBattlefield(copied.getId());
             zoneTo.add(copied, position, toBattlefield ? null : lastKnownInfo); // the modified state of the card is also reported here (e.g. for Morbid + Awaken)
             c.setZone(zoneTo);
         }
@@ -1093,7 +1096,7 @@ public class GameAction {
     public final void checkStaticAbilities(final boolean runEvents) {
         checkStaticAbilities(runEvents, Sets.newHashSet(), CardCollection.EMPTY);
     }
-    public final void checkStaticAbilities(final boolean runEvents, final Set<Card> affectedCards, final CardCollectionView preList) {
+    public final synchronized void checkStaticAbilities(final boolean runEvents, final Set<Card> affectedCards, final CardCollectionView preList) {
         if (isCheckingStaticAbilitiesOnHold()) {
             return;
         }
@@ -2454,6 +2457,11 @@ public class GameAction {
         boolean isFirstGame = lastGameOutcome == null;
         if (isFirstGame) {
             game.fireEvent(new GameEventFlipCoin()); // Play the Flip Coin sound
+            // Local single-game matches randomly assign the actual first player.
+            // Do not let a subsequent Play/Draw default replace this assignment,
+            // or reuse the deterministic RNG used by simulation/deck shuffles.
+            if(game.getPlayers().stream().anyMatch(p->p.getController().getClass().getSimpleName().equals("BattlePlayerControllerHuman")))
+                return game.getPlayers().get(java.util.concurrent.ThreadLocalRandom.current().nextInt(game.getPlayers().size()));
             goesFirst = Aggregates.random(game.getPlayers());
         } else {
             for (Player p : game.getPlayers()) {
@@ -2551,7 +2559,13 @@ public class GameAction {
                     continue;
                 }
 
-                takesAction.getController().playSpellAbilityNoStack(sa, true);
+                try {
+                    takesAction.getController().playSpellAbilityNoStack(sa, true);
+                } finally {
+                    // Opening-hand effects do not emit stack resolution events.
+                    // Discard display selections for moves replaced/prevented.
+                    ArenaCardIds.clearPendingExileSelections();
+                }
                 if (sa.hasParam("BecomeStartingPlayer")) {
                     newFirst = takesAction;
                 }
