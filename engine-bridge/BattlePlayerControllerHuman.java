@@ -30,7 +30,35 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BattlePlayerControllerHuman extends PlayerControllerHuman {
+public class BattlePlayerControllerHuman extends PlayerControllerHuman implements forge.game.ArenaDistinctTypeChoice {
+    @Override
+    public List<Card> chooseDistinctTypeCards(List<Card> cards, SpellAbility source) {
+        var views=forge.game.GameEntityView.getMap(cards);
+        var types=new java.util.HashSet<forge.card.CardType.CoreType>();
+        for(Card card:cards)for(var type:card.getType().getCoreTypes())types.add(type);
+        tempShowCards(new CardCollection(cards));
+        try {
+            String title="Atraxa: Select cards to put into your hand — one per card type";
+            while(true) {
+                final String question=title;
+                var selected=BattlePromptContext.with(Map.<String,Object>of("nativeKind","search",
+                    "selectionPurpose","distinctTypes","title",question,
+                    "sourceId",forge.game.ArenaCardIds.id(source.getHostCard().getId())),
+                    ()->getGui().getChoices(question,0,Math.min(types.size(),cards.size()),views.getTrackableKeys()));
+                List<Card> result=new ArrayList<>();views.addToList(selected,result);
+                if(assignDistinctTypes(result,0,new java.util.HashSet<>()))return result;
+                title="Each selected card must count for a different card type. Choose again.";
+            }
+        } finally {endTempShowCards();}
+    }
+    private static boolean assignDistinctTypes(List<Card> cards,int index,java.util.Set<forge.card.CardType.CoreType> used) {
+        if(index==cards.size())return true;
+        for(var type:cards.get(index).getType().getCoreTypes())if(used.add(type)) {
+            if(assignDistinctTypes(cards,index+1,used))return true;
+            used.remove(type);
+        }
+        return false;
+    }
     private int declinePactResolution = -1;
     // Preview calls run on the bridge thread; real payment runs on the game thread.
     static final ThreadLocal<Boolean> PREVIEW_PAYMENT=ThreadLocal.withInitial(()->false);
@@ -203,19 +231,39 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman {
         return !selected.isEmpty() && selected.get(0).equals(choices.get(0));
     }
     @Override
+    public CardCollectionView chooseCardsToDiscardFrom(final Player p, final SpellAbility sa,
+            final CardCollection valid, final int min, final int max, final CardCollectionView visibleToChooser) {
+        return chooseDiscardCards(valid,min,max,sa);
+    }
+    private CardCollectionView chooseDiscardCards(final CardCollectionView valid, final int min, final int max,
+            final SpellAbility sa) {
+        int limit=Math.min(max,valid.size());
+        boolean keep=min==limit && min>valid.size()/2 && min<valid.size();
+        int chooseMin=keep?valid.size()-limit:min;
+        int chooseMax=keep?chooseMin:limit;
+        var cards=forge.game.GameEntityView.getMap(valid);
+        tempShowCards(valid);
+        try {
+            var context=Map.<String,Object>of("nativeKind",keep?"search":"discard",
+                "selectionPurpose",keep?"keep":"discard",
+                "sourceId",sa==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
+            String title=keep?"Select "+chooseMin+" card(s) to keep":
+                min==limit?"Discard "+min+" card(s)":"Discard "+min+" to "+limit+" cards";
+            var selected=BattlePromptContext.with(context,
+                ()->getGui().getChoices(title,chooseMin,chooseMax,cards.getTrackableKeys()));
+            CardCollection picked=new CardCollection();cards.addToList(selected,picked);
+            if(picked.size()<chooseMin || picked.size()>chooseMax)throw new IllegalStateException("Incomplete discard choice");
+            if(!keep)return picked;
+            CardCollection discarded=new CardCollection();
+            for(Card card:valid)if(!picked.contains(card))discarded.add(card);
+            return discarded;
+        } finally {endTempShowCards();}
+    }
+    @Override
     public CardCollectionView chooseCardsToDiscardToMaximumHandSize(final int nDiscard) {
         // Keep cleanup on the same blocking card-choice path as other Arena
         // decisions, instead of the desktop input's await-next-input shortcut.
-        var cards = forge.game.GameEntityView.getMap(getPlayer().getCardsIn(ZoneType.Hand));
-        tempShowCards(getPlayer().getCardsIn(ZoneType.Hand));
-        try {
-            var selected = getGui().getChoices("Discard " + nDiscard + " card(s) to your maximum hand size",
-                nDiscard, nDiscard, cards.getTrackableKeys());
-            CardCollection result = new CardCollection();
-            cards.addToList(selected, result);
-            if (result.size() != nDiscard) throw new IllegalStateException("Incomplete cleanup discard");
-            return result;
-        } finally { endTempShowCards(); }
+        return chooseDiscardCards(getPlayer().getCardsIn(ZoneType.Hand),nDiscard,nDiscard,null);
     }
 
     @Override
@@ -731,7 +779,11 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman {
         if (sa.hasParam("Cost") && !sa.getParam("Cost").equals("0")) {
             boolean sacrificeSource=sa.getPayCosts().getCostParts().stream().anyMatch(part ->
                 part instanceof forge.game.cost.CostSacrifice sacrifice && sacrifice.payCostFromSource());
-            String payment=sacrificeSource?"Sacrifice " + regtrig.getHostCard().getName():"Pay " + sa.getPayCosts().toSimpleString();
+            String costText=sa.getPayCosts().toSimpleString()
+                .replace("CARDNAME",regtrig.getHostCard().getName())
+                .replace("NICKNAME",regtrig.getHostCard().getName());
+            String payment=sacrificeSource?"Sacrifice " + regtrig.getHostCard().getName():
+                costText.startsWith("Exile ")?costText:"Pay " + costText;
             if(!sacrificeSource && sa.getParam("Cost").trim().matches("C(?:\\s+C)*"))
                 payment="Pay " + sa.getParam("Cost").trim().split("\\s+").length + " colorless mana";
             return forge.gamemodes.match.input.InputConfirm.confirm(this, wrapper,

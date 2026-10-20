@@ -640,6 +640,18 @@
     "value": 2916
   },
   {
+    "name": "GatheringCreateV3",
+    "value": 2917
+  },
+  {
+    "name": "GatheringUpdateMetadataV2",
+    "value": 2918
+  },
+  {
+    "name": "GatheringReconnectAllV2",
+    "value": 2919
+  },
+  {
     "name": "ChallengeJoin",
     "value": 3000
   },

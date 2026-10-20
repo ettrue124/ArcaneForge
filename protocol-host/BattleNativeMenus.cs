@@ -153,6 +153,10 @@ static class BattleNativeMenus
             return message;
         }
         if(input.TryGetProperty("nativeKind",out kind) && kind.GetString()=="search") {
+            if(input.TryGetProperty("selectionPurpose",out var purpose) && purpose.GetString() is "keep" or "distinctTypes")
+                message.Prompt=new Prompt {PromptId=2920000u,Parameters={new PromptParameter {
+                    ParameterName="question",Type=ParameterType.NonLocalizedString,
+                    StringValue=input.GetProperty("title").GetString()??"Select cards to keep"}}};
             message.Type=GREMessageType.SearchReq;
             message.SearchReq=new SearchReq {SourceId=input.GetProperty("sourceId").GetUInt32(),
                 MinFind=input.GetProperty("min").GetUInt32(),MaxFind=input.GetProperty("max").GetUInt32(),

@@ -24,6 +24,10 @@ def definitions():
             parsed.append(dict(kind=kind, **params))
         if parsed:
             result[name] = parsed
+    if not result:
+        import json
+        exported=ROOT/'data/rulebreaker-definitions.json'
+        if exported.exists():return json.loads(exported.read_text(encoding='utf8'))
     return result
 
 

@@ -1,5 +1,9 @@
 # Local Arena server research build
 
+## VPN multiplayer work
+
+See [MULTIPLAYER-SETUP.md](MULTIPLAYER-SETUP.md) for the new account-owned match rooms, human/bot event queues, format rules, client display-pack export and VPN launchers. The implementation compiles but has not been verified with two Arena clients. VPN access is not active until Tailscale is installed and signed in. Full Arena-only card compatibility remains incomplete; the support inventory currently identifies 32 installed digital cards without exact rules implementations.
+
 For publication status, confirmed gaps and required visual acceptance, see [RELEASE-READINESS.md](RELEASE-READINESS.md). Full Arena animation parity is not release-ready.
 
 ## Import more Magic cards

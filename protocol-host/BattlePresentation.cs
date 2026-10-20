@@ -447,7 +447,8 @@ static class BattlePresentation
                 uint ability=AbilityId(sourceGrp,restriction.GetProperty("description").GetString()!,restriction.GetProperty("cardName").GetString()!);
                 if(ability==0)continue;
                 current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(3_600_000_000u+target*16+slot++),AffectorId=target,AffectedIds={target},
-                    Type={AnnotationType.Qualification},Details={IntDetail("QualificationType",(int)QualificationType.CantBeBlocked),
+                    Type={AnnotationType.Qualification},Details={IntDetail("QualificationType",(int)(restriction.TryGetProperty("qualification",out var qualification)
+                        && qualification.GetString()=="CantBlock"?QualificationType.CantBlock:QualificationType.CantBeBlocked)),
                         IntDetail("grpid",checked((int)ability)),IntDetail("parent_grpid",checked((int)sourceGrp)),
                         IntDetail("SourceParent",checked((int)(restriction.TryGetProperty("sourceId",out var restrictionSource)?restrictionSource.GetUInt32():target)))}});
             }
@@ -463,6 +464,9 @@ static class BattlePresentation
             }
         }
         foreach (var action in actions.EnumerateArray()) {
+            // Evoke is a separate casting choice, not a change to the
+            // creature's printed cost. Keep its price on that action only.
+            if(action.TryGetProperty("evoke",out var evoke) && evoke.GetBoolean())continue;
             if (!action.TryGetProperty("instanceId", out var idProp) ||
                 !action.TryGetProperty("actionType", out var typeProp) ||
                 typeProp.GetInt32() != 1) continue;

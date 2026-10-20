@@ -28,7 +28,7 @@ sealed class LocalStartup : IDisposable
     internal static string EventName(JToken payload, string fallback) =>
         payload["EventName"]?.ToString() ?? payload["eventName"]?.ToString() ?? payload["InternalEventName"]?.ToString() ?? fallback;
     internal static string? GameMode(string eventName) => eventName switch {
-        "AIBotMatch" => "play", "NoBans60AI" => "no-bans-60", "CommanderAI" => "commander", "CommanderAI4" => "commander4", "CommanderUnbannedAI" => "commander-unbanned", _ => null
+        "AIBotMatch" => "play", "NoBans60AI" => "no-bans-60", "CommanderAI" => "commander", "CommanderAI4" => "commander4", "CommanderUnbannedAI" => "commander-unbanned", _ => IsNetworkEvent(eventName)?"network":null
     };
     static object Course(string eventName, object? summary = null, object? deck = null) => new {
         InternalEventName=eventName, CurrentModule=Wizards.Arena.Enums.Event.EModule.WinNoGate,
@@ -45,10 +45,11 @@ sealed class LocalStartup : IDisposable
     private static readonly HashSet<string> BackendCommands = new(StringComparer.Ordinal) {
         "DeckGetDeckSummariesV3", "DeckGetDeck", "DeckUpsertDeckV3", "DeckDeleteDeck", "CardGetAllCards", "CardGetCardSet"
     };
-    public readonly Queue<Frame> PendingPushes = new();
+    public readonly System.Collections.Concurrent.ConcurrentQueue<Frame> PendingPushes = new();
+    private (string Deck,string Event,byte Version)? _queuedMatch;
     public LocalStartup(string backend) => _backend = backend;
     public void Dispose() => _http.Dispose();
-    public void ForgetAuthentication() { _token = null; _tokenValidUntil = DateTime.MinValue; }
+    public void ForgetAuthentication() { _token = null; _tokenValidUntil = DateTime.MinValue; _queuedMatch=null;_lastSelectedDeckId=null; }
     public void AcceptAuthentication(Frame frame)
     {
         var cmd = Cmd.Parser.ParseFrom(frame.Body);
@@ -62,7 +63,7 @@ sealed class LocalStartup : IDisposable
         var cmd = Cmd.Parser.ParseFrom(frame.Body);
         string name = cmd.Type.ToString();
         JObject? fixture = Fixture(name);
-        if (cmd.Type != CmdType.ChallengeCreate && cmd.Type != CmdType.ChallengeExit && cmd.Type != CmdType.EventAiBotMatch && cmd.Type != CmdType.EventEnterPairing && cmd.Type != CmdType.GraphGetGraphDefinitions && cmd.Type != CmdType.StartHook && !BackendCommands.Contains(name) && fixture is null) return null;
+        if (cmd.Type != CmdType.ChallengeCreate && cmd.Type != CmdType.ChallengeExit && cmd.Type != CmdType.EventLeavePairing && cmd.Type != CmdType.EventDrop && cmd.Type != CmdType.EventResign && cmd.Type != CmdType.EventAiBotMatch && cmd.Type != CmdType.EventEnterPairing && cmd.Type != CmdType.GraphGetGraphDefinitions && cmd.Type != CmdType.StartHook && !BackendCommands.Contains(name) && fixture is null) return null;
         try {
         if (DateTime.UtcNow > _tokenValidUntil) {
             using var request = new HttpRequestMessage(HttpMethod.Get, _backend.TrimEnd('/') + "/api/me");
@@ -89,6 +90,26 @@ sealed class LocalStartup : IDisposable
                     challengeId = Guid.NewGuid().ToString("D")
                 }
             }, frame.Version);
+        } else if (cmd.Type == CmdType.EventLeavePairing) {
+            _queuedMatch=null;
+            await PlayRequest("leave",new {},ct);
+            reply=JsonReply(cmd,"",frame.Version);
+        } else if (cmd.Type == CmdType.EventResign) {
+            var eventName=EventName(RequestJson(cmd),_lastSelectedEventName);
+            if(GameMode(eventName) is null)throw new InvalidDataException("Unknown local event to resign");
+            reply=JsonReply(cmd,new Wizards.Unification.Models.Event.ClientPlayerCourseV3 {
+                InternalEventName=eventName,CurrentModule=Wizards.Arena.Enums.Event.EModule.Complete
+            },frame.Version);
+        } else if (cmd.Type == CmdType.EventDrop) {
+            var eventName=EventName(RequestJson(cmd),_lastSelectedEventName);
+            if(GameMode(eventName) is null)throw new InvalidDataException("Unknown local event to leave");
+            _lastSelectedDeckId=null;
+            _queuedMatch=null;
+            await PlayRequest("leave",new {},ct);
+            _lastSelectedEventName=eventName;
+            // Native DropFromEvent expects CourseResponseV2, then constructs
+            // an empty local course from the requested event name.
+            reply=JsonReply(cmd,new Wizards.Unification.Models.Events.CourseResponseV2(),frame.Version);
         } else if (cmd.Type == CmdType.EventJoin) {
             _lastSelectedEventName=EventName(RequestJson(cmd),_lastSelectedEventName);
             reply=JsonReply(cmd,new {Course=Course(_lastSelectedEventName),InventoryInfo=(object?)null},frame.Version);
@@ -251,6 +272,28 @@ sealed class LocalStartup : IDisposable
         response.DecksCacheVersion = CacheVersion(deckVersions.ToString());
         return response;
     }
+    static readonly Lazy<HashSet<string>> NetworkEvents=new(()=>File.Exists("data/multiplayer-events.json")
+        ?JsonConvert.DeserializeObject<HashSet<string>>(File.ReadAllText("data/multiplayer-events.json"))!
+        : (Fixture("GetPlayBladeQueueConfig")?["payload"]?.OfType<JObject>()
+            .Select(row=>row["Id"]?.ToString()??"")
+            .Where(id=>(id.EndsWith("AI",StringComparison.Ordinal) || id.EndsWith("PvP",StringComparison.Ordinal))
+                && !new[]{"CommanderAI","CommanderUnbannedAI","NoBans60AI","CommanderAI4"}.Contains(id))
+            .ToHashSet() ?? new()));
+    static bool IsNetworkEvent(string name)=>NetworkEvents.Value.Contains(name);
+    async Task<JObject> PlayRequest(string path,object? body,CancellationToken ct) {
+        using var req=new HttpRequestMessage(body is null?HttpMethod.Get:HttpMethod.Post,_backend.TrimEnd('/')+"/api/play/"+path);
+        req.Headers.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",_token);
+        if(body is not null)req.Content=new StringContent(JsonConvert.SerializeObject(body),Encoding.UTF8,"application/json");
+        using var response=await _http.SendAsync(req,ct);response.EnsureSuccessStatusCode();
+        return JObject.Parse(await response.Content.ReadAsStringAsync(ct));
+    }
+    public async Task PollMatchmaking(CancellationToken ct) {
+        if(_queuedMatch is not {} queued)return;
+        var status=await PlayRequest("status",null,ct);
+        if(status["status"]?.ToString()!="matched")return;
+        _queuedMatch=null;
+        await CompleteMatchmaking(status,queued.Deck,queued.Event,queued.Version,ct);
+    }
     async Task<Frame> HandleMatchmaking(Cmd cmd, byte version, CancellationToken ct)
     {
         string deckId = "";
@@ -268,12 +311,23 @@ sealed class LocalStartup : IDisposable
         if (string.IsNullOrEmpty(deckId)) {
             throw new InvalidDataException("No deck selected for match");
         }
+        if(IsNetworkEvent(eventName)) {
+            var joined=await PlayRequest("join",new {deckId,@event=eventName},ct);
+            if(joined["status"]?.ToString() is "queued" or "starting")_queuedMatch=(deckId,eventName,version);
+            else await CompleteMatchmaking(joined,deckId,eventName,version,ct);
+            return JsonReply(cmd,"",version);
+        }
         using var startReq = new HttpRequestMessage(HttpMethod.Post, _backend.TrimEnd('/') + "/api/interactive/start");
         startReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _token);
         startReq.Content = new StringContent(JsonConvert.SerializeObject(new { deckId, botDeckId, mode=GameMode(eventName) }), Encoding.UTF8, "application/json");
         using var startResp = await _http.SendAsync(startReq, ct);
         startResp.EnsureSuccessStatusCode();
         var started=JObject.Parse(await startResp.Content.ReadAsStringAsync(ct));
+        await CompleteMatchmaking(started,deckId,eventName,version,ct);
+        return JsonReply(cmd,"",version);
+    }
+    async Task CompleteMatchmaking(JObject started,string deckId,string eventName,byte version,CancellationToken ct)
+    {
         int playerCount=started["playerCount"]?.Value<int>()??2;
         if(playerCount is not (2 or 4))throw new InvalidDataException("Invalid local match player count");
 
@@ -300,7 +354,12 @@ sealed class LocalStartup : IDisposable
             deckCards=started["deckCards"]!.Values<uint>().ToList();
             sbCards.Clear();commanderCards.Clear();
         }
-        ActiveMatches.Register(matchId, _token!, deckId, deckCards, sbCards, commanderCards);
+        using var ownerRequest=new HttpRequestMessage(HttpMethod.Get,_backend.TrimEnd('/')+"/api/me");
+        ownerRequest.Headers.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",_token);
+        using var ownerReply=await _http.SendAsync(ownerRequest,ct);ownerReply.EnsureSuccessStatusCode();
+        var owner=JObject.Parse(await ownerReply.Content.ReadAsStringAsync(ct));
+        string persona=owner["persona_id"]?.ToString()??owner["id"]!.ToString();
+        ActiveMatches.Register(matchId, _token!, deckId, deckCards, sbCards, commanderCards,persona);
 
         var matchInfo = new Wizards.Arena.Models.Network.ClientMatchInfoV4 {
             MatchEndpointHost = "127.0.0.1",
@@ -319,7 +378,7 @@ sealed class LocalStartup : IDisposable
         });
         for(int seat=2;seat<=playerCount;seat++)
             matchInfo.PlayerInfos.Add(new Wizards.Arena.Models.Network.ClientMatchPlayerInfoV2 {
-                ScreenName = playerCount==2?"Forge AI":"Forge AI "+(seat-1), SeatId = seat, TeamId = seat
+                ScreenName = started["opponentType"]?.ToString()=="human"?"Opponent":playerCount==2?"Forge AI":"Forge AI "+(seat-1), SeatId = seat, TeamId = seat
             });
         var push = new Wizards.Unification.Models.Player.PushNotification(Wizards.Arena.Enums.Player.ENotificationType.MatchCreated) {
             MatchInfoV4 = matchInfo
@@ -330,6 +389,5 @@ sealed class LocalStartup : IDisposable
         };
         PendingPushes.Enqueue(new Frame(version, 1, 2, pushResponse.ToByteArray()));
         Console.WriteLine($"Initiated bot match {matchId} with deck {deckId}; enqueued MatchCreated push notification.");
-        return JsonReply(cmd, "", version);
     }
 }

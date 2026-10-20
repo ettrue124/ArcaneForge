@@ -227,7 +227,16 @@ static class Host
                 options.ServerCertificateContext = SslStreamCertificateContext.Create(cert, extraCertificates ?? new X509Certificate2Collection(), offline: true);
                 await stream.AuthenticateAsServerAsync(options, timeout.Token);
                 using var startup = new LocalStartup(backend);
-                while (await Frames.Read(stream, timeout.Token) is { } frame) {
+                var read=Frames.Read(stream,timeout.Token);
+                while(true) {
+                    if(await Task.WhenAny(read,Task.Delay(1000,timeout.Token))!=read) {
+                        await startup.PollMatchmaking(timeout.Token);
+                        while(startup.PendingPushes.TryDequeue(out var queuedPush))
+                            await stream.WriteAsync(Frames.Encode(queuedPush),timeout.Token);
+                        continue;
+                    }
+                    if(await read is not {} frame)break;
+                    read=Frames.Read(stream,timeout.Token);
                     timeout.CancelAfter(TimeSpan.FromMinutes(2));
                     if (mode == "frontdoor" && frame.Type == 1 && frame.Format == 2 && Cmd.Parser.ParseFrom(frame.Body).Type == CmdType.Authenticate) startup.ForgetAuthentication();
                     var localReply = backend.Length > 0 && mode == "frontdoor" && frame.Type == 1 ? await LocalAuth.TryReply(frame, backend, timeout.Token) : null;
@@ -240,7 +249,7 @@ static class Host
                         }
                     }
                 }
-            } catch (Exception e) when (e is IOException or AuthenticationException or OperationCanceledException or InvalidProtocolBufferException) {
+            } catch (Exception e) when (e is IOException or AuthenticationException or OperationCanceledException or InvalidProtocolBufferException or HttpRequestException or InvalidDataException) {
                 Console.WriteLine($"Connection ended: {e.GetType().Name}");
             }
         }

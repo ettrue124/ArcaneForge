@@ -180,6 +180,8 @@ def main():
     write_json(eligible_path,eligibility)
     write_json(ROOT/'data/forge-coverage.json',coverage)
     subprocess.run([sys.executable,str(ROOT/'tools/update_commander.py'),'--cached'],cwd=ROOT,check=True)
+    if (ROOT/'data/format-policies.json').exists():
+        subprocess.run([sys.executable,str(ROOT/'tools/update_multiplayer_formats.py')],cwd=ROOT,check=True)
     old_ids={c['grpId'] for c in old}
     added=[{'grpId':c['grpId'],'name':c['name']} for c in cards if c['grpId'] not in old_ids]
     report={'syncVersion':2,'databaseSha256':digest,**identity,

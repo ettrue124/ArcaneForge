@@ -241,6 +241,720 @@
           "Tags": [
             "NoBans60"
           ]
+        },
+        {
+          "Id": "StandardAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/StandardAI",
+          "EventNameBO1": "StandardAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Standard"
+          ]
+        },
+        {
+          "Id": "StandardPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/StandardPvP",
+          "EventNameBO1": "StandardPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Standard"
+          ]
+        },
+        {
+          "Id": "AlchemyAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/AlchemyAI",
+          "EventNameBO1": "AlchemyAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Alchemy"
+          ]
+        },
+        {
+          "Id": "AlchemyPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/AlchemyPvP",
+          "EventNameBO1": "AlchemyPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Alchemy"
+          ]
+        },
+        {
+          "Id": "ExplorerAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/ExplorerAI",
+          "EventNameBO1": "ExplorerAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Explorer"
+          ]
+        },
+        {
+          "Id": "ExplorerPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/ExplorerPvP",
+          "EventNameBO1": "ExplorerPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Explorer"
+          ]
+        },
+        {
+          "Id": "PioneerAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/PioneerAI",
+          "EventNameBO1": "PioneerAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Pioneer"
+          ]
+        },
+        {
+          "Id": "PioneerPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/PioneerPvP",
+          "EventNameBO1": "PioneerPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Pioneer"
+          ]
+        },
+        {
+          "Id": "HistoricAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/HistoricAI",
+          "EventNameBO1": "HistoricAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Historic"
+          ]
+        },
+        {
+          "Id": "HistoricPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/HistoricPvP",
+          "EventNameBO1": "HistoricPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Historic"
+          ]
+        },
+        {
+          "Id": "TimelessAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/TimelessAI",
+          "EventNameBO1": "TimelessAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Timeless"
+          ]
+        },
+        {
+          "Id": "TimelessPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/TimelessPvP",
+          "EventNameBO1": "TimelessPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Timeless"
+          ]
+        },
+        {
+          "Id": "ModernAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/ModernAI",
+          "EventNameBO1": "ModernAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Modern"
+          ]
+        },
+        {
+          "Id": "ModernPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/ModernPvP",
+          "EventNameBO1": "ModernPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Modern"
+          ]
+        },
+        {
+          "Id": "LegacyAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/LegacyAI",
+          "EventNameBO1": "LegacyAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Legacy"
+          ]
+        },
+        {
+          "Id": "LegacyPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/LegacyPvP",
+          "EventNameBO1": "LegacyPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Legacy"
+          ]
+        },
+        {
+          "Id": "VintageAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/VintageAI",
+          "EventNameBO1": "VintageAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Vintage"
+          ]
+        },
+        {
+          "Id": "VintagePvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/VintagePvP",
+          "EventNameBO1": "VintagePvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Vintage"
+          ]
+        },
+        {
+          "Id": "PauperAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/PauperAI",
+          "EventNameBO1": "PauperAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Pauper"
+          ]
+        },
+        {
+          "Id": "PauperPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/PauperPvP",
+          "EventNameBO1": "PauperPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Pauper"
+          ]
+        },
+        {
+          "Id": "BrawlAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/BrawlAI",
+          "EventNameBO1": "BrawlAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/100",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Brawl"
+          ]
+        },
+        {
+          "Id": "BrawlPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/BrawlPvP",
+          "EventNameBO1": "BrawlPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/100",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Brawl"
+          ]
+        },
+        {
+          "Id": "StandardBrawlAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/StandardBrawlAI",
+          "EventNameBO1": "StandardBrawlAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "StandardBrawl"
+          ]
+        },
+        {
+          "Id": "StandardBrawlPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/StandardBrawlPvP",
+          "EventNameBO1": "StandardBrawlPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "StandardBrawl"
+          ]
+        },
+        {
+          "Id": "CommanderPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/CommanderPvP",
+          "EventNameBO1": "CommanderPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/100",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "Commander"
+          ]
+        },
+        {
+          "Id": "NoBans60PvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/NoBans60PvP",
+          "EventNameBO1": "NoBans60PvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "NoBans60"
+          ]
+        },
+        {
+          "Id": "StandardUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/StandardUnbannedAI",
+          "EventNameBO1": "StandardUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "StandardUnbanned"
+          ]
+        },
+        {
+          "Id": "StandardUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/StandardUnbannedPvP",
+          "EventNameBO1": "StandardUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "StandardUnbanned"
+          ]
+        },
+        {
+          "Id": "AlchemyUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/AlchemyUnbannedAI",
+          "EventNameBO1": "AlchemyUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "AlchemyUnbanned"
+          ]
+        },
+        {
+          "Id": "AlchemyUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/AlchemyUnbannedPvP",
+          "EventNameBO1": "AlchemyUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "AlchemyUnbanned"
+          ]
+        },
+        {
+          "Id": "ExplorerUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/ExplorerUnbannedAI",
+          "EventNameBO1": "ExplorerUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "ExplorerUnbanned"
+          ]
+        },
+        {
+          "Id": "ExplorerUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/ExplorerUnbannedPvP",
+          "EventNameBO1": "ExplorerUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "ExplorerUnbanned"
+          ]
+        },
+        {
+          "Id": "PioneerUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/PioneerUnbannedAI",
+          "EventNameBO1": "PioneerUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "PioneerUnbanned"
+          ]
+        },
+        {
+          "Id": "PioneerUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/PioneerUnbannedPvP",
+          "EventNameBO1": "PioneerUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "PioneerUnbanned"
+          ]
+        },
+        {
+          "Id": "HistoricUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/HistoricUnbannedAI",
+          "EventNameBO1": "HistoricUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "HistoricUnbanned"
+          ]
+        },
+        {
+          "Id": "HistoricUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/HistoricUnbannedPvP",
+          "EventNameBO1": "HistoricUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "HistoricUnbanned"
+          ]
+        },
+        {
+          "Id": "TimelessUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/TimelessUnbannedAI",
+          "EventNameBO1": "TimelessUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "TimelessUnbanned"
+          ]
+        },
+        {
+          "Id": "TimelessUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/TimelessUnbannedPvP",
+          "EventNameBO1": "TimelessUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "TimelessUnbanned"
+          ]
+        },
+        {
+          "Id": "ModernUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/ModernUnbannedAI",
+          "EventNameBO1": "ModernUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "ModernUnbanned"
+          ]
+        },
+        {
+          "Id": "ModernUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/ModernUnbannedPvP",
+          "EventNameBO1": "ModernUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "ModernUnbanned"
+          ]
+        },
+        {
+          "Id": "LegacyUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/LegacyUnbannedAI",
+          "EventNameBO1": "LegacyUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "LegacyUnbanned"
+          ]
+        },
+        {
+          "Id": "LegacyUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/LegacyUnbannedPvP",
+          "EventNameBO1": "LegacyUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "LegacyUnbanned"
+          ]
+        },
+        {
+          "Id": "VintageUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/VintageUnbannedAI",
+          "EventNameBO1": "VintageUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "VintageUnbanned"
+          ]
+        },
+        {
+          "Id": "VintageUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/VintageUnbannedPvP",
+          "EventNameBO1": "VintageUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "VintageUnbanned"
+          ]
+        },
+        {
+          "Id": "PauperUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/PauperUnbannedAI",
+          "EventNameBO1": "PauperUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "PauperUnbanned"
+          ]
+        },
+        {
+          "Id": "PauperUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/PauperUnbannedPvP",
+          "EventNameBO1": "PauperUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "PauperUnbanned"
+          ]
+        },
+        {
+          "Id": "BrawlUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/BrawlUnbannedAI",
+          "EventNameBO1": "BrawlUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/100",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "BrawlUnbanned"
+          ]
+        },
+        {
+          "Id": "BrawlUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/BrawlUnbannedPvP",
+          "EventNameBO1": "BrawlUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/100",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "BrawlUnbanned"
+          ]
+        },
+        {
+          "Id": "StandardBrawlUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/StandardBrawlUnbannedAI",
+          "EventNameBO1": "StandardBrawlUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "StandardBrawlUnbanned"
+          ]
+        },
+        {
+          "Id": "StandardBrawlUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/StandardBrawlUnbannedPvP",
+          "EventNameBO1": "StandardBrawlUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "StandardBrawlUnbanned"
+          ]
+        },
+        {
+          "Id": "CommanderUnbannedPvP",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Events/CommanderUnbannedPvP",
+          "EventNameBO1": "CommanderUnbannedPvP",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/100",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "CommanderUnbanned"
+          ]
         }
       ]
     },
@@ -1556,6 +2270,2427 @@
                 },
                 "DescriptionText": {
                   "LocKey": "ArenaLab/Modes/NoBans60"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "StandardAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "StandardAI",
+              "DisplayPriority": 100,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Standard",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/StandardAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/StandardAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "StandardPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "StandardPvP",
+              "DisplayPriority": 101,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Standard",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/StandardPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/StandardPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "AlchemyAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "AlchemyAI",
+              "DisplayPriority": 102,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Alchemy",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/AlchemyAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/AlchemyAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "AlchemyPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "AlchemyPvP",
+              "DisplayPriority": 103,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Alchemy",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/AlchemyPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/AlchemyPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "ExplorerAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "ExplorerAI",
+              "DisplayPriority": 104,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Explorer",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/ExplorerAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/ExplorerAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "ExplorerPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "ExplorerPvP",
+              "DisplayPriority": 105,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Explorer",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/ExplorerPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/ExplorerPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "PioneerAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "PioneerAI",
+              "DisplayPriority": 106,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Pioneer",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/PioneerAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/PioneerAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "PioneerPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "PioneerPvP",
+              "DisplayPriority": 107,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Pioneer",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/PioneerPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/PioneerPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "HistoricAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "HistoricAI",
+              "DisplayPriority": 108,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Historic",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/HistoricAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/HistoricAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "HistoricPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "HistoricPvP",
+              "DisplayPriority": 109,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Historic",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/HistoricPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/HistoricPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "TimelessAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "TimelessAI",
+              "DisplayPriority": 110,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Timeless",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/TimelessAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/TimelessAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "TimelessPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "TimelessPvP",
+              "DisplayPriority": 111,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Timeless",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/TimelessPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/TimelessPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "ModernAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "ModernAI",
+              "DisplayPriority": 112,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Modern",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/ModernAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/ModernAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "ModernPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "ModernPvP",
+              "DisplayPriority": 113,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Modern",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/ModernPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/ModernPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "LegacyAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "LegacyAI",
+              "DisplayPriority": 114,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Legacy",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/LegacyAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/LegacyAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "LegacyPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "LegacyPvP",
+              "DisplayPriority": 115,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Legacy",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/LegacyPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/LegacyPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "VintageAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "VintageAI",
+              "DisplayPriority": 116,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Vintage",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/VintageAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/VintageAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "VintagePvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "VintagePvP",
+              "DisplayPriority": 117,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Vintage",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/VintagePvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/VintagePvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "PauperAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "PauperAI",
+              "DisplayPriority": 118,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Pauper",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/PauperAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/PauperAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "PauperPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "PauperPvP",
+              "DisplayPriority": 119,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Pauper",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/PauperPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/PauperPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "BrawlAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "BrawlAI",
+              "DisplayPriority": 120,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Brawl",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/BrawlAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/BrawlAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "BrawlPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "BrawlPvP",
+              "DisplayPriority": 121,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Brawl",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/BrawlPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/BrawlPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "StandardBrawlAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "StandardBrawlAI",
+              "DisplayPriority": 122,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "StandardBrawl",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/StandardBrawlAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/StandardBrawlAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "StandardBrawlPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "StandardBrawlPvP",
+              "DisplayPriority": 123,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "StandardBrawl",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/StandardBrawlPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/StandardBrawlPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "CommanderPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "CommanderPvP",
+              "DisplayPriority": 125,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "Commander",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/CommanderPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/CommanderPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "NoBans60PvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "NoBans60PvP",
+              "DisplayPriority": 127,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "NoBans60",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/NoBans60PvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/NoBans60PvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "StandardUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "StandardUnbannedAI",
+              "DisplayPriority": 128,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "StandardUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/StandardUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/StandardUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "StandardUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "StandardUnbannedPvP",
+              "DisplayPriority": 129,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "StandardUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/StandardUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/StandardUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "AlchemyUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "AlchemyUnbannedAI",
+              "DisplayPriority": 130,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "AlchemyUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/AlchemyUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/AlchemyUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "AlchemyUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "AlchemyUnbannedPvP",
+              "DisplayPriority": 131,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "AlchemyUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/AlchemyUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/AlchemyUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "ExplorerUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "ExplorerUnbannedAI",
+              "DisplayPriority": 132,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "ExplorerUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/ExplorerUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/ExplorerUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "ExplorerUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "ExplorerUnbannedPvP",
+              "DisplayPriority": 133,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "ExplorerUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/ExplorerUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/ExplorerUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "PioneerUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "PioneerUnbannedAI",
+              "DisplayPriority": 134,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "PioneerUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/PioneerUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/PioneerUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "PioneerUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "PioneerUnbannedPvP",
+              "DisplayPriority": 135,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "PioneerUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/PioneerUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/PioneerUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "HistoricUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "HistoricUnbannedAI",
+              "DisplayPriority": 136,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "HistoricUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/HistoricUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/HistoricUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "HistoricUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "HistoricUnbannedPvP",
+              "DisplayPriority": 137,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "HistoricUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/HistoricUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/HistoricUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "TimelessUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "TimelessUnbannedAI",
+              "DisplayPriority": 138,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "TimelessUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/TimelessUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/TimelessUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "TimelessUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "TimelessUnbannedPvP",
+              "DisplayPriority": 139,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "TimelessUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/TimelessUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/TimelessUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "ModernUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "ModernUnbannedAI",
+              "DisplayPriority": 140,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "ModernUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/ModernUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/ModernUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "ModernUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "ModernUnbannedPvP",
+              "DisplayPriority": 141,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "ModernUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/ModernUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/ModernUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "LegacyUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "LegacyUnbannedAI",
+              "DisplayPriority": 142,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "LegacyUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/LegacyUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/LegacyUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "LegacyUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "LegacyUnbannedPvP",
+              "DisplayPriority": 143,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "LegacyUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/LegacyUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/LegacyUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "VintageUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "VintageUnbannedAI",
+              "DisplayPriority": 144,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "VintageUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/VintageUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/VintageUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "VintageUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "VintageUnbannedPvP",
+              "DisplayPriority": 145,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "VintageUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/VintageUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/VintageUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "PauperUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "PauperUnbannedAI",
+              "DisplayPriority": 146,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "PauperUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/PauperUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/PauperUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "PauperUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "PauperUnbannedPvP",
+              "DisplayPriority": 147,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "PauperUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/PauperUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/PauperUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "BrawlUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "BrawlUnbannedAI",
+              "DisplayPriority": 148,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "BrawlUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/BrawlUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/BrawlUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "BrawlUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "BrawlUnbannedPvP",
+              "DisplayPriority": 149,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "BrawlUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/BrawlUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/BrawlUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "StandardBrawlUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "StandardBrawlUnbannedAI",
+              "DisplayPriority": 150,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "StandardBrawlUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/StandardBrawlUnbannedAI"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/StandardBrawlUnbannedAI"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "StandardBrawlUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "StandardBrawlUnbannedPvP",
+              "DisplayPriority": 151,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "StandardBrawlUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/StandardBrawlUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/StandardBrawlUnbannedPvP"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "CommanderUnbannedPvP",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "CommanderUnbannedPvP",
+              "DisplayPriority": 153,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "CommanderUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Events/CommanderUnbannedPvP"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Events/CommanderUnbannedPvP"
                 },
                 "SelectedDeckWidget": {
                   "DeckButtonBehavior": "Editable"

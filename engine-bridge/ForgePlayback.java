@@ -24,8 +24,33 @@ public final class ForgePlayback {
     private final Map<Integer,String> pendingMovementReasons=new HashMap<>();
     private final Map<Integer,Set<Integer>> knownTo=new HashMap<>();
     private final Map<Integer,Map<String,Object>> revealed=new LinkedHashMap<>();
+    private static final Map<GameEventCardChangeZone,int[]> battlefieldEvents=Collections.synchronizedMap(new WeakHashMap<>());
+    private static int[] battlefieldIdentity(GameEventCardChangeZone event) {
+        synchronized(battlefieldEvents) {
+            int[] existing=battlefieldEvents.get(event);
+            if(existing!=null)return existing;
+            int old=forge.game.ArenaCardIds.id(event.card().getId());
+            Integer prepared=forge.game.ArenaCardIds.finishBattlefield(event.card().getId());
+            int next;
+            if(prepared!=null) {old=prepared;next=forge.game.ArenaCardIds.id(event.card().getId());}
+            else next=forge.game.ArenaCardIds.enterBattlefield(event.card().getId());
+            int[] pair={old,next};battlefieldEvents.put(event,pair);return pair;
+        }
+    }
     public synchronized List<Integer> knownViewers(int card) {return new ArrayList<>(knownTo.getOrDefault(card,Set.of()));}
     public synchronized List<Map<String,Object>> revealedCards() {return new ArrayList<>(revealed.values());}
+    public synchronized void rememberControlledHands() {
+        for(var player:game.getRegisteredPlayers()) {
+            var master=player.getControllingPlayer();
+            if(master==null || seat(master.getView())!=1)continue;
+            for(var card:player.getCardsIn(forge.game.zone.ZoneType.Hand)) {
+                int cardId=id(card.getView());
+                knownTo.computeIfAbsent(cardId,k->new HashSet<>()).add(1);
+                revealed.put(cardId,Map.of("instanceId",cardId,"ownerSeat",seat(player.getView()),
+                    "sourceZone",seat(player.getView())*100+2,"grpId",identities.getOrDefault(card.getId(),0)));
+            }
+        }
+    }
     public synchronized void initiating(SpellAbility ability) {
         cyclingCard=ability.isCycling()?id(ability.getHostCard().getView()):-1;
     }
@@ -220,10 +245,8 @@ public final class ForgePlayback {
             if(explicit!=null)category=explicit;
             int oldId=id(e.card());
             if(to.equals("Battlefield") && !from.equals("Battlefield")) {
-                Integer preparedOld=forge.game.ArenaCardIds.finishBattlefield(e.card().getId());
-                int newId;
-                if(preparedOld!=null) {oldId=preparedOld;newId=id(e.card());}
-                else newId=forge.game.ArenaCardIds.enterBattlefield(e.card().getId());
+                int[] transition=battlefieldIdentity(e);
+                oldId=transition[0];int newId=transition[1];
                 if(knownTo.containsKey(oldId))knownTo.put(newId,knownTo.remove(oldId));
                 // Keep the reveal panel even when the revealed permanent gets
                 // its new battlefield identity before the next snapshot.

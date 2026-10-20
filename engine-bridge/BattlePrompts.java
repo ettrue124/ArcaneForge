@@ -211,6 +211,13 @@ final class BattlePrompts {
                 for(var target:targets)if(allocated.getOrDefault((Integer)target.get("id"),0)<1)
                     throw new IllegalArgumentException("Each selected target requires at least one");
             if(method.equals("assignCombatDamage")) {
+                if(a[3]!=null && allocated.getOrDefault(id(a[3],seats),0)>0)
+                    for(Object blocker:list(a[1])) {
+                        int blockerId=id(blocker,seats);
+                        var target=targets.stream().filter(t->(Integer)t.get("id")==blockerId).findFirst().orElseThrow();
+                        if(allocated.getOrDefault(blockerId,0)<(Integer)target.get("lethal"))
+                            throw new IllegalArgumentException("Assign lethal damage to every blocker before trample damage");
+                    }
                 if(!Boolean.TRUE.equals(a[4]))for(int i=0;i<targets.size();i++) {
                     var t=targets.get(i);boolean later=false;
                     for(int j=i+1;j<targets.size();j++)if(allocated.getOrDefault((Integer)targets.get(j).get("id"),0)>0)later=true;
