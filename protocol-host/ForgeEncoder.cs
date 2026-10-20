@@ -321,7 +321,9 @@ static class ForgeEncoder
                 status = root.GetProperty("players").EnumerateArray().Single(s=>s.GetProperty("seat").GetUInt32()==p.seat).TryGetProperty("lost",out var lost) && lost.GetBoolean()?2:1,
                 maxHandSize = root.GetProperty("players").EnumerateArray().Single(s=>s.GetProperty("seat").GetUInt32()==p.seat)
                     .TryGetProperty("maxHandSize",out var handLimit)?handLimit.GetInt32():7,
-                controllerSeatId = p.seat, controllerType = 1, teamId = p.seat,
+                controllerSeatId = root.GetProperty("players").EnumerateArray().First(player=>player.GetProperty("seat").GetUInt32()==p.seat)
+                    .TryGetProperty("decisionControllerSeat",out var decisionController)?decisionController.GetUInt32():p.seat,
+                controllerType = 1, teamId = p.seat,
                 startingLifeTotal = root.TryGetProperty("startingLife",out var starting)?starting.GetInt32():20,
                 mulliganCount = p.seat == viewer && root.TryGetProperty("mulliganCount", out var count) ? count.GetUInt32() : 0 }),
             turnInfo = new { phase, step, turnNumber = turn.GetProperty("number").GetUInt32(), activePlayer = active, priorityPlayer = priority, decisionPlayer = priority },

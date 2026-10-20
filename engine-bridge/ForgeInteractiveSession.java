@@ -18,7 +18,13 @@ import java.util.concurrent.*;
 
 /** One human-controlled Forge game. Prompts remain pending until explicitly answered. */
 final class ForgeInteractiveSession implements IRemote {
-    private final HostedMatch match = new HostedMatch();
+    private HostedMatch match = new HostedMatch();
+    private int participantIndex;
+    private List<ForgeInteractiveSession> peers=List.of(this);
+    ForgeInteractiveSession participant(int index) {
+        if(index<0 || index>=peers.size())throw new IllegalArgumentException("Invalid human participant");
+        return peers.get(index);
+    }
     private final ProtocolGuiGame gui = new ProtocolGuiGame(this) {
         @Override public Integer getInteger(String message,int min,int max,boolean descending) { return chooseNumber(message,min,max,null); }
         @Override public Integer getInteger(String message,int min,int max,int cutoff) { return chooseNumber(message,min,max,null); }
@@ -103,9 +109,21 @@ final class ForgeInteractiveSession implements IRemote {
         this(decks,groupIds,commander,null);
     }
     ForgeInteractiveSession(List<Deck> decks, List<Map<String,Integer>> groupIds, boolean commander, JsonObject scenario) {
+        this(decks,groupIds,commander,scenario,false,false);
+    }
+    private ForgeInteractiveSession(HostedMatch match,List<Map<String,Integer>> groupIds,boolean commander,int count,int index) {
+        this.match=match;this.groupIds=groupIds;this.commanderMode=commander;
+        this.playerCount=count;this.participantIndex=index;
+    }
+    ForgeInteractiveSession(List<Deck> decks, List<Map<String,Integer>> groupIds, boolean commander, JsonObject scenario,boolean humanOpponent,boolean brawl) {
         this.commanderMode=commander;
         this.playerCount=decks.size();
         this.groupIds = groupIds != null ? groupIds : List.of();
+        if(humanOpponent) {
+            if(decks.size()!=2)throw new IllegalArgumentException("Human matchmaking currently requires two players");
+            var second=new ForgeInteractiveSession(match,this.groupIds,commander,playerCount,1);
+            peers=List.of(this,second);second.peers=peers;
+        }
         match.setStartGameHook(() -> {
             forge.game.Game g = match.getGame();
             if (g != null) {
@@ -114,21 +132,29 @@ final class ForgeInteractiveSession implements IRemote {
                 for(var player:g.getPlayers())
                     for(var card:player.getCardsIn(forge.game.zone.ZoneType.Battlefield,false))
                         forge.game.ArenaCardIds.enterBattlefield(card.getId());
-                ensureIdentities(g);
-                playback = new ForgePlayback(g,seats,identities);
-                g.subscribeToEvents(playback);
+                for(var peer:peers) {
+                    peer.ensureIdentities(g);
+                    peer.playback = new ForgePlayback(g,peer.seats,peer.identities);
+                    g.subscribeToEvents(peer.playback);
+                }
             }
         });
         List<RegisteredPlayer> registered=new ArrayList<>();
         for(int i=0;i<decks.size();i++) {
             var participant=commander?RegisteredPlayer.forCommander(decks.get(i)):new RegisteredPlayer(decks.get(i));
-            participant.setPlayer(i==0?new BattleLobbyPlayerHuman("Player"):new LobbyPlayerAi(decks.size()==2?"Forge AI":"Forge AI "+i,null));
+            if(brawl)participant.setStartingLife(25);
+            participant.setPlayer(i==0 || humanOpponent?new BattleLobbyPlayerHuman("Player "+(i+1)):new LobbyPlayerAi(decks.size()==2?"Forge AI":"Forge AI "+i,null));
             registered.add(participant);
         }
-        var rules = new forge.game.GameRules(commander ? GameType.Commander : GameType.Constructed);
+        GameType variant=brawl?GameType.Brawl:commander?GameType.Commander:GameType.Constructed;
+        var rules = new forge.game.GameRules(variant);
         rules.setGamesPerMatch(1);
         rules.setWarnAboutAICards(false);
-        match.startMatch(rules, commander ? Set.of(GameType.Commander) : null, registered, registered.get(0), gui);
+        if(humanOpponent) {
+            Map<RegisteredPlayer,forge.gui.interfaces.IGuiGame> guis=new LinkedHashMap<>();
+            guis.put(registered.get(0),gui);guis.put(registered.get(1),peers.get(1).gui);
+            match.startMatch(rules,commander?Set.of(variant):null,registered,guis,null);
+        } else match.startMatch(rules, commander ? Set.of(variant) : null, registered, registered.get(0), gui);
     }
     private long publish(GuiGameEvent event, boolean blocking) {
         synchronized(eventLock) {
@@ -240,7 +266,7 @@ final class ForgeInteractiveSession implements IRemote {
         if(numberPending!=null)pendingList.add(obj("eventId",numberPending.id(),"method","chooseNumber"));
         Object activeInput = null;
         String inputType="";
-        if(human!=null && gui.getGameController(human) instanceof forge.player.PlayerControllerHuman controller) {
+        if(human!=null && decisionController() instanceof forge.player.PlayerControllerHuman controller) {
             activeInput=controller.getInputProxy().getInput();
             inputType=BattleInputs.type(activeInput);
         }
@@ -254,7 +280,7 @@ final class ForgeInteractiveSession implements IRemote {
         // getPlayers() removes defeated players. Wire seats must stay tied to
         // the registered participants, including while publishing the outcome.
         for (forge.game.player.Player p : game.getRegisteredPlayers()) {
-            seats.put(p, s);
+            seats.put(p, (s-1-participantIndex+playerCount)%playerCount+1);
             Map<String,Integer> map = (s <= groupIds.size()) ? groupIds.get(s - 1) : Map.of();
             for (forge.game.card.Card c : p.getAllCards()) {
                 if (!identities.containsKey(c.getId()) && c.getPaperCard() != null) {
@@ -301,8 +327,18 @@ final class ForgeInteractiveSession implements IRemote {
         }
         throw new IllegalStateException("Forge state did not stabilize for snapshot",last);
     }
+    private IGameController decisionController() {
+        IGameController root=gui.getGameController(human);
+        if(root instanceof forge.player.PlayerControllerHuman owner
+            && owner.getInputProxy().getInput() instanceof forge.gamemodes.match.input.InputBase input) {
+            var acting=input.getController();
+            if(acting.getPlayer()==owner.getPlayer()
+                || acting.getPlayer().getControllingPlayer()==owner.getPlayer())return acting;
+        }
+        return root;
+    }
     boolean canPreviewActions() {
-        if(actionQueued || human==null || !(gui.getGameController(human) instanceof forge.player.PlayerControllerHuman controller))return false;
+        if(actionQueued || human==null || !(decisionController() instanceof forge.player.PlayerControllerHuman controller))return false;
         var active=controller.getInputProxy().getInput();
         return active instanceof forge.gamemodes.match.input.InputPassPriority
             || active instanceof forge.gamemodes.match.input.InputPayMana;
@@ -313,6 +349,7 @@ final class ForgeInteractiveSession implements IRemote {
         ensureIdentities(game);
         Map<String,Object> snapshot=(Map<String,Object>)ForgeEngineMain.snapshot(game, identities, seats, input);
         if(playback!=null) {
+            playback.rememberControlledHands();
             for(var value:(List<?>)snapshot.get("cards")) {
                 var card=(Map<String,Object>)value;
                 var viewers=new LinkedHashSet<Integer>((List<Integer>)card.get("viewers"));
@@ -321,7 +358,7 @@ final class ForgeInteractiveSession implements IRemote {
             }
             snapshot.put("revealedCards",playback.revealedCards());
         }
-        Object activeInput = human != null && gui.getGameController(human) instanceof forge.player.PlayerControllerHuman hc
+        Object activeInput = human != null && decisionController() instanceof forge.player.PlayerControllerHuman hc
             ? hc.getInputProxy().getInput() : null;
         String inputType = BattleInputs.type(activeInput);
         snapshot.put("stage", game.isGameOver() ? 3 : game.getPhaseHandler().getTurn()==0 || inputType.contains("Mulligan") ? 1 : 2);
@@ -346,7 +383,7 @@ final class ForgeInteractiveSession implements IRemote {
                 }
             }
         }
-        if(human!=null && gui.getGameController(human) instanceof forge.player.PlayerControllerHuman controller) {
+        if(human!=null && decisionController() instanceof forge.player.PlayerControllerHuman controller) {
             var descriptor=BattleInputs.describe(game,controller,seats);
             if(activeInput instanceof forge.gamemodes.match.input.InputSelectTargets) {
                 var ability=(forge.game.spellability.SpellAbility)BattleInputs.field(activeInput,"sa");
@@ -354,7 +391,7 @@ final class ForgeInteractiveSession implements IRemote {
             }
             snapshot.put("input",descriptor);
         }
-        snapshot.put("canUndo",human!=null && gui.getGameController(human) instanceof forge.player.PlayerControllerHuman hc
+        snapshot.put("canUndo",human!=null && decisionController() instanceof forge.player.PlayerControllerHuman hc
             && ((hc.getInputProxy().getInput() instanceof forge.gamemodes.match.input.InputPassPriority && hc.canUndoLastAction())
                 || hc.getInputProxy().getInput() instanceof forge.gamemodes.match.input.InputPayMana));
         List<Object> legalActions=new ArrayList<>();
@@ -362,7 +399,7 @@ final class ForgeInteractiveSession implements IRemote {
         long actionEvent=currentButtonEventId(activeInput);
         if(stableActionEvent!=actionEvent) {stableActionIds.clear();stableActionEvent=actionEvent;}
         var actionOccurrences=new HashMap<String,Integer>();
-        if(canPreviewActions() && human!=null && gui.getGameController(human) instanceof forge.player.PlayerControllerHuman controller) {
+        if(canPreviewActions() && human!=null && decisionController() instanceof forge.player.PlayerControllerHuman controller) {
             boolean hasPriority=controller.getInputProxy().getInput() instanceof forge.gamemodes.match.input.InputPassPriority;
             var actionableCards=new LinkedHashSet<forge.game.card.Card>();
             for(var participant:game.getRegisteredPlayers())for(var card:participant.getAllCards()) {
@@ -422,10 +459,13 @@ final class ForgeInteractiveSession implements IRemote {
                             "cardName",actionName,
                             // Hand mana abilities need the explicit activation
                             // chooser; battlefield mana uses Arena's tap workflow.
-                            "abilityId",offeredId,"actionType",card.isInZone(forge.game.zone.ZoneType.Hand)
-                                && ability.isManaAbility()?2:BattleActionTypes.type(ability),
+                            "abilityId",offeredId,"actionType",ability.isManaAbility()
+                                && (card.isInZone(forge.game.zone.ZoneType.Hand)
+                                    || card.isImmutable() && card.isInZone(forge.game.zone.ZoneType.Command)
+                                        && card.getEffectSource()!=null)?2:BattleActionTypes.type(ability),
                             "isLand",ability.isLandAbility(),
                             "cycling",ability.isCycling(),
+                            "evoke",ability.isEvoke(),
                             "faceDownCast",ability.isCastFaceDown(),
                             "faceDownKind",ability.isCastFaceDown() && ability.getStackDescription().startsWith("Disguise")?"Disguise":"Morph",
                             "turnFaceUpKind",ability.isManifestUp()?"Manifest":ability.isCloakUp()?"Cloak":ability.isDisguiseUp()?"Disguise":ability.isMorphUp()?"Morph":"",
@@ -473,7 +513,7 @@ final class ForgeInteractiveSession implements IRemote {
                 }
             }
         }
-        if(human!=null && gui.getGameController(human) instanceof forge.player.PlayerControllerHuman controller
+        if(human!=null && decisionController() instanceof forge.player.PlayerControllerHuman controller
             && controller.getInputProxy().getInput() instanceof forge.gamemodes.match.input.InputPayMana payment) {
             var paymentCards=new ArrayList<forge.game.card.Card>();
             paymentCards.addAll(controller.getPlayer().getCardsIn(forge.game.zone.ZoneType.Battlefield));
@@ -530,7 +570,7 @@ final class ForgeInteractiveSession implements IRemote {
         List<Object> stack=new ArrayList<>();
         if(playback!=null) {
             for(var item:game.getStack())stack.add(playback.stackEntry(item,identities));
-            Object current=human!=null && gui.getGameController(human) instanceof forge.player.PlayerControllerHuman hc ? hc.getInputProxy().getInput():null;
+            Object current=human!=null && decisionController() instanceof forge.player.PlayerControllerHuman hc ? hc.getInputProxy().getInput():null;
             playback.selecting(current instanceof forge.gamemodes.match.input.InputSelectTargets ? (forge.game.spellability.SpellAbility)BattleInputs.field(current,"sa"):null);
         }
         snapshot.put("stack",stack);
@@ -566,7 +606,7 @@ final class ForgeInteractiveSession implements IRemote {
     }
     synchronized Object action(JsonObject input) {
         if(closed || human==null)throw new IllegalStateException("Human controller unavailable");
-        IGameController controller=gui.getGameController(human);
+        IGameController controller=decisionController();
         String type=input.get("type").getAsString();
         if(actionQueued && !type.equals("concede"))throw new IllegalArgumentException("Previous human action still running");
         if(!type.equals("concede") && (numberPending!=null || !pending.isEmpty()))
@@ -750,9 +790,12 @@ final class ForgeInteractiveSession implements IRemote {
         return obj("accepted",true);
     }
     void close() {
-        closed=true;
-        for(Pending p:pending.values())p.answer.completeExceptionally(new IllegalStateException("Session closed"));
-        if(numberPending!=null)numberPending.answer().completeExceptionally(new IllegalStateException("Session closed"));
+        if(closed)return;
+        for(var peer:peers) {
+            peer.closed=true;
+            for(Pending p:peer.pending.values())p.answer.completeExceptionally(new IllegalStateException("Session closed"));
+            if(peer.numberPending!=null)peer.numberPending.answer().completeExceptionally(new IllegalStateException("Session closed"));
+        }
         if(human!=null)FThreads.invokeInEdtLater(()->gui.getGameController(human).concede());
     }
     private forge.game.GameEntity entity(int id) {

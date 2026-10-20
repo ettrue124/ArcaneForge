@@ -166,6 +166,7 @@ static class MatchDoorHost
         {
             string? activeMatchId = null;
             string? clientToken = null;
+            string? authenticatedClientId = null;
             var state = new MatchSessionState();
             CancellationTokenSource? pollCts = null;
             try {
@@ -191,6 +192,7 @@ static class MatchDoorHost
                         case ClientToMatchServiceMessageType.AuthenticateRequest: {
                             var authReq = AuthenticateRequest.Parser.ParseFrom(msg.Payload);
                             clientToken = authReq.PlayFabSessionTicket;
+                            authenticatedClientId=authReq.ClientId;
                             var authResp = new AuthenticateResponse {
                                 ClientId = authReq.ClientId,
                                 SessionId = Guid.NewGuid().ToString("D"),
@@ -210,6 +212,20 @@ static class MatchDoorHost
                         case ClientToMatchServiceMessageType.ClientToMatchDoorConnectRequest: {
                             var connReq = ClientToMatchDoorConnectRequest.Parser.ParseFrom(msg.Payload);
                             activeMatchId = connReq.MatchId;
+                            var authorizedMatch=activeMatchId is null?null:ActiveMatches.Get(activeMatchId);
+                            if(authorizedMatch is null || string.IsNullOrEmpty(authorizedMatch.PersonaId)
+                                || authenticatedClientId!=authorizedMatch.PersonaId)
+                                throw new AuthenticationException("Match does not belong to this client");
+                            if(!string.IsNullOrEmpty(clientToken)) {
+                                using var identityRequest=new HttpRequestMessage(HttpMethod.Get,backend.TrimEnd('/')+"/api/me");
+                                identityRequest.Headers.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",clientToken);
+                                using var identityReply=await BattleBackendHttp.SendAsync(identityRequest,timeout.Token);
+                                if(!identityReply.IsSuccessStatusCode)throw new AuthenticationException("Invalid local account session");
+                                using var identity=JsonDocument.Parse(await identityReply.Content.ReadAsStringAsync(timeout.Token));
+                                var root=identity.RootElement;
+                                string persona=root.TryGetProperty("persona_id",out var personaId)?personaId.ToString():root.GetProperty("id").ToString();
+                                if(persona!=authorizedMatch.PersonaId)throw new AuthenticationException("Account does not own this match");
+                            }
                             bool newTrace=state.Trace==null;
                             state.Trace ??= GameplayTrace.Start(activeMatchId ?? "unknown");
                             if(!WireTraces.TryGetValue(stream,out _))WireTraces.Add(stream,state.Trace);

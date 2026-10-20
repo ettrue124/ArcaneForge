@@ -12,6 +12,8 @@ from .engine import Engine, EngineError, EngineRejected
 from .bootstrap import Bootstrap
 from .arena import Arena
 from . import commander, bot_decks, feature_lab
+from . import formats
+from .play_sessions import PlaySessions
 
 ROOT = Path(__file__).resolve().parent.parent
 MAX_BODY = 1024 * 1024
@@ -34,8 +36,6 @@ def resolve_deck(store, catalogue, uid, deck_id):
     with store._db(write=False) as db:
         if isinstance(deck_id, str) and len(deck_id) > 10:
             row = db.execute("SELECT * FROM arena_decks WHERE arena_id=? AND user_id=?", (deck_id, uid)).fetchone()
-            if not row:
-                row = db.execute("SELECT * FROM arena_decks WHERE arena_id=?", (deck_id,)).fetchone()
             if row:
                 summary = json.loads(row["summary_json"])
                 deck_name = summary.get("Name", "Arena Deck")
@@ -52,8 +52,6 @@ def resolve_deck(store, catalogue, uid, deck_id):
             try:
                 numeric_id = int(deck_id)
                 row = db.execute("SELECT * FROM decks WHERE id=? AND user_id=?", (numeric_id, uid)).fetchone()
-                if not row:
-                    row = db.execute("SELECT * FROM decks WHERE id=?", (numeric_id,)).fetchone()
                 if row:
                     deck_name = row["name"]
                     cards = json.loads(row["cards_json"])
@@ -219,6 +217,39 @@ class Handler(BaseHTTPRequestHandler):
                     "features": ["local_accounts", "card_catalogue", "decks", "queue", "direct_challenges"],
                     "missing": ([] if bootstrap else ["Arena account/ring bootstrap"]) + ["complete FrontDoor command mapping",
                                 "interactive GRE rules adapter", "stock client integration verification"]})
+            if path == '/api/events' and method == 'GET':
+                store.authenticate(self.token())
+                return self.send_json(200, {'events': formats.events()})
+            if path == '/api/card-support' and method == 'GET':
+                store.authenticate(self.token())
+                report=ROOT/'data/arena-digital-support.json'
+                if not report.exists():raise StorageError('Card support inventory has not been generated',503)
+                return self.send_json(200,json.loads(report.read_text(encoding='utf8')))
+            if path.startswith('/api/play/'):
+                user=store.authenticate(self.token())
+                uid=user['id']
+                sessions=self.server.play_sessions
+                if path == '/api/play/status' and method == 'GET':
+                    return self.send_json(200,sessions.status(uid))
+                if path == '/api/play/leave' and method == 'POST':
+                    return self.send_json(200,sessions.leave(uid))
+                if path == '/api/play/join' and method == 'POST':
+                    body=self.body()
+                    selected=formats.event(body.get('event'))
+                    deck=resolve_deck(store,self.server.catalogue,uid,body.get('deckId'))
+                    formats.validate(deck,selected['name'])
+                    deck=dict(deck,format=selected['name'])
+                    if selected['opponent']=='human':
+                        return self.send_json(200,sessions.join(uid,deck,selected['id']))
+                    bot=formats.bot_deck(self.server.catalogue,selected['name'],exclude=deck)
+                    formats.validate(bot,selected['name'])
+                    return self.send_json(200,sessions.start_bot(uid,[deck,dict(bot,format=selected['name'])],selected['id']))
+                operations={'snapshot':'interactiveSnapshot','poll':'interactivePoll',
+                            'action':'interactiveAction','answer':'interactiveAnswer'}
+                operation=operations.get(path.rsplit('/',1)[-1])
+                if operation and method == 'POST':
+                    return self.send_json(200,sessions.request(uid,operation,**self.body()))
+                raise StorageError('Unknown play endpoint',404)
             if method == "POST" and path in ("/api/register", "/api/login"):
                 data = self.body()
                 fn = store.register if path.endswith("register") else store.login
@@ -233,8 +264,12 @@ class Handler(BaseHTTPRequestHandler):
                 except StorageError:
                     pass
                 user = store.authenticate(token) if token else None
-                uid = user["id"] if user else 1
+                if not user and path != '/api/interactive/status':
+                    raise StorageError('Sign in before accessing a match',401)
+                uid = user["id"] if user else None
                 if path == '/api/interactive/feature-lab':
+                    if uid != 1:
+                        raise StorageError('Feature lab is restricted to the local administrator',403)
                     if method == 'POST':
                         selected = self.body().get('scenario')
                         if selected is not None:
@@ -247,7 +282,7 @@ class Handler(BaseHTTPRequestHandler):
                     data = self.body()
                     decks = data.get("decks")
                     scenario = None
-                    if self.server.feature_scenario:
+                    if uid == 1 and self.server.feature_scenario:
                         decks, scenario = feature_lab.prepare(self.server.feature_scenario, self.server.catalogue)
                     if not decks:
                         deck_id = data.get("deckId")
@@ -269,33 +304,31 @@ class Handler(BaseHTTPRequestHandler):
                             if not ai_deck:
                                 raise StorageError('No complete bot deck is available for this mode')
                         decks = match_decks(player_deck, ai_deck, data.get('mode'), catalogue=self.server.catalogue)
-                    try:
-                        self.server.engine.request('interactiveClose')
-                    except Exception:
-                        pass
-                    res = self.server.engine.request('interactiveStart', decks=decks, **({'featureScenario': scenario} if scenario else {}))
+                    self.server.play_sessions.leave(uid)
+                    res = self.server.play_sessions.start_bot(uid,decks,data.get('mode') or 'play',
+                        **({'featureScenario': scenario} if scenario else {}))
                     if scenario:
                         res['featureScenario'] = scenario['id']
                         res['deckCards'] = [c['grpId'] for c in decks[0]['cards'] for _ in range(c['quantity'])]
                     return self.send_json(200, res)
                 if path == "/api/interactive/snapshot":
                     body = self.body() if method == 'POST' else {}
-                    res = self.server.engine.request('interactiveSnapshot', **body)
+                    res = self.server.play_sessions.request(uid,'interactiveSnapshot', **body)
                     return self.send_json(200, res)
                 if path == "/api/interactive/action":
                     body = self.body()
-                    res = self.server.engine.request('interactiveAction', **body)
+                    res = self.server.play_sessions.request(uid,'interactiveAction', **body)
                     return self.send_json(200, res)
                 if path == "/api/interactive/answer":
                     body = self.body()
-                    res = self.server.engine.request('interactiveAnswer', **body)
+                    res = self.server.play_sessions.request(uid,'interactiveAnswer', **body)
                     return self.send_json(200, res)
                 if path == "/api/interactive/poll":
-                    res = self.server.engine.request('interactivePoll')
+                    res = self.server.play_sessions.request(uid,'interactivePoll')
                     return self.send_json(200, res)
                 if path == "/api/interactive/close":
                     try:
-                        res = self.server.engine.request('interactiveClose')
+                        res = self.server.play_sessions.leave(uid)
                     except Exception:
                         res = {"closed": True}
                     return self.send_json(200, res)
@@ -316,6 +349,8 @@ class Handler(BaseHTTPRequestHandler):
                         ]
                     })
                 if path == "/api/bot/decks/import":
+                    if uid != 1:
+                        raise StorageError('Only the server administrator can import shared bot decks',403)
                     body = self.body()
                     url = body.get("url")
                     text = body.get("text")
@@ -461,6 +496,7 @@ def make_server(db_path, port=8787, engine=None):
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     server.store = Store(db_path)
     server.engine = engine
+    server.play_sessions = PlaySessions(engine)
     server.catalogue = {}
     server.feature_scenario = None
     server.bootstrap = None
@@ -505,6 +541,7 @@ def main():
         pass
     finally:
         server.server_close()
+        server.play_sessions.close()
         if engine:
             engine.close()
 

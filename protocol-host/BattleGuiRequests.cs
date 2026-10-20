@@ -55,19 +55,24 @@ static class BattleGuiRequests
         if(max==0 && !(input.TryGetProperty("privateLook",out var privateLook) && privateLook.GetBoolean()))return null;
         bool bottomChoice=input.TryGetProperty("title",out var choiceTitle) && (choiceTitle.GetString()??"").Contains("put on the bottom",StringComparison.OrdinalIgnoreCase);
         bool battlefield=input.TryGetProperty("nativeKind",out var choiceKind) && choiceKind.GetString()=="battlefield";
+        string purpose=input.TryGetProperty("selectionPurpose",out var selectionPurpose)?selectionPurpose.GetString()??"":"";
         var prompt=new Prompt {PromptId=input.TryGetProperty("promptId",out var explicitPrompt)?explicitPrompt.GetUInt32():battlefield?2920000u:bottomChoice?41u:23u};
-        if(battlefield)prompt.Parameters.Add(new PromptParameter {ParameterName="question",Type=ParameterType.NonLocalizedString,
+        if(battlefield || purpose is "discard" or "keep") {
+            prompt.PromptId=2920000u;
+            prompt.Parameters.Add(new PromptParameter {ParameterName="question",Type=ParameterType.NonLocalizedString,
             StringValue=input.GetProperty("title").GetString()??"Select cards"});
+        }
         bool entities=input.TryGetProperty("entityChoices",out var e) && e.GetBoolean();
         bool stackMenu=input.TryGetProperty("readableStackTargets",out var readableStack) && readableStack.GetBoolean();
         var req=new SelectNReq {MinSel=input.GetProperty("min").GetInt32(),MaxSel=max,
             SourceId=input.GetProperty("sourceId").GetUInt32(),ListType=SelectionListType.Dynamic,
-            IdType=entities?IdType.InstanceId:IdType.PromptParameterIndex,Context=SelectionContext.Resolution,
+            IdType=entities?IdType.InstanceId:IdType.PromptParameterIndex,Context=purpose=="discard"?SelectionContext.Discard:SelectionContext.Resolution,
             OptionContext=OptionContext.Resolution,ValidationType=SelectionValidationType.NonRepeatable,Prompt=prompt};
         uint position=0;
         foreach(var option in input.GetProperty("options").EnumerateArray()) {
             uint id=stackMenu?++position:option.GetProperty("id").GetUInt32();req.Ids.Add(id);req.UnfilteredIds.Add(id);req.HotIds.Add(id);
         }
+        if(purpose is "discard" or "keep")req.HotIds.Clear();
         // Arena's proliferate workflow preselects HotIds. Offer every legal
         // entity without deciding which counters the human wants to increase.
         if(input.TryGetProperty("proliferateSelection",out var proliferate) && proliferate.GetBoolean())req.HotIds.Clear();
@@ -128,8 +133,10 @@ static class BattleGuiRequests
             case "InputGuiCombatDamage":
                 message.Type=GREMessageType.AssignDamageReq;message.AssignDamageReq=new AssignDamageReq();
                 uint source=input.GetProperty("sourceId").GetUInt32(),total=input.GetProperty("amount").GetUInt32();
-                var prompt=new Prompt {PromptId=8,Parameters={new PromptParameter {ParameterName="1",Type=ParameterType.Reference,Reference=new Reference {Type=ReferenceType.InstanceId,Id=source}}}};
-                var assigner=new DamageAssigner {InstanceId=source,TotalDamage=total,CanIgnoreBlockers=input.GetProperty("ignoreOrder").GetBoolean(),DecisionPrompt=prompt};
+                var prompt=new Prompt {PromptId=2920000u,Parameters={new PromptParameter {ParameterName="question",Type=ParameterType.NonLocalizedString,StringValue="Assign combat damage"}}};
+                // Forge's ignoreOrder permits distributing damage among
+                // blockers freely; it never grants permission to bypass them.
+                var assigner=new DamageAssigner {InstanceId=source,TotalDamage=total,CanIgnoreBlockers=false,DecisionPrompt=prompt};
                 uint remaining=total;
                 foreach(var target in input.GetProperty("targets").EnumerateArray()) {
                     uint min=assigner.CanIgnoreBlockers?0:Math.Min(remaining,target.GetProperty("lethal").GetUInt32());

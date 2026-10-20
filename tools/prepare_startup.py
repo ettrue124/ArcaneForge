@@ -63,7 +63,8 @@ def main():
                     managed / 'Core.dll', managed / 'SharedClientCore.dll', managed / 'ArcaneForge.CardArt.dll']
     sync_inputs = [database, ROOT / 'engine-bridge/launch.json']
     sync_inputs += [ROOT / n for n in ('tools/sync_card_catalogue.py', 'scripts/prepare_client.py',
-                    'scripts/forge_coverage.py', 'tools/update_commander.py',
+                    'scripts/forge_coverage.py', 'tools/update_commander.py', 'tools/update_multiplayer_formats.py',
+                    'server/formats.py',
                     'engine-bridge/export_arena_metadata.py', 'tools/export_generated_cards.py', 'tools/export_linked_faces.py')]
     sync_inputs += list((ROOT / 'engine-bridge/cards').glob('*.txt'))
     sync_outputs = [ROOT / 'data' / n for n in ('card-sync-report.json', 'catalogue.json', 'catalogue-metadata.json',

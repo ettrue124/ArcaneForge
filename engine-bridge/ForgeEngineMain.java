@@ -38,7 +38,8 @@ public final class ForgeEngineMain {
         JsonArray specifications=input.getAsJsonArray("decks");
         if (specifications==null || (specifications.size()!=2 && specifications.size()!=4)) throw new IllegalArgumentException("Exactly two or four decks required");
         String format=specifications.get(0).getAsJsonObject().has("format")?string(specifications.get(0).getAsJsonObject(),"format"):"Historic";
-        boolean unbanned=format.equals("CommanderUnbanned");
+        boolean brawl=format.startsWith("Brawl") || format.startsWith("StandardBrawl");
+        boolean unbanned=format.equals("CommanderUnbanned") || brawl;
         boolean commander=format.equals("Commander") || format.equals("Commander4") || unbanned;
         if(specifications.size()==4 && !commander)throw new IllegalArgumentException("Four-player matches require Commander decks");
         JsonObject commanderPolicy=null;
@@ -52,7 +53,7 @@ public final class ForgeEngineMain {
         List<Map<String,Integer>> groupIds=new ArrayList<>();
         for(JsonElement specification:specifications) {
             JsonObject spec=specification.getAsJsonObject();
-            if(commander && (!spec.has("format") || !(string(spec,"format").equals("Commander") || string(spec,"format").equals("Commander4") || string(spec,"format").equals("CommanderUnbanned"))))
+            if(commander && (!spec.has("format") || !string(spec,"format").equals(format)))
                 throw new IllegalArgumentException("All players must use Commander decks");
             Deck deck=new Deck(string(spec,"name"));
             Map<String,Integer> map=new HashMap<>();
@@ -91,13 +92,13 @@ public final class ForgeEngineMain {
                     }
                 }
                 applyRulebreakerColors(deck);
-                String problem=forge.deck.DeckFormat.Commander.getDeckConformanceProblem(deck);
+                String problem=brawl?null:forge.deck.DeckFormat.Commander.getDeckConformanceProblem(deck);
                 if(problem!=null)throw new IllegalArgumentException("Illegal Commander deck: "+problem);
             }
             decks.add(deck);
             groupIds.add(map);
         }
-        interactive=new ForgeInteractiveSession(decks,groupIds,commander,input.has("featureScenario")?input.getAsJsonObject("featureScenario"):null);
+        interactive=new ForgeInteractiveSession(decks,groupIds,commander,input.has("featureScenario")?input.getAsJsonObject("featureScenario"):null,input.has("humanOpponent") && input.get("humanOpponent").getAsBoolean(),brawl);
         return object("started",true,"mode","human-vs-ai","playerCount",decks.size(),"format",format,"arenaPlayable",false);
     }
 
@@ -176,7 +177,7 @@ public final class ForgeEngineMain {
                     "specs",mana.isRestricted()?List.of(object("type",3)):List.of()));
                 entry.put("count",(Integer)entry.get("count")+1);
             }
-            players.add(object("seat",seat(seats,p),"life",p.getLife(),"lifeLostThisTurn",p.getLifeLostThisTurn(),"manaPool",pool.values(),"lost",p.hasLost(),
+            players.add(object("seat",seat(seats,p),"decisionControllerSeat",p.getControllingPlayer()==null?seat(seats,p):seat(seats,p.getControllingPlayer()),"life",p.getLife(),"lifeLostThisTurn",p.getLifeLostThisTurn(),"manaPool",pool.values(),"lost",p.hasLost(),
                 "protection",p.getKeywords().getValues().stream().filter(k->k.getKeyword()==forge.game.keyword.Keyword.PROTECTION)
                     .map(k->k.getOriginal()).distinct().toList(),
                 "maxHandSize",p.getMaxHandSize(),"unlimitedHandSize",p.isUnlimitedHandSize(),
@@ -225,16 +226,27 @@ public final class ForgeEngineMain {
                             encoded.put("exiledWith",forge.game.ArenaCardIds.exileSource(c.getId()));
                     }
                     List<Object> blockingRestrictions=new ArrayList<>();
-                    if(c.isInPlay() && !c.isPhasedOut())
+                    if(c.isInPlay() && c.isCreature() && !c.isPhasedOut())
                         for(var restrictionSource:game.getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES))
                         for(var restriction:restrictionSource.getStaticAbilities()) {
-                            if(restriction.getKeyword()!=null || !restriction.checkConditions(forge.game.staticability.StaticAbilityMode.CantBlockBy)
-                                || !restriction.matchesValidParam("ValidAttacker",c))continue;
+                            if(restriction.getKeyword()!=null || !restriction.checkConditions(forge.game.staticability.StaticAbilityMode.CantBlockBy))continue;
+                            // Restrictions covering every attacker describe the
+                            // blockers (e.g. Void Winnower), not every creature
+                            // that could attack. Keep attacker-specific evasion
+                            // such as Questing Beast on the attacker instead.
+                            String attackers=restriction.getParamOrDefault("ValidAttacker","Card");
+                            boolean cantBlock=(attackers.equals("Creature") || attackers.equals("Card"))
+                                && !restriction.hasParam("InvertValidAttacker")
+                                && !restriction.hasParam("ValidAttackerRelative")
+                                && !restriction.hasParam("ValidBlockerRelative")
+                                && !restriction.hasParam("ValidDefender");
+                            if(!restriction.matchesValidParam(cantBlock?"ValidBlocker":"ValidAttacker",c))continue;
                             Integer restrictionPrinting=identities.get(restrictionSource.getId());
                             if(restrictionPrinting==null)continue;
                             blockingRestrictions.add(object("sourceGrpId",restrictionPrinting,"cardName",restrictionSource.getName(),
                                 "sourceId",forge.game.ArenaCardIds.id(restrictionSource.getId()),
-                                "description",restriction.getParamOrDefault("Description","")));
+                                "description",restriction.getParamOrDefault("Description",""),
+                                "qualification",cantBlock?"CantBlock":"CantBeBlocked"));
                         }
                     encoded.put("blockingRestrictions",blockingRestrictions);
                     if(c.isInPlay() && c.isCreature()) {
@@ -548,10 +560,10 @@ public final class ForgeEngineMain {
                 Object result=switch (string(input,"op")) {
                     case "status" -> object("engine","Forge","ready",true,"mode","ai-vs-ai","humanPrompts",true,"interactiveSession",interactive!=null,"arenaPlayable",false);
                     case "interactiveStart" -> startInteractive(input);
-                    case "interactivePoll" -> { if(interactive==null)throw new IllegalStateException("No interactive game");yield interactive.poll(); }
-                    case "interactiveAnswer" -> { if(interactive==null)throw new IllegalStateException("No interactive game");yield interactive.answer(input); }
-                    case "interactiveAction" -> { if(interactive==null)throw new IllegalStateException("No interactive game");yield interactive.action(input); }
-                    case "interactiveSnapshot" -> { if(interactive==null)throw new IllegalStateException("No interactive game");yield interactive.snapshot(input); }
+                    case "interactivePoll" -> { if(interactive==null)throw new IllegalStateException("No interactive game");yield interactive.participant(integer(input,"participant",0)).poll(); }
+                    case "interactiveAnswer" -> { if(interactive==null)throw new IllegalStateException("No interactive game");yield interactive.participant(integer(input,"participant",0)).answer(input); }
+                    case "interactiveAction" -> { if(interactive==null)throw new IllegalStateException("No interactive game");yield interactive.participant(integer(input,"participant",0)).action(input); }
+                    case "interactiveSnapshot" -> { if(interactive==null)throw new IllegalStateException("No interactive game");yield interactive.participant(integer(input,"participant",0)).snapshot(input); }
                     case "interactiveClose" -> { if(interactive!=null)interactive.close();interactive=null;yield object("closed",true); }
                     case "cards" -> cards(input);
                     case "simulate" -> { if(interactive!=null)throw new IllegalStateException("Interactive game owns Forge state");yield simulate(input); }
