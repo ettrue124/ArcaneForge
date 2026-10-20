@@ -1,0 +1,67 @@
+{
+  "name": "Green Stompy",
+  "cards": [
+    {
+      "name": "Forest",
+      "quantity": 24
+    },
+    {
+      "name": "Llanowar Elves",
+      "quantity": 4
+    },
+    {
+      "name": "Elvish Mystic",
+      "quantity": 4
+    },
+    {
+      "name": "Steel Leaf Champion",
+      "quantity": 4
+    },
+    {
+      "name": "Old-Growth Troll",
+      "quantity": 4
+    },
+    {
+      "name": "Lovestruck Beast",
+      "quantity": 4
+    },
+    {
+      "name": "Questing Beast",
+      "quantity": 4
+    },
+    {
+      "name": "Aspect of Hydra",
+      "quantity": 4
+    },
+    {
+      "name": "Rancor",
+      "quantity": 4
+    },
+    {
+      "name": "Werewolf Pack Leader",
+      "quantity": 4
+    }
+  ],
+  "sideboard": [
+    {
+      "name": "Naturalize",
+      "quantity": 3
+    },
+    {
+      "name": "Scavenging Ooze",
+      "quantity": 3
+    },
+    {
+      "name": "Shifting Ceratops",
+      "quantity": 3
+    },
+    {
+      "name": "Return to Nature",
+      "quantity": 3
+    },
+    {
+      "name": "Pithing Needle",
+      "quantity": 3
+    }
+  ]
+}

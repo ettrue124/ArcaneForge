@@ -320,12 +320,22 @@ static class BattleRequests
                 break;
             case "InputSelectTargets":
             case "InputGuiStackTargets":
-                if(input.TryGetProperty("readableStackTargets",out var readable) && readable.GetBoolean())
-                    return BattleGuiRequests.Choice(input,msgId,stateId);
                 result.Type = GREMessageType.SelectTargetsReq;
                 var selection = new TargetSelection { TargetIdx = input.TryGetProperty("targetIndex",out var index)?index.GetUInt32():0, MinTargets = input.GetProperty("min").GetUInt32(),
                     MaxTargets = input.GetProperty("max").GetUInt32(), TargetingPlayer = input.TryGetProperty("targetingPlayer",out var player)?player.GetUInt32():1,
                     Prompt = new Prompt { PromptId = TargetPrompt(snapshot, input) } };
+                if(input.GetProperty("type").GetString()=="InputGuiStackTargets") {
+                    // A stack choice must carry real spell/ability instance
+                    // IDs. Prompt-index options become blank preview cards in
+                    // the native stack browser instead of readable buttons.
+                    var stackTargets=input.GetProperty("targets").EnumerateArray().Select(t=>t.GetUInt32()).ToHashSet();
+                    bool spellsOnly=snapshot.TryGetProperty("stack",out var stack)
+                        && stack.EnumerateArray().Where(s=>stackTargets.Contains(s.GetProperty("instanceId").GetUInt32()))
+                            .All(s=>!s.GetProperty("isAbility").GetBoolean());
+                    selection.Prompt=new Prompt {PromptId=2920000u,Parameters={new PromptParameter {
+                        ParameterName="question",Type=ParameterType.NonLocalizedString,
+                        StringValue=spellsOnly?"Select target spell":"Select target spell or ability"}}};
+                }
                 var selectedTargetIds=input.GetProperty("selected").EnumerateArray().Select(id=>id.GetUInt32()).ToHashSet();
                 foreach (uint target in input.GetProperty("targets").EnumerateArray().Select(id=>id.GetUInt32()).Concat(selectedTargetIds).Distinct())
                     selection.Targets.Add(new Target { TargetInstanceId = target,

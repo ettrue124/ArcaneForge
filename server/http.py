@@ -2,6 +2,7 @@
 import argparse
 import json
 import logging
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -29,7 +30,7 @@ def resolve_deck(store, catalogue, uid, deck_id):
     cards = []
     deck_name = "Custom Deck"
     format_name = 'Historic'
-    command_cards, companions = [], []
+    command_cards, companions, sideboard = [], [], []
     with store._db(write=False) as db:
         if isinstance(deck_id, str) and len(deck_id) > 10:
             row = db.execute("SELECT * FROM arena_decks WHERE arena_id=? AND user_id=?", (deck_id, uid)).fetchone()
@@ -44,6 +45,7 @@ def resolve_deck(store, catalogue, uid, deck_id):
                     commander.validate(body, catalogue, complete=True, format_name=format_name)
                 command_cards = body.get('CommandZone', [])
                 companions = body.get('Companions', [])
+                sideboard = body.get('Sideboard', body.get('SideBoard', []))
                 for item in body.get("MainDeck", []):
                     cards.append({"grpId": item["cardId"], "quantity": item["quantity"]})
         if not cards:
@@ -74,14 +76,22 @@ def resolve_deck(store, catalogue, uid, deck_id):
     def resolve_pile(entries):
         return [{'name': catalogue[c['cardId']]['name'], 'quantity': c['quantity'], 'grpId': c['cardId']} for c in entries]
     return {"name": deck_name, "cards": resolved_cards, "format": format_name,
-            "commanders": resolve_pile(command_cards), "companions": resolve_pile(companions)}
+            "commanders": resolve_pile(command_cards), "companions": resolve_pile(companions),
+            "sideboard": resolve_pile(sideboard)}
 
 
 def match_decks(player_deck, ai_deck, mode=None, catalogue=None):
     """The selected queue controls seats; either Commander queue uses the same deck."""
-    if mode not in (None, 'play', 'commander', 'commander4', 'commander-unbanned'):
+    if mode not in (None, 'play', 'no-bans-60', 'commander', 'commander4', 'commander-unbanned'):
         raise StorageError('Unknown game mode')
     is_commander = player_deck['format'] in commander.FORMATS
+    if mode == 'no-bans-60' or player_deck['format'] == 'NoBans60':
+        if is_commander or sum(c['quantity'] for c in player_deck['cards']) != 60 or player_deck.get('commanders'):
+            raise StorageError('Select a 60-card deck without a commander')
+        player_deck = dict(player_deck, format='NoBans60')
+        ai_deck = dict(ai_deck, format='NoBans60')
+        if sum(c['quantity'] for c in player_deck.get('sideboard', [])) > 15:
+            raise StorageError('The sideboard can contain at most 15 cards')
     if mode in ('commander', 'commander4', 'commander-unbanned') and not is_commander:
         raise StorageError('Select a 100-card Commander deck with a commander')
     if mode == 'play' and is_commander:
@@ -253,7 +263,11 @@ class Handler(BaseHTTPRequestHandler):
                             if not ai_deck:
                                 ai_deck = dict(player_deck, name="Forge AI")
                         else:
-                            ai_deck = dict(player_deck, name="Forge AI")
+                            ai_deck = bot_decks.get_random_bot_deck(self.server.catalogue,
+                                format_name='NoBans60' if data.get('mode') == 'no-bans-60' else player_deck['format'],
+                                exclude_name=player_deck.get('name'), exclude_deck=player_deck)
+                            if not ai_deck:
+                                raise StorageError('No complete bot deck is available for this mode')
                         decks = match_decks(player_deck, ai_deck, data.get('mode'), catalogue=self.server.catalogue)
                     try:
                         self.server.engine.request('interactiveClose')
@@ -461,10 +475,18 @@ def main():
     parser.add_argument("--catalogue", type=Path, default=ROOT / "data" / "catalogue.json")
     parser.add_argument('--engine-config', type=Path, default=ROOT / 'engine-bridge' / 'launch.json')
     parser.add_argument('--bootstrap-config', type=Path, default=ROOT / 'data' / 'local-client' / 'bootstrap.json')
+    parser.add_argument('--warm-engine', action='store_true', help='Load rules while the local services start')
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     args.database.parent.mkdir(parents=True, exist_ok=True)
     engine = Engine.from_config(args.engine_config) if args.engine_config.exists() else None
+    if args.warm_engine and engine:
+        def warm_engine():
+            try:
+                engine.status(timeout=180)
+            except Exception as error:
+                logging.error('Rules startup failed: %s', error)
+        threading.Thread(target=warm_engine, name='rules-startup', daemon=True).start()
     server = make_server(args.database, args.port, engine)
     if args.bootstrap_config.exists():
         server.bootstrap = Bootstrap(server.store, **json.loads(args.bootstrap_config.read_text(encoding='utf-8')))

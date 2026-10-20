@@ -8,7 +8,17 @@ static class BattleGuiResponses
         answer=null;
         if(snapshotJson!=null) {
             using var snapshot=System.Text.Json.JsonDocument.Parse(snapshotJson);
-            if(snapshot.RootElement.TryGetProperty("input",out var input) && BattleNativeMenus.TryAnswer(message,snapshot.RootElement,out answer))return true;
+            if(snapshot.RootElement.TryGetProperty("input",out var input)) {
+                if(inputType=="InputGuiStackTargets" && input.TryGetProperty("readableStackTargets",out var readable)
+                    && readable.GetBoolean() && message.SelectNResp is {} stackMenu) {
+                    var options=input.GetProperty("options");
+                    answer=stackMenu.Ids.Select(id=>id>0 && id<=options.GetArrayLength()
+                        ?options[(int)id-1].GetProperty("id").GetUInt32()
+                        :throw new InvalidDataException("Unknown stack choice")).ToArray();
+                    return true;
+                }
+                if(BattleNativeMenus.TryAnswer(message,snapshot.RootElement,out answer))return true;
+            }
         }
         switch(inputType) {
             case "InputGuiStackTargets" when message.SelectNResp is { } stackSelect:

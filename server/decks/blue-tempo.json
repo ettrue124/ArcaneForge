@@ -1,0 +1,67 @@
+{
+  "name": "Blue Tempo",
+  "cards": [
+    {
+      "name": "Island",
+      "quantity": 24
+    },
+    {
+      "name": "Delver of Secrets",
+      "quantity": 4
+    },
+    {
+      "name": "Spectral Sailor",
+      "quantity": 4
+    },
+    {
+      "name": "Pteramander",
+      "quantity": 4
+    },
+    {
+      "name": "Tolarian Terror",
+      "quantity": 4
+    },
+    {
+      "name": "Counterspell",
+      "quantity": 4
+    },
+    {
+      "name": "Consider",
+      "quantity": 4
+    },
+    {
+      "name": "Opt",
+      "quantity": 4
+    },
+    {
+      "name": "Fading Hope",
+      "quantity": 4
+    },
+    {
+      "name": "Curious Obsession",
+      "quantity": 4
+    }
+  ],
+  "sideboard": [
+    {
+      "name": "Negate",
+      "quantity": 3
+    },
+    {
+      "name": "Aether Gust",
+      "quantity": 3
+    },
+    {
+      "name": "Essence Scatter",
+      "quantity": 3
+    },
+    {
+      "name": "Disdainful Stroke",
+      "quantity": 3
+    },
+    {
+      "name": "Grafdigger's Cage",
+      "quantity": 3
+    }
+  ]
+}

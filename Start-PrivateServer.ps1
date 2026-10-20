@@ -1,16 +1,41 @@
-param([switch]$Restart)
+param([switch]$Restart, [switch]$FullRefresh)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
+function Test-LocalListener([int]$Port) {
+    # Avoid repeatedly starting the slow Windows networking provider.
+    foreach ($endpoint in [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners()) {
+        if ($endpoint.Port -eq $Port) { return $true }
+    }
+    return $false
+}
 if ($Restart) {
     Write-Output 'Restarting local services. Any current match will end.'
-    $localProcesses = Get-CimInstance Win32_Process | Where-Object {
-        $_.CommandLine -and $_.CommandLine.Contains($PSScriptRoot, [System.StringComparison]::OrdinalIgnoreCase) -and (
+    $restartProcesses = Get-CimInstance Win32_Process
+    $localProcesses = $restartProcesses | Where-Object {
+        $_.CommandLine -and $_.CommandLine.IndexOf($PSScriptRoot, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -and (
             ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'ProtocolHost.dll') -or
             ($_.Name -eq 'java.exe' -and $_.CommandLine -match 'ForgeEngineMain'))
     }
-    $backendListeners = Get-NetTCPConnection -State Listen -LocalPort 8787 -ErrorAction SilentlyContinue
-    foreach ($listener in $backendListeners) {
-        $backendProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$($listener.OwningProcess)"
+    $backendProcess = $null
+    $startedPath = Join-Path $PSScriptRoot 'data\local-client\started-processes.json'
+    if (Test-Path -LiteralPath $startedPath) {
+        try {
+            $started = Get-Content -LiteralPath $startedPath -Raw | ConvertFrom-Json
+            $backendProcess = $restartProcesses | Where-Object { $_.ProcessId -eq $started.backend } | Select-Object -First 1
+            if (!$backendProcess -or !$started.backendStartedAtUtc -or $backendProcess.Name -notmatch '^python' -or
+                $backendProcess.CommandLine -notmatch '-m server' -or
+                [math]::Abs(($backendProcess.CreationDate.ToUniversalTime() - ([datetime]::Parse($started.backendStartedAtUtc)).ToUniversalTime()).TotalMilliseconds) -gt 10) {
+                $backendProcess = $null
+            }
+        } catch { $backendProcess = $null }
+    }
+    if (!$backendProcess -and (Test-LocalListener 8787)) {
+        $backendListener = Get-NetTCPConnection -State Listen -LocalPort 8787 -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($backendListener) {
+            $backendProcess = $restartProcesses | Where-Object { $_.ProcessId -eq $backendListener.OwningProcess } | Select-Object -First 1
+        }
+    }
+    if ($backendProcess) {
         if ($backendProcess.Name -match '^python' -and $backendProcess.CommandLine -match '-m server') {
             Stop-Process -Id $backendProcess.ProcessId -Force -ErrorAction SilentlyContinue
         }
@@ -18,11 +43,10 @@ if ($Restart) {
     $localProcesses | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 }
 $stateDirectory = Join-Path $PSScriptRoot 'data\local-client'
-& python (Join-Path $PSScriptRoot 'tools\install_custom_arena_cards.py')
-if ($LASTEXITCODE -ne 0) { throw 'Could not load the local Arena card pack. Close Arena before installing or updating it.' }
-Write-Output 'Checking the card catalogue. A refresh after updates can take a few minutes...'
-& python -u (Join-Path $PSScriptRoot 'tools\sync_card_catalogue.py')
-if ($LASTEXITCODE -ne 0) { throw 'Could not synchronize the installed card catalogue. See the card sync diagnostic above.' }
+$preparationArguments = @('-u', (Join-Path $PSScriptRoot 'tools\prepare_startup.py'))
+if ($FullRefresh) { $preparationArguments += '--full-refresh' }
+& python @preparationArguments
+if ($LASTEXITCODE -ne 0) { throw 'Could not prepare local card data. See the diagnostic above; close Arena if an update needs installation.' }
 $manifestVersionPath = Join-Path $stateDirectory 'manifest-version.json'
 if (Test-Path -LiteralPath $manifestVersionPath) {
     $manifestIdentity = Get-Content -LiteralPath $manifestVersionPath -Raw | ConvertFrom-Json
@@ -51,20 +75,23 @@ $trustPath = if (Test-Path -LiteralPath "$certificatePrefix.root.cer") { "$certi
 $trustCertificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($trustPath)
 if (!(Test-Path -LiteralPath ('Cert:\CurrentUser\Root\' + $trustCertificate.Thumbprint))) { throw 'The local certificate issuer is not trusted for this Windows user' }
 $processes = @{}
-if (!(Get-NetTCPConnection -State Listen -LocalPort 8787 -ErrorAction SilentlyContinue)) {
+if (!(Test-LocalListener 8787)) {
     $pythonExecutable = (Get-Command python -ErrorAction Stop).Source
-    $process = Start-Process -FilePath $pythonExecutable -ArgumentList @('-m', 'server', '--port', '8787') -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $stateDirectory 'backend.stdout.log') -RedirectStandardError (Join-Path $stateDirectory 'backend.stderr.log') -PassThru
+    $process = Start-Process -FilePath $pythonExecutable -ArgumentList @('-m', 'server', '--port', '8787', '--warm-engine') -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $stateDirectory 'backend.stdout.log') -RedirectStandardError (Join-Path $stateDirectory 'backend.stderr.log') -PassThru
     $processes.backend = $process.Id
+    $processes.backendStartedAtUtc = $process.StartTime.ToUniversalTime().ToString('o')
 }
-if (!(Get-NetTCPConnection -State Listen -LocalPort $frontDoorPort -ErrorAction SilentlyContinue)) {
+if (!(Test-LocalListener $frontDoorPort)) {
     $dotnetExecutable = (Get-Command dotnet -ErrorAction Stop).Source
     $dllPath = Join-Path $PSScriptRoot 'protocol-host\bin\live\ProtocolHost.dll'
-    & $dotnetExecutable build (Join-Path $PSScriptRoot 'protocol-host') -o (Join-Path $PSScriptRoot 'protocol-host\bin\live') | Out-Null
+    & python (Join-Path $PSScriptRoot 'tools\prepare_protocol_host.py')
     if ($LASTEXITCODE -ne 0) { throw 'Protocol host build failed; see dotnet build output before launching.' }
     $process = Start-Process -FilePath $dotnetExecutable -ArgumentList @($dllPath, '--port', "$frontDoorPort", '--match-port', "$matchDoorPort", '--backend-url', 'http://127.0.0.1:8787', '--pfx', "$certificatePrefix.pfx") -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $stateDirectory 'frontdoor.stdout.log') -RedirectStandardError (Join-Path $stateDirectory 'frontdoor.stderr.log') -PassThru
     $processes.frontdoor = $process.Id
 }
-$processes | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stateDirectory 'started-processes.json')
+if ($processes.Count -gt 0) {
+    $processes | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stateDirectory 'started-processes.json')
+}
 Write-Output 'Waiting for Forge rules and AI to load. The first startup can take a few minutes...'
 $engineStatus = $null
 for ($attempt = 0; $attempt -lt 10; $attempt++) {
@@ -78,8 +105,8 @@ for ($attempt = 0; $attempt -lt 10; $attempt++) {
 }
 if (!$engineStatus.ready) { throw 'Forge rules engine is not ready.' }
 for ($attempt = 0; $attempt -lt 20; $attempt++) {
-    $frontDoorReady = Get-NetTCPConnection -State Listen -LocalPort $frontDoorPort -ErrorAction SilentlyContinue
-    $matchDoorReady = Get-NetTCPConnection -State Listen -LocalPort $matchDoorPort -ErrorAction SilentlyContinue
+    $frontDoorReady = Test-LocalListener $frontDoorPort
+    $matchDoorReady = Test-LocalListener $matchDoorPort
     if ($frontDoorReady -and $matchDoorReady) { break }
     Start-Sleep -Milliseconds 500
 }

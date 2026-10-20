@@ -109,6 +109,9 @@ def formats(data):
     fixture_path = ROOT / 'analysis/deckbuilder-formats.json'
     fixture = json.loads(fixture_path.read_text(encoding='utf8'))
     historic = next(f for f in fixture['GetFormatsResponse']['formats'] if f['name'] == 'Historic')
+    no_bans_60 = dict(historic, name='NoBans60', mainDeckQuota={'min': 60, 'max': 60},
+                      commandZoneQuota={'min': 0, 'max': 0}, sideBoardQuota={'min': 0, 'max': 15},
+                      bannedTitleIds=[], suspendedTitleIds=[], supressedTitleIds=[], individualCardQuotas={})
     commander = dict(historic, name='Commander', cardCountRestrictionInternal=1,
                      mainDeckQuota={'min': 99, 'max': 99}, commandZoneQuota={'min': 1, 'max': 1},
                      sideBoardQuota={'min': 0, 'max': 1}, sideboardBehaviorInternal=1,
@@ -118,10 +121,10 @@ def formats(data):
     unbanned = dict(commander, name='CommanderUnbanned', bannedTitleIds=[],
                     allowedCommanderTitleIds=sorted({c['arenaMetadata']['TitleId'] for c in catalogue if c['name'] in eligible}))
     response = fixture['GetFormatsResponse']
-    response['formats'] = [f for f in response['formats'] if f['name'] not in ('Commander', 'Commander4', 'CommanderUnbanned')] + [commander, multiplayer, unbanned]
+    response['formats'] = [f for f in response['formats'] if f['name'] not in ('Commander', 'Commander4', 'CommanderUnbanned', 'NoBans60')] + [commander, multiplayer, unbanned, no_bans_60]
     for group in response['formatGroups']:
         values = group.get('formats', group.get('formatNames', []))
-        for name in ('Commander', 'Commander4', 'CommanderUnbanned'):
+        for name in ('Commander', 'Commander4', 'CommanderUnbanned', 'NoBans60'):
             if name not in values:
                 values.append(name)
     fixture['commanderBanSources'] = data['sources']
@@ -133,11 +136,12 @@ def formats(data):
     modes = [('AIBotMatch', 'ArenaLab/Modes/Play', 'Historic', 'ArenaLab/DeckSize/60'),
              ('CommanderAI', 'ArenaLab/Modes/Commander', 'Commander', 'ArenaLab/DeckSize/100'),
              ('CommanderAI4', 'ArenaLab/Modes/Commander4', 'Commander', 'ArenaLab/DeckSize/100'),
-             ('CommanderUnbannedAI', 'ArenaLab/Modes/CommanderUnbanned', 'CommanderUnbanned', 'ArenaLab/DeckSize/100')]
+             ('CommanderUnbannedAI', 'ArenaLab/Modes/CommanderUnbanned', 'CommanderUnbanned', 'ArenaLab/DeckSize/100'),
+             ('NoBans60AI', 'ArenaLab/Modes/NoBans60', 'NoBans60', 'ArenaLab/DeckSize/Exactly60')]
     modes_fixture['commands']['GetPlayBladeQueueConfig']['payload'] = [
         {'Id': event, 'QueueType': 'Unranked', 'LocTitle': title,
          'EventNameBO1': event, 'EventNameBO3': None, 'DeckSizeBO1': size,
-         'DeckSizeBO3': None, 'SideBoardBO1': 'ArenaLab/Sideboard/None', 'SideBoardBO3': None,
+         'DeckSizeBO3': None, 'SideBoardBO1': 'ArenaLab/Sideboard/15' if format_name == 'NoBans60' else 'ArenaLab/Sideboard/None', 'SideBoardBO3': None,
          'Tags': [format_name]} for event, title, format_name, size in modes]
     active = modes_fixture['commands']['EventGetActiveEventsV2']['payload']
     active['CacheVersion'] = 2

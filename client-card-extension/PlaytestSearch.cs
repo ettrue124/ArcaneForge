@@ -16,7 +16,10 @@ namespace ArcaneForge {
             // UnlocalizedMTGAString.ToString returns its search key. It has no
             // RawText property (that belongs to other native text wrappers).
             string text=value?.ToString();
-            if(!string.Equals(text,Tag,StringComparison.OrdinalIgnoreCase))return false;
+            bool playtest=string.Equals(text,Tag,StringComparison.OrdinalIgnoreCase);
+            bool added=string.Equals(text,"ARCANEADDEDTAG",StringComparison.OrdinalIgnoreCase);
+            bool token=string.Equals(text,"ARCANETOKENTAG",StringComparison.OrdinalIgnoreCase);
+            if(!playtest && !added && !token)return false;
             if(playtestArt==null) {
                 var rules=ArtDisplayRuleParser.Parse(File.ReadAllLines(Path.Combine(Application.streamingAssetsPath,"ArcaneForgeCards","art-display.tsv")));
                 playtestArt=new HashSet<uint>(rules.Values.Where(r=>r.playtest).Select(r=>(uint)r.artId));
@@ -35,7 +38,9 @@ namespace ArcaneForge {
                 }
                 var card=cardField.GetValue(item);
                 if(artProperty==null)artProperty=card.GetType().GetProperty("ArtId");
-                bool matches=playtestArt.Contains((uint)artProperty.GetValue(card));
+                uint art=(uint)artProperty.GetValue(card);
+                bool matches=token?(bool)card.GetType().GetProperty("IsToken").GetValue(card):
+                    added?art>=9000000 && art<10910000:playtestArt.Contains(art);
                 if(matches==negate)fail.Invoke(item,new[]{reason});
             }
             return true;
@@ -44,11 +49,16 @@ namespace ArcaneForge {
         // Quoted text remains literal, so searching a card name is unchanged.
         public static string Rewrite(string input) {
             if(string.IsNullOrEmpty(input))return input;
-            const string pattern="\"[^\"]*\"|(?<![\\w:])-?(?:tag|is):playtest\\b";
-            if(!Regex.IsMatch(input,@"\b(?:tag|is):playtest\b",RegexOptions.IgnoreCase))return input;
+            const string pattern="\"[^\"]*\"|(?<![\\w:])-?(?:tag|is):(?:playtest|added|custom|token|planeswalker|creature|land|artifact|enchantment|instant|sorcery|battle)\\b";
+            if(!Regex.IsMatch(input,@"\b(?:tag|is):",RegexOptions.IgnoreCase))return input;
             try {
-                return Regex.Replace(input,pattern,m=>m.Value.StartsWith("\"",StringComparison.Ordinal)?m.Value:
-                    (m.Value.StartsWith("-",StringComparison.Ordinal)?"-":"")+"name:"+Tag,RegexOptions.IgnoreCase);
+                return Regex.Replace(input,pattern,m=> {
+                    if(m.Value.StartsWith("\"",StringComparison.Ordinal))return m.Value;
+                    string prefix=m.Value.StartsWith("-",StringComparison.Ordinal)?"-":"";
+                    string tag=m.Value.Substring(m.Value.IndexOf(':')+1).ToLowerInvariant();
+                    return prefix+(tag=="playtest"?"name:"+Tag:tag=="added" || tag=="custom"?"name:ARCANEADDEDTAG":
+                        tag=="token"?"name:ARCANETOKENTAG":"t:"+tag);
+                },RegexOptions.IgnoreCase);
             } catch(Exception error) {Debug.LogWarning("ArcaneForge playtest search: "+error.Message);return input;}
         }
     }

@@ -7,6 +7,10 @@ static class BattleGuiRequests
     static string ChoiceLabel(JsonElement input,JsonElement option)
     {
         string label=option.GetProperty("label").GetString()??"";
+        if(input.TryGetProperty("nativeKind",out var menuKind) && menuKind.GetString()=="replacement") {
+            int explanation=label.IndexOf(" - ",StringComparison.Ordinal);
+            if(explanation>0)return label.Substring(0,explanation);
+        }
         // Siege entry replacements are actions, not full reminder paragraphs.
         // Keep their original option IDs while fitting the native buttons.
         if(label.Contains("As a Siege enters",StringComparison.OrdinalIgnoreCase)
@@ -50,21 +54,27 @@ static class BattleGuiRequests
         uint max=input.GetProperty("max").GetUInt32();
         if(max==0 && !(input.TryGetProperty("privateLook",out var privateLook) && privateLook.GetBoolean()))return null;
         bool bottomChoice=input.TryGetProperty("title",out var choiceTitle) && (choiceTitle.GetString()??"").Contains("put on the bottom",StringComparison.OrdinalIgnoreCase);
-        var prompt=new Prompt {PromptId=input.TryGetProperty("promptId",out var explicitPrompt)?explicitPrompt.GetUInt32():bottomChoice?41u:23u};
+        bool battlefield=input.TryGetProperty("nativeKind",out var choiceKind) && choiceKind.GetString()=="battlefield";
+        var prompt=new Prompt {PromptId=input.TryGetProperty("promptId",out var explicitPrompt)?explicitPrompt.GetUInt32():battlefield?2920000u:bottomChoice?41u:23u};
+        if(battlefield)prompt.Parameters.Add(new PromptParameter {ParameterName="question",Type=ParameterType.NonLocalizedString,
+            StringValue=input.GetProperty("title").GetString()??"Select cards"});
         bool entities=input.TryGetProperty("entityChoices",out var e) && e.GetBoolean();
+        bool stackMenu=input.TryGetProperty("readableStackTargets",out var readableStack) && readableStack.GetBoolean();
         var req=new SelectNReq {MinSel=input.GetProperty("min").GetInt32(),MaxSel=max,
             SourceId=input.GetProperty("sourceId").GetUInt32(),ListType=SelectionListType.Dynamic,
             IdType=entities?IdType.InstanceId:IdType.PromptParameterIndex,Context=SelectionContext.Resolution,
             OptionContext=OptionContext.Resolution,ValidationType=SelectionValidationType.NonRepeatable,Prompt=prompt};
+        uint position=0;
         foreach(var option in input.GetProperty("options").EnumerateArray()) {
-            uint id=option.GetProperty("id").GetUInt32();req.Ids.Add(id);req.UnfilteredIds.Add(id);req.HotIds.Add(id);
+            uint id=stackMenu?++position:option.GetProperty("id").GetUInt32();req.Ids.Add(id);req.UnfilteredIds.Add(id);req.HotIds.Add(id);
         }
         // Arena's proliferate workflow preselects HotIds. Offer every legal
         // entity without deciding which counters the human wants to increase.
         if(input.TryGetProperty("proliferateSelection",out var proliferate) && proliferate.GetBoolean())req.HotIds.Clear();
         if(!entities) {
+            position=0;
             foreach(var option in input.GetProperty("options").EnumerateArray()) {
-                uint id=option.GetProperty("id").GetUInt32();
+                uint id=stackMenu?++position:option.GetProperty("id").GetUInt32();
                 prompt.Parameters.Add(new PromptParameter {
                     ParameterName = id.ToString(),
                     Type = ParameterType.NonLocalizedString,

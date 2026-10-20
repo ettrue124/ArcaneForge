@@ -71,6 +71,13 @@ public final class ForgeEngineMain {
                 }
             }
             if(count<1)throw new IllegalArgumentException("Deck cannot be empty");
+            if(!commander && spec.has("sideboard"))for(var value:spec.getAsJsonArray("sideboard")) {
+                var entry=value.getAsJsonObject();String name=string(entry,"name");PaperCard card=findCard(name);
+                int quantity=integer(entry,"quantity",0);
+                if(card==null || quantity<1 || quantity>15)throw new IllegalArgumentException("Invalid sideboard card: "+name);
+                deck.getOrCreate(DeckSection.Sideboard).add(card,quantity);
+                if(entry.has("grpId"))map.put(card.getName(),entry.get("grpId").getAsInt());
+            }
             if(commander) {
                 for(String pile:new String[]{"commanders","companions"}) {
                     JsonArray extra=spec.getAsJsonArray(pile);
@@ -377,7 +384,10 @@ public final class ForgeEngineMain {
                 "gameStateId",integer(input,"gameStateId",1),"msgId",integer(input,"msgId",1),"viewerSeat",integer(input,"viewerSeat",1),
                 "turn",object("number",Math.max(1,phase.getTurn()),"phase",phaseName,
                         "activeSeat",active,"prioritySeat",priority),
-                "players",players,"cards",cards,"omittedUnmappedCards",omitted);
+                "players",players,"cards",cards,"omittedUnmappedCards",omitted,
+                "extraTurns",forge.game.ArenaExtraTurns.pending(game).stream().map(t->object(
+                    "seat",seat(seats,t.player()),"sourceGrpId",t.source()==null?0:identities.getOrDefault(t.source().getId(),0),
+                    "sourceId",t.source()==null?0:forge.game.ArenaCardIds.id(t.source().getId()))).toList());
     }
     static int manaWireId(forge.game.mana.Mana mana,int color) {
         return forge.game.ArenaCardIds.id(mana.getSourceCard().getId())*16+color+(mana.isRestricted()?20_000_000:0);

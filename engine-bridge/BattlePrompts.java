@@ -165,10 +165,12 @@ final class BattlePrompts {
         }
         out.put("options",described);
         if(entities)out.put("choices",choices.stream().map(c->id(c,seats)).toList());
-        // Actual cards use Arena's face-up search lineup, rather than a generic
-        // text list. Player and stack choices retain their own presentation.
+        // Battlefield choices use native in-place selection; cards in other
+        // zones use the face-up lineup. Players and stack items have their own
+        // workflows and must not be converted to card-search placeholders.
         if(max>0 && !choices.isEmpty() && choices.stream().allMatch(c->c instanceof CardView))
-            out.put("nativeKind","search");
+            out.put("nativeKind",choices.stream().allMatch(c->((CardView)c).getZone()==forge.game.zone.ZoneType.Battlefield)
+                ?"battlefield":"search");
         return out;
     }
     static Object answer(GuiGameEvent event,JsonElement value,Map<Player,Integer> seats) {

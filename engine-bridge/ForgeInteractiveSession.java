@@ -373,9 +373,10 @@ final class ForgeInteractiveSession implements IRemote {
             for(forge.game.card.Card card:actionableCards) {
                 boolean inHandOrCommand = card.getOwner()==controller.getPlayer()
                     && (card.isInZone(forge.game.zone.ZoneType.Hand) || card.isInZone(forge.game.zone.ZoneType.Command));
+                boolean permittedOtherZone=!card.mayPlay(controller.getPlayer()).isEmpty();
                 if(!hasPriority && !inHandOrCommand)continue;
-                var abilities=new ArrayList<forge.game.spellability.SpellAbility>(card.getAllPossibleAbilities(controller.getPlayer(),!inHandOrCommand));
-                if(inHandOrCommand && abilities.stream().noneMatch(a->a.isSpell()))
+                var abilities=new ArrayList<forge.game.spellability.SpellAbility>(card.getAllPossibleAbilities(controller.getPlayer(),!(inHandOrCommand || permittedOtherZone)));
+                if((inHandOrCommand || permittedOtherZone) && abilities.stream().noneMatch(a->a.isSpell()))
                     for(var printed:card.getSpellAbilities())if(printed.isSpell())abilities.add(printed.copy(controller.getPlayer()));
                 // Forge's general option enumeration can discard hand
                 // activations before the bridge performs payment checks.
@@ -400,7 +401,7 @@ final class ForgeInteractiveSession implements IRemote {
                         }
                     }
                     if(canCast && !ability.canPlay(true))canCast = false;
-                    if(!canCast && (!inHandOrCommand || !ability.isSpell()))continue;
+                    if(!canCast && (!(inHandOrCommand || permittedOtherZone) || !ability.isSpell()))continue;
                     Integer grp=identities.get(card.getId());
                     if(grp!=null) {
                         String desc=ForgePlayback.abilityDescription(ability);
@@ -433,6 +434,12 @@ final class ForgeInteractiveSession implements IRemote {
                         var identity=ForgeEngineMain.abilityIdentity(ability, identities);
                         identity.put("abilityId",offeredId);
                         action.put("abilityIdentity",identity);
+                        if(card.isInZone(forge.game.zone.ZoneType.Sideboard) && permittedOtherZone) {
+                            var option=ability.getMayPlayOption();
+                            if(option==null)option=card.mayPlay(controller.getPlayer()).get(0);
+                            var permissionSource=BattleExilePresentation.printedSource(option.getHost());
+                            if(permissionSource!=null)action.put("sideboardSourceId",forge.game.ArenaCardIds.id(permissionSource.getId()));
+                        }
                         var loyaltyPreview=BattlePlayerControllerHuman.displayLoyaltyCost(ability);
                         if(loyaltyPreview!=null)action.put("adjustedLoyaltyCost",loyaltyPreview);
                         if(ability.getPayCosts()!=null) {
