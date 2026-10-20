@@ -172,4 +172,8 @@ Restart the local backend and protocol host after refreshing. The refresh preser
 
 To reload compiled fixes, close Arena and run `./Start-PrivateServer.ps1 -Restart`, then reopen Arena. This ends any current match. Running the script without `-Restart` reuses existing services.
 
+Normal startup caches the installed card pack and catalogue instead of scanning every card again. Changed manifests, helper sources, importer tools, or installed files trigger a refresh. Use `./Start-PrivateServer.ps1 -Restart -FullRefresh` after manually changing cached artwork, individual card metadata, or vendor rules in place. The first refresh after a change can still take several minutes.
+
+Double-click `Restart-Arena.bat` for the fast restart path. It reuses unchanged compiled server files, loads Forge rules while the other services start, and reopens Arena once everything is ready. Updated source files rebuild automatically; queued card-pack changes still install once. The script reports elapsed restart time. To force the complete data refresh from this launcher, run `Restart-Arena.bat -FullRefresh`.
+
 Recent changes include card selection lineups, separate choice questions, explicit Bargain decisions, full-catalogue card naming, token previews, adjusted loyalty costs, and linked exile displays. Hand mana abilities can be selected during payment or activated to float mana; AI Phyrexian-payment preferences no longer restrict human choices. These changes compile, but not every card interaction has been checked in a live match.

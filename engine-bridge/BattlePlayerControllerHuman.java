@@ -166,6 +166,7 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman {
     @Override
     public boolean confirmAction(final SpellAbility sa, final forge.game.player.PlayerActionConfirmMode mode,
             final String message, final List<String> options, final Card cardToShow, final Map<String,Object> params) {
+        if(isReboundPlay(sa))return chooseRebound(cardToShow!=null?cardToShow:sa.getHostCard());
         if(sa!=null && sa.getHostCard().getName().equals("Tainted Pact")
             && sa.getApi()==forge.game.ability.ApiType.ChangeZone && sa.hasParam("Optional")
             && "Exile".equals(sa.getParamOrDefault("Origin","")) && "Hand".equals(sa.getParamOrDefault("Destination",""))
@@ -186,6 +187,20 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman {
                 List.of("Reveal and put into hand","Leave on top"));
         }
         return super.confirmAction(sa,mode,message,options,cardToShow,params);
+    }
+    private static boolean isReboundPlay(SpellAbility sa) {
+        // This is Forge's generated rebound cast permission, including rebound
+        // granted by another card after the printed keyword has disappeared.
+        return sa!=null && sa.getApi()==forge.game.ability.ApiType.Play
+            && "DelayTriggerRememberedLKI".equals(sa.getParamOrDefault("Defined",""))
+            && "True".equalsIgnoreCase(sa.getParamOrDefault("WithoutManaCost",""))
+            && "True".equalsIgnoreCase(sa.getParamOrDefault("Optional",""));
+    }
+    private boolean chooseRebound(Card card) {
+        var choices=List.of("Cast for free","Leave in exile");
+        var selected=BattlePromptContext.with(Map.of("sourceId",forge.game.ArenaCardIds.id(card.getId())),
+            ()->getGui().getChoices("Rebound — "+card.getName()+": Cast from exile without paying its mana cost?",1,1,choices));
+        return !selected.isEmpty() && selected.get(0).equals(choices.get(0));
     }
     @Override
     public CardCollectionView chooseCardsToDiscardToMaximumHandSize(final int nDiscard) {
@@ -292,6 +307,24 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman {
         }
     }
 
+    @Override
+    public List<Card> chooseCardsForZoneChange(ZoneType destination,List<ZoneType> origin,
+            SpellAbility sa,CardCollection fetchList,int min,int max,
+            forge.game.player.DelayedReveal delayedReveal,String title,Player decider) {
+        if(sa.hasParam("WithTotalCMC")) {
+            int budget=forge.game.ability.AbilityUtils.calculateAmount(sa.getHostCard(),sa.getParam("WithTotalCMC"),sa);
+            CardCollection eligible=new CardCollection();
+            for(Card card:fetchList)if(card.getCMC()<=budget)eligible.add(card);
+            while(true) {
+                CardCollection chosen=searchCards(eligible,sa,title+" — total mana value "+budget+" or less",min,max);
+                int total=chosen.stream().mapToInt(Card::getCMC).sum();
+                if(total<=budget)return new ArrayList<>(chosen);
+                title="Selected total "+total+" exceeds "+budget+". Choose again";
+            }
+        }
+        return super.chooseCardsForZoneChange(destination,origin,sa,fetchList,min,max,delayedReveal,title,decider);
+    }
+
     private static boolean librarySearch(SpellAbility sa) {
         return sa!=null && sa.getApi()==forge.game.ability.ApiType.ChangeZone
             && java.util.Arrays.asList(sa.getParamOrDefault("Origin","").split(",")).contains("Library");
@@ -318,6 +351,9 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman {
         try {
             var context=new LinkedHashMap<String,Object>();
             context.put("sourceId",sa==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
+            if(sa!=null && sa.getApi()==forge.game.ability.ApiType.Untap
+                && cards.stream().allMatch(Card::isInPlay))
+                context.put("nativeKind","battlefield");
             if(sa!=null && sa.getApi()==forge.game.ability.ApiType.ChangeZone
                 && "Exile".equals(sa.getParamOrDefault("Destination","")) && "Hand".equals(sa.getParamOrDefault("Origin","")))
                 context.put("promptId",1117);
@@ -688,6 +724,7 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman {
             if (decision == AutoYieldStore.TriggerDecision.ACCEPT) return true;
             if (decision == AutoYieldStore.TriggerDecision.DECLINE) return false;
         }
+        if(isReboundPlay(sa))return chooseRebound(sa.getHostCard());
 
         // Ask before payment: floating mana can otherwise satisfy the cost
         // before the player ever gets a chance to decline the trigger.

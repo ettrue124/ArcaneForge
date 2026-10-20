@@ -92,7 +92,20 @@ static class ForgeEncoder
             if (visible) {
                 uint grp = c.GetProperty("grpId").GetUInt32();
                 if (grp == 0) throw new InvalidDataException("Visible card lacks resolved Arena grpId");
-                obj["grpId"] = grp;
+                // Adventure spell printings describe the inset, not a complete
+                // card. Keep the real spell ID but use its full-card printing
+                // with the native linked Adventure facet below.
+                uint displayGrp=grp;
+                if(type==4 && !publicFaceDown
+                    && CardMetadata.Value.TryGetValue(grp.ToString(),out var spellMetadata)
+                    && spellMetadata.GetProperty("subtypes").EnumerateArray().Any(s=>s.GetUInt32()==(uint)SubType.Adventure)
+                    && LinkedFaces.Value.TryGetValue(grp.ToString(),out var spellFaces)) {
+                    displayGrp=spellFaces.Values.FirstOrDefault(f=>f!=grp
+                        && CardMetadata.Value.TryGetValue(f.ToString(),out var fullMetadata)
+                        && !fullMetadata.GetProperty("subtypes").EnumerateArray().Any(s=>s.GetUInt32()==(uint)SubType.Adventure));
+                    if(displayGrp==0)displayGrp=grp;
+                }
+                obj["grpId"] = displayGrp;
                 bool isCopy=c.TryGetProperty("isCopy",out var copied) && copied.GetBoolean();
                 if(isCopy)obj["isCopy"]=true;
                 if(c.TryGetProperty("originalGrpId",out var original) && original.GetUInt32()!=grp) {
@@ -102,22 +115,30 @@ static class ForgeEncoder
                     var otherFace=linked.Values.FirstOrDefault(f=>f!=grp);
                     if(otherFace!=0)obj["othersideGrpId"]=otherFace;
                 }
+                bool adventureDisplay=displayGrp!=grp;
+                if(adventureDisplay) {
+                    obj["othersideGrpId"]=grp;
+                    // The full-card parent and its inset each need their own
+                    // printed identity. Mixing spell types/rules into the
+                    // creature parent prevents the native layout from forming.
+                    obj.Remove("objectSourceGrpId");
+                }
                 // GreInterface does not populate these from the printing: omitted
                 // uniqueAbilities clears rules text even when card art is correct.
-                if (CardMetadata.Value.TryGetValue(grp.ToString(), out var metadata))
+                if (CardMetadata.Value.TryGetValue(displayGrp.ToString(), out var metadata))
                     foreach (var property in metadata.EnumerateObject())
                         obj[property.Name] = property.Value;
                 // A printed land can become a creature (earthbend). Printed
                 // metadata alone leaves Arena rendering it as an ordinary land.
-                if(c.TryGetProperty("cardTypes",out var currentTypes))obj["cardTypes"]=currentTypes.EnumerateArray()
+                if(!adventureDisplay && c.TryGetProperty("cardTypes",out var currentTypes))obj["cardTypes"]=currentTypes.EnumerateArray()
                     .Select(t=>Enum.TryParse<CardType>(t.GetString(),true,out var parsed)?parsed
                         : throw new InvalidDataException("Unsupported Forge card type "+t.GetString())).ToArray();
-                if(c.TryGetProperty("colors",out var currentColors))obj["color"]=currentColors.EnumerateArray().Select(v=>v.GetInt32()).ToArray();
-                if(c.TryGetProperty("subtypes",out var currentSubtypes))obj["subtypes"]=currentSubtypes.EnumerateArray()
+                if(!adventureDisplay && c.TryGetProperty("colors",out var currentColors))obj["color"]=currentColors.EnumerateArray().Select(v=>v.GetInt32()).ToArray();
+                if(!adventureDisplay && c.TryGetProperty("subtypes",out var currentSubtypes))obj["subtypes"]=currentSubtypes.EnumerateArray()
                     .Select(t=>System.Text.RegularExpressions.Regex.Replace(t.GetString()!,"[^a-zA-Z0-9]",""))
                     .Select(t=>Enum.TryParse<SubType>(t,true,out var parsed) && Enum.IsDefined(parsed)?parsed:LocalPlaneswalkerSubtypes.Value.GetValueOrDefault(t,SubType.None))
                     .Where(t=>t!=SubType.None).Distinct().ToArray();
-                if(c.TryGetProperty("supertypes",out var currentSupertypes))obj["superTypes"]=currentSupertypes.EnumerateArray()
+                if(!adventureDisplay && c.TryGetProperty("supertypes",out var currentSupertypes))obj["superTypes"]=currentSupertypes.EnumerateArray()
                     .Select(t=>Enum.TryParse<SuperType>(t.GetString(),true,out var parsed) && Enum.IsDefined(parsed)?parsed:SuperType.None)
                     .Where(t=>t!=SuperType.None).Distinct().ToArray();
                 if(emblem) {
@@ -168,8 +189,8 @@ static class ForgeEncoder
                     obj["blockInfo"] = new { attackerIds = blocking.EnumerateArray().Select(id => id.GetUInt32()).ToArray(),
                         orderedAttackers = blocking.EnumerateArray().Select(id=>new {instanceId=id.GetUInt32()}).ToArray() };
                 }
-                if (c.TryGetProperty("power", out var power) && power.ValueKind == JsonValueKind.Number) obj["power"] = new { value = power.GetInt32() };
-                if (c.TryGetProperty("toughness", out var toughness) && toughness.ValueKind == JsonValueKind.Number) obj["toughness"] = new { value = toughness.GetInt32() };
+                if (!adventureDisplay && c.TryGetProperty("power", out var power) && power.ValueKind == JsonValueKind.Number) obj["power"] = new { value = power.GetInt32() };
+                if (!adventureDisplay && c.TryGetProperty("toughness", out var toughness) && toughness.ValueKind == JsonValueKind.Number) obj["toughness"] = new { value = toughness.GetInt32() };
                 if (c.TryGetProperty("loyalty", out var loyalty) && loyalty.ValueKind == JsonValueKind.Number) obj["loyalty"] = new { value = loyalty.GetInt32() };
                 if(publicFaceDown) {
                     obj["grpId"]=3u;obj["name"]=0u;
@@ -183,13 +204,15 @@ static class ForgeEncoder
             // Adventure text is read from a separate linked spell panel.
             if(visible && !publicFaceDown && LinkedFaces.Value.TryGetValue(c.GetProperty("grpId").GetUInt32().ToString(),out var adventureFaces)) {
                 foreach(uint face in adventureFaces.Values.Distinct()) {
-                    if(face==c.GetProperty("grpId").GetUInt32() || !CardMetadata.Value.TryGetValue(face.ToString(),out var adventure)
+                    if(face==Convert.ToUInt32(obj["grpId"]) || !CardMetadata.Value.TryGetValue(face.ToString(),out var adventure)
                         || !adventure.GetProperty("subtypes").EnumerateArray().Any(s=>s.GetUInt32()==(uint)SubType.Adventure))continue;
                     var panel=new Dictionary<string,object> { ["instanceId"]=checked(10_000_000u+id*2),
                         ["type"]=(int)GameObjectType.Adventure,["grpId"]=face,["parentId"]=id,["zoneId"]=zoneId,
                         ["ownerSeatId"]=owner,["controllerSeatId"]=controller,["visibility"]=1 };
                     foreach(var property in adventure.EnumerateObject())panel[property.Name]=property.Value;
                     objects.Add(panel);
+                    // The native facet handler attaches this panel to its
+                    // parent. It must not produce a second zone-transfer event.
                 }
             }
         }
@@ -338,6 +361,7 @@ static class ForgeEncoder
         foreach (var action in BattlePresentation.Actions(root))
             gre.GameStateMessage.Actions.Add(new ActionInfo { ActionId = action.Selection, SeatId = viewer, Action = action });
         BattlePresentation.StateAdventures(root,gre.GameStateMessage);
+        BattlePresentation.StateExtraTurns(root,gre.GameStateMessage);
         var result = new MatchServiceToClientMessage { GreToClientEvent = new GreToClientEvent() };
         result.GreToClientEvent.GreToClientMessages.Add(gre);
         return result;

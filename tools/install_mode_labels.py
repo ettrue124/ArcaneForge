@@ -20,7 +20,11 @@ def install(database, labels, backup):
             backup.parent.mkdir(parents=True, exist_ok=True)
             backup.write_text(json.dumps({'database': str(Path(database).resolve()), 'keys': list(labels), 'originalRows': original}, indent=2), encoding='utf8')
         for key, text in labels.items():
-            db.execute('INSERT OR REPLACE INTO Loc VALUES (?,?,?,?,?,?,?,?,?,?)', (key, 'ArenaLab', *([text] * 8)))
+            existing=db.execute('SELECT * FROM Loc WHERE Key=?',(key,)).fetchone()
+            expected_row=(key, 'ArenaLab', *([text] * 8))
+            if existing is not None and tuple(existing)==expected_row:
+                continue
+            db.execute('INSERT OR REPLACE INTO Loc VALUES (?,?,?,?,?,?,?,?,?,?)', expected_row)
 
 
 def restore(backup):

@@ -28,7 +28,7 @@ sealed class LocalStartup : IDisposable
     internal static string EventName(JToken payload, string fallback) =>
         payload["EventName"]?.ToString() ?? payload["eventName"]?.ToString() ?? payload["InternalEventName"]?.ToString() ?? fallback;
     internal static string? GameMode(string eventName) => eventName switch {
-        "AIBotMatch" => "play", "CommanderAI" => "commander", "CommanderAI4" => "commander4", "CommanderUnbannedAI" => "commander-unbanned", _ => null
+        "AIBotMatch" => "play", "NoBans60AI" => "no-bans-60", "CommanderAI" => "commander", "CommanderAI4" => "commander4", "CommanderUnbannedAI" => "commander-unbanned", _ => null
     };
     static object Course(string eventName, object? summary = null, object? deck = null) => new {
         InternalEventName=eventName, CurrentModule=Wizards.Arena.Enums.Event.EModule.WinNoGate,

@@ -213,6 +213,34 @@
           "Tags": [
             "Commander"
           ]
+        },
+        {
+          "Id": "CommanderUnbannedAI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Modes/CommanderUnbanned",
+          "EventNameBO1": "CommanderUnbannedAI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/100",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/None",
+          "SideBoardBO3": null,
+          "Tags": [
+            "CommanderUnbanned"
+          ]
+        },
+        {
+          "Id": "NoBans60AI",
+          "QueueType": "Unranked",
+          "LocTitle": "ArenaLab/Modes/NoBans60",
+          "EventNameBO1": "NoBans60AI",
+          "EventNameBO3": null,
+          "DeckSizeBO1": "ArenaLab/DeckSize/Exactly60",
+          "DeckSizeBO3": null,
+          "SideBoardBO1": "ArenaLab/Sideboard/15",
+          "SideBoardBO3": null,
+          "Tags": [
+            "NoBans60"
+          ]
         }
       ]
     },
@@ -1432,6 +1460,102 @@
                 },
                 "DescriptionText": {
                   "LocKey": "ArenaLab/Modes/Commander4"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "CommanderUnbannedAI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "CommanderUnbannedAI",
+              "DisplayPriority": 3,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "CommanderUnbanned",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Modes/CommanderUnbanned"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Modes/CommanderUnbanned"
+                },
+                "SelectedDeckWidget": {
+                  "DeckButtonBehavior": "Editable"
+                },
+                "MainButtonWidget": {}
+              }
+            }
+          },
+          {
+            "InternalEventName": "NoBans60AI",
+            "EventState": "Active",
+            "FormatType": "Constructed",
+            "StartTime": "2000-01-01T00:00:00Z",
+            "LockedTime": "2099-01-01T00:00:00Z",
+            "ClosedTime": "2099-01-01T00:00:00Z",
+            "Flags": [
+              "IsArenaPlayModeEvent",
+              "IsAiBotMatch"
+            ],
+            "PastEntries": {},
+            "EntryFees": [
+              {
+                "CurrencyType": "None",
+                "Quantity": 0
+              }
+            ],
+            "EventTags": [],
+            "WinCondition": "SingleElimination",
+            "MinimumRank": -1,
+            "AllowedCountryCodes": [],
+            "ExcludedCountryCodes": [],
+            "EventUXInfo": {
+              "PublicEventName": "NoBans60AI",
+              "DisplayPriority": 4,
+              "Parameters": {},
+              "Group": "",
+              "EventBladeBehavior": "Queue",
+              "Joinability": "Open",
+              "DynamicFilterTagIds": [],
+              "DeckSelectFormat": "NoBans60",
+              "Prizes": {},
+              "FactionSealedUXInfo": [],
+              "EventComponentData": {
+                "TitleRankText": {
+                  "LocKey": "ArenaLab/Modes/NoBans60"
+                },
+                "DescriptionText": {
+                  "LocKey": "ArenaLab/Modes/NoBans60"
                 },
                 "SelectedDeckWidget": {
                   "DeckButtonBehavior": "Editable"

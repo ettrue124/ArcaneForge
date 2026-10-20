@@ -262,6 +262,10 @@ static class BattlePresentation
         File.ReadAllText("data/arena-granted-ability-definitions.json")));
     static readonly Lazy<ILookup<string,JsonElement>> GrantedByLoyalty=new(() =>
         GrantedDefinitions.Value.EnumerateArray().ToLookup(a=>a.GetProperty("loyalty").GetString()??""));
+    static readonly Lazy<JsonElement[]> EmblemDisplayDefinitions=new(()=> {
+        const string path="data/custom-arena-cards/emblem-display-abilities.json";
+        return File.Exists(path)?JsonSerializer.Deserialize<JsonElement[]>(File.ReadAllText(path))!:Array.Empty<JsonElement>();
+    });
     public static void WarmAbilityMetadata() {
         _=AbilityText.Value;
         _=AllAbilityText.Value;
@@ -276,8 +280,21 @@ static class BattlePresentation
             return sourceRules.EnumerateArray().Where(a=>Normalize(a.GetProperty("text").GetString()!)==Normalize(text))
                 .Select(a=>(object)new {grpId=a.GetProperty("id").GetUInt32()}).ToArray();
         var quotes=System.Text.RegularExpressions.Regex.Matches(text,"[\"“]([^\"”]+)[\"”]").Select(m=>Normalize(m.Groups[1].Value)).ToHashSet();
-        return GrantedDefinitions.Value.EnumerateArray().Where(a=>quotes.Contains(Normalize(a.GetProperty("text").GetString()!)))
-            .GroupBy(a=>Normalize(a.GetProperty("text").GetString()!)).Select(g=>(object)new {grpId=g.Min(a=>a.GetProperty("id").GetUInt32())}).ToArray();
+        var matches=GrantedDefinitions.Value.EnumerateArray().Where(a=>quotes.Contains(Normalize(a.GetProperty("text").GetString()!)))
+            .GroupBy(a=>Normalize(a.GetProperty("text").GetString()!)).Select(g=>g.MinBy(a=>a.GetProperty("id").GetUInt32())).ToList();
+        var wanted=System.Text.RegularExpressions.Regex.Matches(text,"[\"“]([^\"”]+)[\"”]")
+            .Select(m=>Normalize(m.Groups[1].Value,true)).ToHashSet();
+        if(card.TryGetProperty("emblemText",out var rules)) {
+            string actual=rules.GetString()??"";
+            wanted.Add(Normalize(actual,true));
+            foreach(string line in actual.Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries))wanted.Add(Normalize(line,true));
+        }
+        var found=matches.Select(a=>Normalize(a.GetProperty("text").GetString()!,true)).ToHashSet();
+        foreach(var definition in EmblemDisplayDefinitions.Value) {
+            string key=Normalize(definition.GetProperty("text").GetString()!,true);
+            if(wanted.Contains(key) && found.Add(key))matches.Add(definition);
+        }
+        return matches.Select(a=>(object)new {grpId=a.GetProperty("id").GetUInt32()}).ToArray();
     }
     public static void StateOpponentKnowledge(JsonElement snapshot,GameStateMessage current,uint viewer) {
         var privateCards=current.GameObjects.Where(c=>c.OwnerSeatId==viewer && c.GrpId!=0
@@ -314,6 +331,17 @@ static class BattlePresentation
                     Details={IntDetail("Disable",0),IntDetail("DisplayUnderObjects",checked((int)group.Key))}});
         }
     }
+    public static void StateExtraTurns(JsonElement snapshot,GameStateMessage current) {
+        if(!snapshot.TryGetProperty("extraTurns",out var turns))return;
+        uint index=0;
+        foreach(var turn in turns.EnumerateArray()) {
+            uint seat=turn.GetProperty("seat").GetUInt32();
+            if(!current.Players.Any(p=>p.SystemSeatNumber==seat))continue;
+            current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(3_975_000_000u+index++),
+                AffectorId=turn.GetProperty("sourceId").GetUInt32(),AffectedIds={seat},Type={AnnotationType.MiscContinuousEffect},
+                Details={IntDetail("grpid",turn.GetProperty("sourceGrpId").GetInt32()),IntDetail("extra_turns",1)}});
+        }
+    }
     public static void StateAdventures(JsonElement snapshot,GameStateMessage current) {
         foreach(var card in snapshot.GetProperty("cards").EnumerateArray()) {
             if(card.GetProperty("zone").GetString()!="Exile" || !card.TryGetProperty("onAdventure",out var adventure)
@@ -326,10 +354,12 @@ static class BattlePresentation
                     IntDetail("grpid",196),IntDetail("parent_grpid",checked((int)grp)),IntDetail("SourceParent",checked((int)id))}});
             // Public preview metadata, not an extra player decision. Native
             // near-hand holders use ActionInfo even for the opponent's cards.
-            if(!current.Actions.Any(a=>a.Action?.InstanceId==id))
-                current.Actions.Add(new ActionInfo {ActionId=checked(8_000_000u+id),SeatId=displayed.ControllerSeatId,
-                    Action=new Wotc.Mtgo.Gre.External.Messaging.Action {ActionType=ActionType.Cast,InstanceId=id,GrpId=grp,
-                        SourceId=id,Visibility=Visibility.Public,Highlight=HighlightType.Cold}});
+            if(!current.Actions.Any(a=>a.Action?.InstanceId==id)) {
+                var preview=new Wotc.Mtgo.Gre.External.Messaging.Action {ActionType=ActionType.Cast,InstanceId=id,GrpId=grp,
+                    Visibility=Visibility.Public,Highlight=HighlightType.Cold};
+                if(card.TryGetProperty("manaCost",out var manaCost))MatchDoorHost.TryManaCost(manaCost.GetString()??"",preview);
+                current.Actions.Add(new ActionInfo {ActionId=checked(8_000_000u+id),SeatId=displayed.ControllerSeatId,Action=preview});
+            }
         }
     }
     public static void StateChosenTypes(JsonElement snapshot,GameStateMessage current) {
@@ -657,6 +687,7 @@ static class BattlePresentation
                 action.SourceId = action.InstanceId;
             }
             if (!land && !MatchDoorHost.TryManaCost(c.GetProperty("manaCost").GetString() ?? "", action)) continue;
+            if(c.TryGetProperty("sideboardSourceId",out var permissionSource))action.SourceId=permissionSource.GetUInt32();
             if(c.TryGetProperty("lifeCost",out var lifeCost) && lifeCost.GetInt32()>0)
                 action.Costs.Add(new Cost {Type=CostType.Life,ObjectId=action.InstanceId,LifeCost=new LifeCost {Count=lifeCost.GetInt32()}});
             if(c.TryGetProperty("adjustedLoyaltyCost",out var loyaltyPayment))
@@ -990,7 +1021,9 @@ static class BattlePresentation
                     break;
                 case "targetsSelecting": case "targetsSubmitted":
                     uint actingPlayer=e.GetProperty("playerId").GetUInt32();
-                    if(!cards.TryGetValue(source,out var targetedSource) || targetedSource.GrpId==0 || !current.Players.Any(p=>p.SystemSeatNumber==actingPlayer))continue;
+                    if(!cards.TryGetValue(source,out var targetedSource) || targetedSource.GrpId==0
+                        || targetedSource.Type is GameObjectType.Adventure or GameObjectType.Omen
+                        || !current.Players.Any(p=>p.SystemSeatNumber==actingPlayer))continue;
                     annotation.Type.Add(type=="targetsSelecting"?AnnotationType.PlayerSelectingTargets:AnnotationType.PlayerSubmittedTargets);
                     annotation.AffectorId=actingPlayer; annotation.AffectedIds.Add(source);
                     break;
@@ -1054,7 +1087,13 @@ static class BattlePresentation
                     annotation.Details.Add(IntDetail("tapped",current.GameObjects.Single(c=>c.InstanceId==target).IsTapped?1:0)); result.Taps.Add(target);
                     break;
                 case "objectIdChanged":
-                    if(!cards.ContainsKey(target))continue;
+                    // A replacement choice can expose the new battlefield
+                    // object before its delayed movement event is published.
+                    // Remap only an old object that the client still knows;
+                    // otherwise the transfer must animate the current ID.
+                    if(!cards.ContainsKey(target)
+                        || !previous.GameObjects.Any(c=>c.InstanceId==source && c.GrpId!=0 && c.Visibility!=Visibility.Hidden)
+                        || previous.GameObjects.Any(c=>c.InstanceId==target))continue;
                     annotation.Type.Add(AnnotationType.ObjectIdChanged);
                     annotation.AffectedIds.Add(target);
                     annotation.Details.Add(IntDetail("orig_id",checked((int)source)));
@@ -1138,6 +1177,9 @@ static class BattlePresentation
         foreach(var token in previous.GameObjects.Where(c=>c.Type==GameObjectType.Token && !currentIds.Contains(c.InstanceId)))
             current.Annotations.Add(new AnnotationInfo {Id=nextId++,Type={AnnotationType.TokenDeleted},AffectedIds={token.InstanceId}});
         foreach (var card in current.GameObjects) {
+            // Native facets belong to their parent's display. They are
+            // absorbed from the card lookup and cannot animate independently.
+            if(card.ParentId!=0 && card.Type is GameObjectType.Adventure or GameObjectType.Omen)continue;
             if (!old.TryGetValue(card.InstanceId, out var before)) {
                 if(card.Type==GameObjectType.Token)
                     current.Annotations.Add(new AnnotationInfo {Id=nextId++,Type={AnnotationType.TokenCreated},AffectedIds={card.InstanceId}});

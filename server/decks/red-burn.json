@@ -1,0 +1,67 @@
+{
+  "name": "Red Burn",
+  "cards": [
+    {
+      "name": "Mountain",
+      "quantity": 24
+    },
+    {
+      "name": "Lightning Bolt",
+      "quantity": 4
+    },
+    {
+      "name": "Monastery Swiftspear",
+      "quantity": 4
+    },
+    {
+      "name": "Goblin Guide",
+      "quantity": 4
+    },
+    {
+      "name": "Soul-Scar Mage",
+      "quantity": 4
+    },
+    {
+      "name": "Lava Spike",
+      "quantity": 4
+    },
+    {
+      "name": "Rift Bolt",
+      "quantity": 4
+    },
+    {
+      "name": "Skewer the Critics",
+      "quantity": 4
+    },
+    {
+      "name": "Light Up the Stage",
+      "quantity": 4
+    },
+    {
+      "name": "Searing Blaze",
+      "quantity": 4
+    }
+  ],
+  "sideboard": [
+    {
+      "name": "Abrade",
+      "quantity": 3
+    },
+    {
+      "name": "Smash to Smithereens",
+      "quantity": 3
+    },
+    {
+      "name": "Roiling Vortex",
+      "quantity": 3
+    },
+    {
+      "name": "Tormod's Crypt",
+      "quantity": 3
+    },
+    {
+      "name": "Pyroclasm",
+      "quantity": 3
+    }
+  ]
+}

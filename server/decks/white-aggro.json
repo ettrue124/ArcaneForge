@@ -1,0 +1,67 @@
+{
+  "name": "White Aggro",
+  "cards": [
+    {
+      "name": "Plains",
+      "quantity": 24
+    },
+    {
+      "name": "Thraben Inspector",
+      "quantity": 4
+    },
+    {
+      "name": "Dauntless Bodyguard",
+      "quantity": 4
+    },
+    {
+      "name": "Luminarch Aspirant",
+      "quantity": 4
+    },
+    {
+      "name": "Thalia, Guardian of Thraben",
+      "quantity": 4
+    },
+    {
+      "name": "Adeline, Resplendent Cathar",
+      "quantity": 4
+    },
+    {
+      "name": "Brutal Cathar",
+      "quantity": 4
+    },
+    {
+      "name": "Portable Hole",
+      "quantity": 4
+    },
+    {
+      "name": "Raise the Alarm",
+      "quantity": 4
+    },
+    {
+      "name": "Benalish Marshal",
+      "quantity": 4
+    }
+  ],
+  "sideboard": [
+    {
+      "name": "Rest in Peace",
+      "quantity": 3
+    },
+    {
+      "name": "Disenchant",
+      "quantity": 3
+    },
+    {
+      "name": "Destroy Evil",
+      "quantity": 3
+    },
+    {
+      "name": "Containment Priest",
+      "quantity": 3
+    },
+    {
+      "name": "Revoke Existence",
+      "quantity": 3
+    }
+  ]
+}

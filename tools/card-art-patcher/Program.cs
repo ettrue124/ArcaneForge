@@ -62,12 +62,52 @@ if(args.Length is 4 or 5 && (args[0]=="--validation" || args[0]=="--validation-c
     }
     validation.Write(args[3]);Console.WriteLine("Commander Rulebreaker validation hooks prepared.");return;
 }
-if(args.Length!=3)throw new ArgumentException("Input Core.dll, helper DLL, output Core.dll required");
+if(args.Length is not (3 or 4))throw new ArgumentException("Input Core.dll, helper DLL, output Core.dll, optional Managed directory required");
 var resolver=new DefaultAssemblyResolver();resolver.AddSearchDirectory(Path.GetDirectoryName(Path.GetFullPath(args[0]))!);
+if(args.Length==4)resolver.AddSearchDirectory(Path.GetFullPath(args[3]));
 using var module=ModuleDefinition.ReadModule(args[0],new ReaderParameters {AssemblyResolver=resolver});
 using var helper=ModuleDefinition.ReadModule(args[1]);
 IEnumerable<TypeDefinition> AllTypes(TypeDefinition type) {yield return type;foreach(var nested in type.NestedTypes)foreach(var child in AllTypes(nested))yield return child;}
+void ExpandBranches(MethodDefinition method) {
+    foreach(var instruction in method.Body.Instructions)instruction.OpCode=instruction.OpCode.Code switch {
+        Code.Br_S=>OpCodes.Br,Code.Brfalse_S=>OpCodes.Brfalse,Code.Brtrue_S=>OpCodes.Brtrue,
+        Code.Beq_S=>OpCodes.Beq,Code.Bge_S=>OpCodes.Bge,Code.Bgt_S=>OpCodes.Bgt,Code.Ble_S=>OpCodes.Ble,
+        Code.Blt_S=>OpCodes.Blt,Code.Bne_Un_S=>OpCodes.Bne_Un,Code.Bge_Un_S=>OpCodes.Bge_Un,
+        Code.Bgt_Un_S=>OpCodes.Bgt_Un,Code.Ble_Un_S=>OpCodes.Ble_Un,Code.Blt_Un_S=>OpCodes.Blt_Un,
+        Code.Leave_S=>OpCodes.Leave,_=>instruction.OpCode};
+}
+var badgeUtil=module.Types.Single(t=>t.Name=="AbilityBadgeUtil");
+var taxSupport=helper.Types.Single(t=>t.FullName=="ArcaneForge.CommanderTaxDisplay");
+foreach(var pair in new[]{("GetBadgeDataForDesignation","Mark"),("CreateAbilityBadge","Apply")}) {
+    var badgeMethod=badgeUtil.Methods.Single(m=>m.Name==pair.Item1);
+    if(badgeMethod.Body.Instructions.Any(i=>i.Operand is MethodReference m && m.DeclaringType.FullName==taxSupport.FullName))continue;
+    ExpandBranches(badgeMethod);
+    var hook=module.ImportReference(taxSupport.Methods.Single(m=>m.Name==pair.Item2));
+    var il=badgeMethod.Body.GetILProcessor();
+    foreach(var ret in badgeMethod.Body.Instructions.Where(i=>i.OpCode==OpCodes.Ret).ToArray()) {
+        // Preserve incoming branch targets by replacing the return in place.
+        ret.OpCode=pair.Item2=="Mark"?OpCodes.Ldarg_1:OpCodes.Ldarg_0;
+        if(pair.Item2=="Mark") {
+            var box=il.Create(OpCodes.Box,badgeMethod.Parameters[1].ParameterType);il.InsertAfter(ret,box);
+            var call=il.Create(OpCodes.Call,hook);il.InsertAfter(box,call);
+            var cast=il.Create(OpCodes.Castclass,badgeMethod.ReturnType);il.InsertAfter(call,cast);il.InsertAfter(cast,il.Create(OpCodes.Ret));
+        } else {
+            var model=il.Create(OpCodes.Ldarg_1);il.InsertAfter(ret,model);
+            var call=il.Create(OpCodes.Call,hook);il.InsertAfter(model,call);
+            var cast=il.Create(OpCodes.Castclass,badgeMethod.ReturnType);il.InsertAfter(call,cast);il.InsertAfter(cast,il.Create(OpCodes.Ret));
+        }
+    }
+}
 var ruleMatches=module.ImportReference(helper.Types.Single(t=>t.FullName=="ArcaneForge.RulebreakerDecks").Methods.Single(m=>m.Name=="CardMatches"));
+var overrideText=module.Types.Single(t=>t.FullName=="GreClient.CardData.RulesTextOverrider.AbilityTextOverride").Methods.Single(m=>m.Name=="GetOverride");
+if(!overrideText.Body.Instructions.Any(i=>i.Operand is MethodReference m && m.DeclaringType.FullName=="ArcaneForge.RulesTextDisplay")) {
+    ExpandBranches(overrideText);
+    var fixText=module.ImportReference(helper.Types.Single(t=>t.FullName=="ArcaneForge.RulesTextDisplay").Methods.Single(m=>m.Name=="Fix"));
+    var il=overrideText.Body.GetILProcessor();
+    foreach(var ret in overrideText.Body.Instructions.Where(i=>i.OpCode==OpCodes.Ret).ToArray()) {
+        ret.OpCode=OpCodes.Call;ret.Operand=fixText;il.InsertAfter(ret,il.Create(OpCodes.Ret));
+    }
+}
 var builder=module.Types.Single(t=>t.FullName=="Core.Code.Decks.DeckBuilderCardFilterProvider");
 int ruleHooks=0;
 foreach(var target in AllTypes(builder).SelectMany(t=>t.Methods).Where(m=>m.HasBody)) {
@@ -140,4 +180,18 @@ foreach(var entry in new[]{artPath,acquire,asset.Methods.Single(m=>m.Name=="Have
     }
 }
 module.Write(args[2]);
+using(var saved=ModuleDefinition.ReadModule(args[2])) {
+    var checkedMethods=saved.Types.Single(t=>t.Name=="AbilityBadgeUtil").Methods
+        .Where(m=>m.Name is "GetBadgeDataForDesignation" or "CreateAbilityBadge")
+        .Append(saved.Types.Single(t=>t.FullName=="GreClient.CardData.RulesTextOverrider.AbilityTextOverride").Methods.Single(m=>m.Name=="GetOverride"))
+        .Append(saved.Types.Single(t=>t.FullName=="GreClient.CardData.CardDataExtensions").Methods.Single(m=>m.Name=="CreateWithDatabase"));
+    foreach(var savedMethod in checkedMethods) {
+    var instructions=savedMethod.Body.Instructions;
+    foreach(var instruction in instructions) {
+        if(instruction.OpCode.OperandType is OperandType.InlineBrTarget or OperandType.ShortInlineBrTarget
+            && (instruction.Operand is not Instruction target || !instructions.Contains(target)))
+            throw new InvalidOperationException("Patched card preview has an invalid branch; installed files were not changed.");
+    }
+    }
+}
 Console.WriteLine("Added local artwork lookup before the original card-art loader.");

@@ -72,7 +72,27 @@ def load_bot_commander_decks(catalogue):
     return decks
 
 
-def get_random_bot_deck(catalogue, format_name='Commander', exclude_name=None):
+def load_bot_constructed_decks(catalogue, format_name='NoBans60'):
+    """Resolve complete curated decks; never silently drop unavailable cards."""
+    paper = _get_paper_catalogue(catalogue)
+    decks = []
+    for path in sorted((ROOT / 'server/decks').glob('*.json')):
+        data = json.loads(path.read_text(encoding='utf8'))
+        piles = {}
+        for pile in ('cards', 'sideboard'):
+            entries = data.get(pile, [])
+            if any(c['name'] not in paper for c in entries):
+                break
+            piles[pile] = [dict(c, grpId=paper[c['name']]['grpId']) for c in entries]
+        if len(piles) != 2 or sum(c['quantity'] for c in piles['cards']) != 60:
+            continue
+        if sum(c['quantity'] for c in piles['sideboard']) > 15:
+            continue
+        decks.append(dict(name=data['name'], format=format_name, commanders=[], companions=[], **piles))
+    return decks
+
+
+def get_random_bot_deck(catalogue, format_name='Commander', exclude_name=None, exclude_deck=None):
     """Select a random bot deck matching format_name that is not the player's deck."""
     if format_name in commander.FORMATS:
         pool = load_bot_commander_decks(catalogue)
@@ -80,6 +100,17 @@ def get_random_bot_deck(catalogue, format_name='Commander', exclude_name=None):
             filtered = [d for d in pool if d['name'] != exclude_name and d['commanders'][0]['name'] != exclude_name]
             if filtered:
                 pool = filtered
+        if pool:
+            return random.choice(pool)
+    else:
+        pool = load_bot_constructed_decks(catalogue, format_name)
+        def signature(deck):
+            counts = {}
+            for c in deck.get('cards', []):
+                counts[c['name']] = counts.get(c['name'], 0) + c['quantity']
+            return counts
+        pool = [d for d in pool if d['name'] != exclude_name
+                and (exclude_deck is None or signature(d) != signature(exclude_deck))]
         if pool:
             return random.choice(pool)
     return None

@@ -19,7 +19,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK = ROOT / 'data/custom-arena-cards'
-PACK_VERSION = 23
+PACK_VERSION = 30
 SUPPORTED_LAYOUTS = frozenset({'normal', 'leveler'})
 SUPPORTED_CARD_TYPES = frozenset({'Artifact', 'Creature', 'Enchantment', 'Instant', 'Land', 'Sorcery', 'Kindred', 'Planeswalker'})
 COLOR_NAMES = {'W': 'White', 'U': 'Blue', 'B': 'Black', 'R': 'Red', 'G': 'Green'}
@@ -63,7 +63,8 @@ def digest_json(value):
 
 def native_mana_cost(text):
     """Use Arena's installed o(B/R), o(U/P), o(2/G) symbol grammar."""
-    return re.sub(r'\{([^}]+)\}', lambda m: 'o' + ('(' + m[1] + ')' if '/' in m[1] else m[1]), text)
+    return re.sub(r'\{([^}]+)\}', lambda m: 'o' + ('Si' if m[1] == 'S' else 'X' if m[1] in ('Y', 'Z')
+        else '(' + m[1] + ')' if '/' in m[1] else m[1]), text)
 
 
 def native_rules_text(text):
@@ -423,6 +424,38 @@ def stage_database(database, staged, prepared):
         def mana(text):
             return native_rules_text(text)
 
+        # Emblem rules are independent abilities, not the planeswalker's
+        # loyalty ability that creates them. Imported cards lack native emblem
+        # definitions, so provide standalone display-only text identities.
+        emblem_path=PACK/'emblem-display-abilities.json'
+        emblem_definitions=read_json(emblem_path) if emblem_path.exists() else []
+        emblem_texts={entry['text'] for entry in emblem_definitions}
+        sources=[metadata.get('oracle_text','') for _,metadata,_ in prepared]
+        sources.extend(row[0] for row in db.execute(
+            "SELECT DISTINCT l.Loc FROM Abilities a JOIN Localizations_enUS l ON l.LocId=a.TextId WHERE l.Formatted=0 AND l.Loc LIKE '%emblem with%'") )
+        for text in sources:
+            emblem_texts.update(re.findall(r'emblem with\s+["\u201c]([^"\u201d]+)["\u201d]',text,re.I))
+        known_texts={entry['text'] for entry in emblem_definitions}
+        next_id=max((entry['id'] for entry in emblem_definitions),default=4_199_999)+1
+        for text in sorted(emblem_texts-known_texts):
+            if next_id>=4_220_000:raise ValueError('Emblem display ability allocation exhausted')
+            emblem_definitions.append({'id':next_id,'text':text});next_id+=1
+        for entry in emblem_definitions:
+            ability_id=entry['id'];locid=60_200_000+ability_id-4_200_000
+            prior=db.execute('SELECT TextId FROM Abilities WHERE Id=?',(ability_id,)).fetchone()
+            if prior and prior[0]!=locid:raise ValueError('Emblem display ability identity is occupied')
+            localize(locid,mana(entry['text']))
+            ability=dict(ability_template)
+            ability.update({key:None for key in ability if key not in (
+                'Id','BaseId','FakeBaseIdNumeral','TextId','Category','SubCategory','AbilityWord',
+                'NumericAid','RequiresConfirmation','PaymentType','FullyParsed','IsIntrinsicAbility')})
+            ability.update(Id=ability_id,BaseId=0,BaseIdNumeral=0,FakeBaseIdNumeral=0,TextId=locid,
+                           Category=3,SubCategory=0,AbilityWord=0,NumericAid=0,RequiresConfirmation=0,
+                           PaymentType=0,FullyParsed=1,IsIntrinsicAbility=0)
+            names=list(ability)
+            db.execute('INSERT OR REPLACE INTO Abilities ('+','.join(names)+') VALUES ('+
+                       ','.join('?' for _ in names)+')',[ability[key] for key in names])
+
         for index, (record, metadata, _) in enumerate(prepared):
             types, supers, subtype_text = type_parts(metadata, enums)
             key = ids('CardType', types)
@@ -555,6 +588,7 @@ def stage_database(database, staged, prepared):
         stage_tokens(db,localize,mana)
         if db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
             raise ValueError('Staged card database failed integrity check')
+    return emblem_definitions
 
 
 def arena_is_running():
@@ -669,7 +703,10 @@ def run(argv=None):
                   rendererSourceSha256=digest_json([digest_file(ROOT/'client-card-extension/LocalCardArt.cs'),
                       digest_file(ROOT/'client-card-extension/ArtDisplayRules.cs'),
                       digest_file(ROOT/'client-card-extension/PlaytestSearch.cs'),
-                      digest_file(ROOT/'client-card-extension/RulebreakerDecks.cs'),digest_file(ROOT/'client-card-extension/LoyaltyDisplay.cs')]),
+                      digest_file(ROOT/'client-card-extension/CommanderTaxDisplay.cs'),
+                      digest_file(ROOT/'client-card-extension/RulesTextDisplay.cs'),
+                      digest_file(ROOT/'client-card-extension/RulebreakerDecks.cs'),digest_file(ROOT/'client-card-extension/LoyaltyDisplay.cs'),
+                      digest_file(ROOT/'tools/card-art-patcher/Program.cs')]),
                   rulebreakerSha256=digest_file(rulebreaker_table))
     write_json(report_path, report)
     blockers = len(records) - len(prepared)
@@ -703,7 +740,7 @@ def run(argv=None):
         with closing(sqlite3.connect(database.as_uri() + '?mode=ro', uri=True)) as source, closing(sqlite3.connect(backup / database.name)) as target:
             source.backup(target)
     staged = pack / 'staged.mtga'
-    stage_database(database, staged, prepared)
+    emblem_definitions=stage_database(database, staged, prepared)
     if (ROOT/'data/custom-arena-cards/tokens.json').exists():
         report['tokenSourceSha256']=digest_json([digest_file(ROOT/'data/custom-arena-cards/tokens.json'),digest_file(ROOT/'tools/custom_tokens.py')])
     ready = ROOT / 'client-card-extension/bin/ready'
@@ -714,8 +751,8 @@ def run(argv=None):
     subprocess.run(['dotnet','run','--project',str(ROOT/'tools/card-art-patcher'),'--','--loyalty-display',
                     str(backup/shared.name),str(ready/'ArcaneForge.CardArt.dll'),str(staged_shared),str(managed)],check=True)
     staged_core = pack / 'Core.patched.dll'
-    subprocess.run(['dotnet', 'run', '--project', str(ROOT / 'tools/card-art-patcher'), '--', str(core),
-                    str(ready / 'ArcaneForge.CardArt.dll'), str(staged_core)], check=True)
+    subprocess.run(['dotnet', 'run', '--project', str(ROOT / 'tools/card-art-patcher'), '--', str(backup/'Core.dll'),
+                    str(ready / 'ArcaneForge.CardArt.dll'), str(staged_core),str(managed)], check=True)
     validation=managed/'Wizards.Arena.DeckValidation.Core.dll'
     staged_validation=pack/'DeckValidation.patched.dll'
     if not (backup/validation.name).exists():
@@ -760,6 +797,7 @@ def run(argv=None):
     replace_copy(staged_validation,validation)
     replace_copy(staged_validation_client,validation_client)
     replace_copy(staged, database)
+    write_json(PACK/'emblem-display-abilities.json',emblem_definitions)
     # Omitting a printing is not removal; decks can still reference its IDs.
     installed_report = dict(pending_report, phase='installed',
                             patchedCoreSha256=digest_file(core), installedAtUtc=datetime.now(timezone.utc).isoformat())

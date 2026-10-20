@@ -1,0 +1,67 @@
+{
+  "name": "Black Devotion",
+  "cards": [
+    {
+      "name": "Swamp",
+      "quantity": 24
+    },
+    {
+      "name": "Knight of the Ebon Legion",
+      "quantity": 4
+    },
+    {
+      "name": "Gifted Aetherborn",
+      "quantity": 4
+    },
+    {
+      "name": "Gray Merchant of Asphodel",
+      "quantity": 4
+    },
+    {
+      "name": "Phyrexian Arena",
+      "quantity": 4
+    },
+    {
+      "name": "Thoughtseize",
+      "quantity": 4
+    },
+    {
+      "name": "Fatal Push",
+      "quantity": 4
+    },
+    {
+      "name": "Sign in Blood",
+      "quantity": 4
+    },
+    {
+      "name": "Murderous Rider",
+      "quantity": 4
+    },
+    {
+      "name": "Vampire Nighthawk",
+      "quantity": 4
+    }
+  ],
+  "sideboard": [
+    {
+      "name": "Duress",
+      "quantity": 3
+    },
+    {
+      "name": "Go Blank",
+      "quantity": 3
+    },
+    {
+      "name": "Feed the Swarm",
+      "quantity": 3
+    },
+    {
+      "name": "Noxious Grasp",
+      "quantity": 3
+    },
+    {
+      "name": "Soul-Guide Lantern",
+      "quantity": 3
+    }
+  ]
+}
