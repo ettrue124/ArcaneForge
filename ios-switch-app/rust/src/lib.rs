@@ -1,24 +1,28 @@
 //! Switch the official Arena app between Wizards' servers and the private server,
 //! on the iPhone itself.
 //!
-//! The phone's own lockdown service is reached through a loopback VPN (for
-//! example LocalDevVPN at 10.7.0.1) using a pairing file made once on a PC.
-//! House Arrest vends Arena's Documents folder; only /Documents/services.conf is
-//! written or removed, and only a file this tool wrote is replaced or removed.
-//! Mirrors tools/iphone_arena_switch.py.
+//! The phone's own services are reached through a loopback VPN (for example
+//! LocalDevVPN at 10.7.0.1) using a pairing file made once on a PC, over Apple's
+//! remote-pairing tunnel. House Arrest vends Arena's Documents folder; only
+//! /Documents/services.conf is written or removed, and only a file this tool
+//! wrote is replaced or removed. Mirrors tools/iphone_arena_switch.py.
 
 use std::ffi::{c_char, CStr};
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
 use idevice::afc::opcode::AfcFopenMode;
 use idevice::house_arrest::HouseArrestClient;
-use idevice::lockdown::LockdownClient;
-use idevice::pairing_file::PairingFile;
-use idevice::provider::{IdeviceProvider, TcpProvider};
-use idevice::{IdeviceError, IdeviceService};
+use idevice::remote_pairing::{connect_tls_psk_tunnel_native, RemotePairingClient, RpPairingFile, RpPairingSocket};
+use idevice::rsd::RsdHandshake;
+use idevice::tcp::adapter::Adapter;
+use idevice::tcp::handle::AdapterHandle;
+use idevice::{IdeviceError, RsdService};
 use serde_json::{json, Value};
+use tokio::net::TcpStream;
 
+/// Apple's remote-pairing daemon port (SideStore minimuxer's remotePairingPort).
+const REMOTE_PAIRING_PORT: u16 = 49152;
 const ARENA: &str = "com.wizards.mtga";
 const REMOTE: &str = "/Documents/services.conf";
 const ENVIRONMENT: &str = "ArcaneForge";
@@ -52,26 +56,51 @@ fn describe(current: &Option<Value>) -> String {
     }
 }
 
-async fn switch(action: i32, pairing: &[u8], device: &str, host: &str) -> Result<String, String> {
-    let pairing_file = PairingFile::from_bytes(pairing).map_err(|e| format!("Pairing file unreadable: {e}"))?;
-    let addr: IpAddr = device.parse().map_err(|_| "Device address is not an IP address".to_string())?;
-    let provider = TcpProvider { addr, scope_id: None, pairing_file, label: "arcane-switch".into() };
-    // Step by step (rather than HouseArrestClient::connect) so a failure names the step.
-    let step = |name: &'static str| move |e: IdeviceError| format!("{name} failed: {e} ({e:?})");
-    let pairing = provider.get_pairing_file().await.map_err(step("Reading pairing file"))?;
-    let mut lockdown = LockdownClient::connect(&provider)
+fn step(name: &'static str) -> impl Fn(IdeviceError) -> String {
+    move |e| format!("{name} failed: {e} ({e:?})")
+}
+
+/// Opens Apple's remote-pairing tunnel (iOS 17+) and its RSD handshake. Over a
+/// network connection iOS drops the older lockdown TLS session, so this mirrors
+/// idevice's ffi tunnel_create_rppairing + finish_tunnel, which SideStore uses.
+async fn open_tunnel(pairing: &[u8], device: IpAddr) -> Result<(AdapterHandle, RsdHandshake), String> {
+    let mut pairing_file = RpPairingFile::from_bytes(pairing).map_err(step("Reading pairing file"))?;
+    let address = SocketAddr::new(device, REMOTE_PAIRING_PORT);
+    let stream = TcpStream::connect(address)
         .await
-        .map_err(step("Connecting to the phone (is the VPN on?)"))?;
-    let legacy = lockdown.start_session(&pairing).await.map_err(step("Secure session"))?;
-    let (port, ssl) = lockdown
-        .start_service(HouseArrestClient::service_name().to_string())
+        .map_err(|e| format!("Connecting to the phone failed (is LocalDevVPN on?): {e}"))?;
+    let mut pairing_client = RemotePairingClient::new(RpPairingSocket::new(stream), "ArenaSwitch");
+    // An existing pairing only needs pair-verify; no PIN is ever entered here.
+    pairing_client
+        .connect(&mut pairing_file, || async { String::new() })
+        .await
+        .map_err(step("Pairing check"))?;
+    let tunnel_port = pairing_client.create_tcp_listener().await.map_err(step("Opening tunnel"))?;
+    let tunnel_stream = TcpStream::connect(SocketAddr::new(device, tunnel_port))
+        .await
+        .map_err(|e| format!("Connecting tunnel failed: {e}"))?;
+    let tunnel = connect_tls_psk_tunnel_native(tunnel_stream, pairing_client.encryption_key())
+        .await
+        .map_err(step("Securing tunnel"))?;
+    let parse = |value: &str| value.parse::<IpAddr>().map_err(|e| format!("Tunnel address invalid: {e}"));
+    let client_ip = parse(&tunnel.info.client_address)?;
+    let server_ip = parse(&tunnel.info.server_address)?;
+    let mtu = tunnel.info.mtu as usize;
+    let rsd_port = tunnel.info.server_rsd_port;
+    let mut adapter = Adapter::new(Box::new(tunnel.into_inner()), client_ip, server_ip);
+    adapter.set_mss(mtu.min(8192) - 60);
+    let mut adapter = adapter.to_async_handle();
+    let rsd_stream = adapter.connect(rsd_port).await.map_err(|e| format!("Service directory failed: {e}"))?;
+    let handshake = RsdHandshake::new(rsd_stream).await.map_err(step("Service directory"))?;
+    Ok((adapter, handshake))
+}
+
+async fn switch(action: i32, pairing: &[u8], device: &str, host: &str) -> Result<String, String> {
+    let device: IpAddr = device.parse().map_err(|_| "VPN address is not an IP address".to_string())?;
+    let (mut adapter, mut handshake) = open_tunnel(pairing, device).await?;
+    let house_arrest = HouseArrestClient::connect_rsd(&mut adapter, &mut handshake)
         .await
         .map_err(step("Starting file access"))?;
-    let mut service = provider.connect(port).await.map_err(step("Opening file access"))?;
-    if ssl {
-        service.start_session(&pairing, legacy).await.map_err(step("Securing file access"))?;
-    }
-    let house_arrest = HouseArrestClient::new(service);
     let mut afc = house_arrest
         .vend_documents(ARENA)
         .await
