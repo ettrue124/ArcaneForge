@@ -1,0 +1,50 @@
+# Builds the unsigned Arena Switch IPA (ios-switch-app/). SideStore signs it with
+# the user's own Apple ID on the phone. No secrets or Arena files are used.
+name: iOS Arena Switch
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "ios-switch-app/**"
+      - ".github/workflows/ios-switch-app.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: ios-switch-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust for iOS
+        run: |
+          rustup toolchain install stable --profile minimal --target aarch64-apple-ios
+          rustup default stable
+
+      - name: Build Rust core
+        run: cargo build --release --target aarch64-apple-ios --manifest-path rust/Cargo.toml
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build app
+        run: |
+          xcodebuild -project ArcaneSwitch.xcodeproj -scheme ArcaneSwitch -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/ArcaneSwitch.app Payload/
+          zip -qry ArcaneSwitch-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ArcaneSwitch-unsigned-ipa
+          path: ios-switch-app/ArcaneSwitch-unsigned.ipa
+          if-no-files-found: error

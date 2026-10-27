@@ -1,0 +1,33 @@
+# XcodeGen spec. The Rust static library is built first by
+# .github/workflows/ios-switch-app.yml into rust/target/aarch64-apple-ios/release.
+name: ArcaneSwitch
+options:
+  bundleIdPrefix: com.arcaneforge
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  ArcaneSwitch:
+    type: application
+    platform: iOS
+    sources:
+      - App
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.arcaneforge.arenaswitch
+        PRODUCT_NAME: ArcaneSwitch
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_OBJC_BRIDGING_HEADER: App/BridgingHeader.h
+        HEADER_SEARCH_PATHS: $(PROJECT_DIR)/rust/include
+        LIBRARY_SEARCH_PATHS: $(PROJECT_DIR)/rust/target/aarch64-apple-ios/release
+        OTHER_LDFLAGS: -larcane_switch
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Arena Switch
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""
