@@ -10,7 +10,7 @@ crate-type = ["staticlib"]
 [dependencies]
 # idevice changes API on every 0.1.x release; pinned to the commit whose
 # remote-pairing tunnel code (ffi/src/tunnel_provider.rs, used by SideStore) this mirrors.
-idevice = { git = "https://github.com/jkcoxson/idevice", rev = "89702099f4d7552f704f93b4526756abda319ceb", default-features = false, features = ["aws-lc", "house_arrest", "remote_pairing"] }
+idevice = { git = "https://github.com/jkcoxson/idevice", rev = "89702099f4d7552f704f93b4526756abda319ceb", default-features = false, features = ["aws-lc", "house_arrest", "remote_pairing", "rsd", "tunnel_tcp_stack"] }
 tokio = { version = "1", features = ["rt", "net", "time"] }
 serde_json = "1"
 
