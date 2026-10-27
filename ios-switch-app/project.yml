@@ -27,6 +27,8 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Arena Switch
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # Required for 10.7.0.1 (LocalDevVPN loopback); without it iOS silently blocks the connection.
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: Arena Switch connects to this iPhone through LocalDevVPN to change Arena's server setting.
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         CODE_SIGNING_ALLOWED: NO
         CODE_SIGNING_REQUIRED: NO
