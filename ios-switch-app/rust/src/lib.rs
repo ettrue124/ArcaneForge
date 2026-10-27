@@ -13,9 +13,10 @@ use std::time::Duration;
 
 use idevice::afc::opcode::AfcFopenMode;
 use idevice::house_arrest::HouseArrestClient;
+use idevice::lockdown::LockdownClient;
 use idevice::pairing_file::PairingFile;
-use idevice::provider::TcpProvider;
-use idevice::IdeviceService;
+use idevice::provider::{IdeviceProvider, TcpProvider};
+use idevice::{IdeviceError, IdeviceService};
 use serde_json::{json, Value};
 
 const ARENA: &str = "com.wizards.mtga";
@@ -55,9 +56,22 @@ async fn switch(action: i32, pairing: &[u8], device: &str, host: &str) -> Result
     let pairing_file = PairingFile::from_bytes(pairing).map_err(|e| format!("Pairing file unreadable: {e}"))?;
     let addr: IpAddr = device.parse().map_err(|_| "Device address is not an IP address".to_string())?;
     let provider = TcpProvider { addr, scope_id: None, pairing_file, label: "arcane-switch".into() };
-    let house_arrest = HouseArrestClient::connect(&provider)
+    // Step by step (rather than HouseArrestClient::connect) so a failure names the step.
+    let step = |name: &'static str| move |e: IdeviceError| format!("{name} failed: {e} ({e:?})");
+    let pairing = provider.get_pairing_file().await.map_err(step("Reading pairing file"))?;
+    let mut lockdown = LockdownClient::connect(&provider)
         .await
-        .map_err(|e| format!("Cannot reach the phone (is the VPN on?): {e}"))?;
+        .map_err(step("Connecting to the phone (is the VPN on?)"))?;
+    let legacy = lockdown.start_session(&pairing).await.map_err(step("Secure session"))?;
+    let (port, ssl) = lockdown
+        .start_service(HouseArrestClient::service_name().to_string())
+        .await
+        .map_err(step("Starting file access"))?;
+    let mut service = provider.connect(port).await.map_err(step("Opening file access"))?;
+    if ssl {
+        service.start_session(&pairing, legacy).await.map_err(step("Securing file access"))?;
+    }
+    let house_arrest = HouseArrestClient::new(service);
     let mut afc = house_arrest
         .vend_documents(ARENA)
         .await

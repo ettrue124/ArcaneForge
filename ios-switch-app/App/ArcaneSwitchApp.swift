@@ -12,7 +12,7 @@ struct ArcaneSwitchApp: App {
 enum Switcher {
     static func run(_ action: Int32, pairing: Data, deviceIP: String, host: String) async -> (ok: Bool, message: String) {
         await Task.detached {
-            var buffer = [CChar](repeating: 0, count: 512)
+            var buffer = [CChar](repeating: 0, count: 1024)
             let code = pairing.withUnsafeBytes { bytes in
                 arcane_switch_run(action, bytes.bindMemory(to: UInt8.self).baseAddress, pairing.count,
                                   deviceIP, host, &buffer, buffer.count)
