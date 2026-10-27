@@ -24,6 +24,8 @@ jobs:
           rustup default stable
 
       - name: Build Rust core
+        env:
+          IPHONEOS_DEPLOYMENT_TARGET: "16.0"
         run: cargo build --release --target aarch64-apple-ios --manifest-path rust/Cargo.toml
 
       - name: Generate Xcode project
