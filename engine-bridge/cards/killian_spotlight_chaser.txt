@@ -1,0 +1,11 @@
+Name:Killian, Spotlight Chaser
+ManaCost:B R
+Types:Legendary Creature Human Bard
+PT:2/2
+T:Mode$ DamageDone | ValidSource$ Card.YouCtrl | ValidTarget$ Opponent | CombatDamage$ False | TriggerZones$ Battlefield | Execute$ SeekCard | TriggerDescription$ Whenever a source you control deals noncombat damage to an opponent, seek a card with mana value equal to the damage dealt. Discard that card at the beginning of the next end step.
+SVar:SeekCard:DB$ Seek | Type$ Card.cmcEQX | RememberFound$ True | SubAbility$ DiscardLater
+SVar:X:TriggerCount$DamageAmount
+SVar:DiscardLater:DB$ DelayedTrigger | Mode$ Phase | Phase$ End of Turn | RememberObjects$ Remembered | Execute$ DiscardCard | TriggerDescription$ Discard the card sought with Killian, Spotlight Chaser. | SubAbility$ Cleanup
+SVar:DiscardCard:DB$ Discard | Defined$ You | Mode$ Defined | DefinedCards$ DelayTriggerRemembered
+SVar:Cleanup:DB$ Cleanup | ClearRemembered$ True
+Oracle:Whenever a source you control deals noncombat damage to an opponent, seek a card with mana value equal to the damage dealt. Discard that card at the beginning of the next end step.

@@ -1,0 +1,9 @@
+Name:Cloudsculpt Armorer
+ManaCost:3 U
+Types:Creature Jellyfish Artificer
+PT:3/3
+T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self | Execute$ Shield | TriggerDescription$ When this creature enters, put a shield counter on target artifact or creature.
+SVar:Shield:DB$ PutCounter | ValidTgts$ Artifact,Creature | CounterType$ SHIELD | CounterNum$ 1
+T:Mode$ CounterRemovedOnce | ValidCard$ Permanent.YouCtrl | TriggerZones$ Battlefield | Execute$ Seek | TriggerDescription$ Whenever one or more counters are removed from a permanent you control, seek a nonland card.
+SVar:Seek:DB$ Seek | Type$ Card.nonLand
+Oracle:When this creature enters, put a shield counter on target artifact or creature.\nWhenever one or more counters are removed from a permanent you control, seek a nonland card.

@@ -15,12 +15,12 @@ static class BattleNativeMenus
     static bool StaticChoices(JsonElement input,out StaticList list,out Dictionary<uint,uint> ids) {
         list=StaticList.None;ids=new();
         string kind=input.TryGetProperty("nativeKind",out var k)?k.GetString()??"":"";
-        if(kind is not ("color" or "type" or "counterType"))return false;
+        if(kind is not ("color" or "manaProduction" or "type" or "counterType"))return false;
         string typeKind=input.TryGetProperty("typeKind",out var t)?t.GetString()??"":"";
         foreach(var option in input.GetProperty("options").EnumerateArray()) {
             string name=option.TryGetProperty("nativeValue",out var n)?n.GetString()!:option.GetProperty("label").GetString()!;
             uint wire;bool valid;
-            if(kind=="color") {list=StaticList.ManaColors;valid=EnumId<ManaColor>(name,out wire);}
+            if(kind is "color" or "manaProduction") {list=StaticList.ManaColors;valid=EnumId<ManaColor>(name,out wire);}
             else if(kind=="counterType") {list=StaticList.CounterTypes;valid=EnumId<CounterType>(name,out wire);}
             else if(typeKind.Equals("Card",StringComparison.OrdinalIgnoreCase)) {list=StaticList.CardTypes;valid=EnumId<CardType>(name,out wire);}
             else if(typeKind.Equals("Super",StringComparison.OrdinalIgnoreCase)) {list=StaticList.SuperTypes;valid=EnumId<SuperType>(name,out wire);}
@@ -45,41 +45,18 @@ static class BattleNativeMenus
         if(input.GetProperty("type").GetString()!="InputGuiChoice")return null;
         var message=new GREToClientMessage {MsgId=msgId,GameStateId=stateId,SystemSeatIds={1},Prompt=new Prompt {PromptId=23}};
         string nativeKind=input.TryGetProperty("nativeKind",out var native)?native.GetString()??"":"";
-        if(nativeKind=="kicker") {
-            uint source=input.GetProperty("sourceId").GetUInt32();
-            var card=snapshot.GetProperty("cards").EnumerateArray().FirstOrDefault(c=>c.GetProperty("instanceId").GetUInt32()==source);
-            uint ability=card.ValueKind==JsonValueKind.Object?BattlePresentation.SingleKickerAbility(card.GetProperty("grpId").GetUInt32()):0;
-            if(ability==0)return null;
-            message.Type=GREMessageType.CastingTimeOptionsReq;message.AllowCancel=AllowCancel.No;
-            message.CastingTimeOptionsReq=new CastingTimeOptionsReq();
-            foreach(bool kicked in new[]{false,true}) {
-                var option=new CastingTimeOptionReq {
-                    CtoId=snapshot.GetProperty("buttonEventId").GetUInt32(),
-                    CastingTimeOptionType=kicked?CastingTimeOptionType.Kicker:CastingTimeOptionType.Done,
-                    AffectorId=source,AffectedId=source,GrpId=kicked?ability:card.GetProperty("grpId").GetUInt32(),
-                    PlayerIdToPrompt=1,IsRequired=true};
-                string prefix=kicked?"kicked":"base";
-                if(!MatchDoorHost.TryParseManaCost(input.GetProperty(prefix+"ManaCost").GetString()!,option.ManaCost))return null;
-                // The browser uses this solution for affordability and hover
-                // highlights; actual payment remains Forge's next input.
-                if(input.GetProperty(prefix+"Payable").GetBoolean()) {
-                    option.AutoTapSolution=new AutoTapSolution();
-                    if(input.TryGetProperty(prefix+"AutoTapSources",out var sources))
-                        foreach(var manaSource in sources.EnumerateArray())
-                            option.AutoTapSolution.AutoTapActions.Add(new AutoTapAction {InstanceId=manaSource.GetUInt32()});
-                    if(input.TryGetProperty(prefix+"AutoTapPool",out var pool))
-                        foreach(var mana in pool.EnumerateArray()) {
-                            var info=new ManaInfo {ManaId=mana.GetProperty("manaId").GetUInt32(),
-                                Color=(ManaColor)mana.GetProperty("color").GetInt32(),
-                                SrcInstanceId=mana.GetProperty("srcInstanceId").GetUInt32(),Count=mana.GetProperty("count").GetUInt32()};
-                            if(mana.TryGetProperty("restricted",out var restricted) && restricted.GetBoolean())
-                                info.Specs.Add(new ManaInfo.Types.Spec {Type=ManaSpecType.Restricted});
-                            option.AutoTapSolution.AutoTapActions.Add(new AutoTapAction {ManaId=info.ManaId,
-                                ManaPaymentOption=new ManaPaymentOption {Mana={info}}});
-                        }
-                }
-                message.CastingTimeOptionsReq.CastingTimeOptionReq.Add(option);
-            }
+        // Arena's casting browser can hide the Done option when kicker is
+        // unaffordable. Use the explicit Forge choice buttons instead.
+        if(nativeKind=="kicker")return null;
+        // Arena's native "Order Triggers" browser: SelectN over the temporary trigger objects with the
+        // TriggeredAbility/Stacking contexts. The reply lists every trigger left (resolves last) to right.
+        if(nativeKind=="triggerOrder" && BattlePresentation.TriggerOrderObjects(snapshot) is {} pending) {
+            message.Type=(GREMessageType)22;
+            message.SelectNReq=new SelectNReq {MinSel=pending.Count,MaxSel=(uint)pending.Count,SourceId=pending[0].Parent,
+                Context=SelectionContext.TriggeredAbility,OptionContext=OptionContext.Stacking,IdType=IdType.InstanceId,
+                ListType=SelectionListType.Dynamic,ValidationType=SelectionValidationType.NonRepeatable,Prompt=message.Prompt};
+            message.SelectNReq.Ids.AddRange(pending.Select(p=>p.Id));
+            message.AllowCancel=AllowCancel.No;
             return message;
         }
         if(nativeKind=="modes" && AbilityChoices(snapshot,input,true) is {} modes) {
@@ -97,7 +74,9 @@ static class BattleNativeMenus
                 AffectorId=source,AffectedId=source,GrpId=card.GetProperty("grpId").GetUInt32(),PlayerIdToPrompt=1,IsRequired=true,ModalReq=modal}}};
             return message;
         }
-        if(nativeKind is "manaType" or "manaProduction") {
+        // Mana production uses the direct color buttons below. The cost
+        // selector is reserved for choices such as mana versus Phyrexian life.
+        if(nativeKind=="manaType") {
             uint source=input.GetProperty("sourceId").GetUInt32();
             var card=snapshot.GetProperty("cards").EnumerateArray().FirstOrDefault(c=>c.GetProperty("instanceId").GetUInt32()==source);
             if(card.ValueKind!=JsonValueKind.Object)return null;

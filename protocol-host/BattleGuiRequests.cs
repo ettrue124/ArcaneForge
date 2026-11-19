@@ -8,8 +8,16 @@ static class BattleGuiRequests
     {
         string label=option.GetProperty("label").GetString()??"";
         if(input.TryGetProperty("nativeKind",out var menuKind) && menuKind.GetString()=="replacement") {
+            string description=option.TryGetProperty("description",out var effectText)?effectText.GetString()??"":"";
+            if(description.Contains("planeswalker",StringComparison.OrdinalIgnoreCase)
+                && description.Contains("enters with an additional loyalty counter",StringComparison.OrdinalIgnoreCase))
+                return "Add 1 starting loyalty";
+            var starting=System.Text.RegularExpressions.Regex.Match(description,
+                @"enters with ([a-z]+|[0-9]+) loyalty counters?",System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if(starting.Success)return "Start with "+starting.Groups[1].Value+" loyalty";
             int explanation=label.IndexOf(" - ",StringComparison.Ordinal);
-            if(explanation>0)return label.Substring(0,explanation);
+            string source=explanation>0?label.Substring(0,explanation):label;
+            return System.Text.RegularExpressions.Regex.Replace(source,@"\s*\([0-9]+\)$","");
         }
         // Siege entry replacements are actions, not full reminder paragraphs.
         // Keep their original option IDs while fitting the native buttons.
@@ -49,6 +57,23 @@ static class BattleGuiRequests
         // in its affirmative button so a generic Yes/No never loses context.
         return label;
     }
+    const int MaxButtonLabel=64;
+    /// Keeps a menu label readable on Arena's buttons: "Card (98): text" keeps the card name,
+    /// reminder text is dropped, and the rest is cut at a word boundary.
+    internal static string ShortLabel(string label)
+    {
+        if(label.Length<=MaxButtonLabel)return label;
+        string head="",text=label;
+        var named=System.Text.RegularExpressions.Regex.Match(label,@"^(?<name>[^:()—]{2,40}?)(?: \(\d+\))?: (?<text>.+)$");
+        if(named.Success) { head=named.Groups["name"].Value+": "; text=named.Groups["text"].Value; }
+        text=System.Text.RegularExpressions.Regex.Replace(text,@"\s*\([^)]*\)","").Trim();
+        int room=Math.Max(20,MaxButtonLabel-head.Length);
+        if(text.Length<=room)return head+text;
+        string cut=text[..room];
+        int space=cut.LastIndexOf(' ');
+        if(space>room/2)cut=cut[..space];
+        return head+cut.TrimEnd(',',';','.',' ','—')+"…";
+    }
     public static GREToClientMessage? Choice(JsonElement input,uint msgId,uint stateId)
     {
         uint max=input.GetProperty("max").GetUInt32();
@@ -60,7 +85,7 @@ static class BattleGuiRequests
         if(battlefield || purpose is "discard" or "keep") {
             prompt.PromptId=2920000u;
             prompt.Parameters.Add(new PromptParameter {ParameterName="question",Type=ParameterType.NonLocalizedString,
-            StringValue=input.GetProperty("title").GetString()??"Select cards"});
+            StringValue=ManaMenuSymbols.Format(input.GetProperty("title").GetString()??"Select cards")});
         }
         bool entities=input.TryGetProperty("entityChoices",out var e) && e.GetBoolean();
         bool stackMenu=input.TryGetProperty("readableStackTargets",out var readableStack) && readableStack.GetBoolean();
@@ -68,34 +93,60 @@ static class BattleGuiRequests
             SourceId=input.GetProperty("sourceId").GetUInt32(),ListType=SelectionListType.Dynamic,
             IdType=entities?IdType.InstanceId:IdType.PromptParameterIndex,Context=purpose=="discard"?SelectionContext.Discard:SelectionContext.Resolution,
             OptionContext=OptionContext.Resolution,ValidationType=SelectionValidationType.NonRepeatable,Prompt=prompt};
+        bool kicker=input.TryGetProperty("nativeKind",out var kind) && kind.GetString()=="kicker";
+        bool kickerCancel=input.TryGetProperty("kickerCanCancel",out var cancellable) && cancellable.GetBoolean();
+        var offered=input.GetProperty("options").EnumerateArray().Where(o=>!kicker
+            || kickerCancel && o.GetProperty("id").GetUInt32()==3
+            || input.GetProperty(o.GetProperty("id").GetUInt32()==1?"kickedPayable":"basePayable").GetBoolean()).ToArray();
         uint position=0;
-        foreach(var option in input.GetProperty("options").EnumerateArray()) {
+        foreach(var option in offered) {
             uint id=stackMenu?++position:option.GetProperty("id").GetUInt32();req.Ids.Add(id);req.UnfilteredIds.Add(id);req.HotIds.Add(id);
         }
         if(purpose is "discard" or "keep")req.HotIds.Clear();
-        // Arena's proliferate workflow preselects HotIds. Offer every legal
-        // entity without deciding which counters the human wants to increase.
-        if(input.TryGetProperty("proliferateSelection",out var proliferate) && proliferate.GetBoolean())req.HotIds.Clear();
+        // HotIds are initial selections in Arena's proliferate workflow.
+        // Keep every legal option available so the human can toggle defaults.
+        if(input.TryGetProperty("proliferateSelection",out var proliferate) && proliferate.GetBoolean()) {
+            req.HotIds.Clear();
+            if(input.TryGetProperty("proliferateDefaultIndexes",out var defaults)) {
+                var indexes=defaults.EnumerateArray().Select(v=>v.GetInt32()).ToHashSet();
+                req.HotIds.AddRange(offered.Where(o=>indexes.Contains(o.GetProperty("index").GetInt32()))
+                    .Select(o=>o.GetProperty("id").GetUInt32()));
+            }
+        }
         if(!entities) {
             position=0;
-            foreach(var option in input.GetProperty("options").EnumerateArray()) {
+            // Arena's buttons overflow on full rules text (trigger ordering showed whole abilities), and its
+            // DynamicListTranslation keys options by label, so identical labels would merge into one button.
+            var seen=new Dictionary<string,int>(StringComparer.Ordinal);
+            foreach(var option in offered) {
                 uint id=stackMenu?++position:option.GetProperty("id").GetUInt32();
+                string text=ShortLabel(ChoiceLabel(input,option));
+                seen[text]=seen.GetValueOrDefault(text)+1;
+                if(seen[text]>1)text+=$" ({seen[text]})";
                 prompt.Parameters.Add(new PromptParameter {
                     ParameterName = id.ToString(),
                     Type = ParameterType.NonLocalizedString,
-                    StringValue = ManaMenuSymbols.Format(ChoiceLabel(input,option))
+                    StringValue = ManaMenuSymbols.Format(text)
                 });
             }
         }
         if(entities && req.MinSel==0 && req.MaxSel==0) {req.UnfilteredIds.Clear();req.HotIds.Clear();}
+        // Arena only shows labelled buttons (ChoiceButtonsWorkflow) for exactly-one choices. An optional
+        // "pick 0 or 1" text menu with <=3 options falls into ChoiceModalWorkflow, which draws each option
+        // as a blank modal card (seen for Storm copy targets, trace local-20261118-035617-41dde803).
+        // Require one pick and let Continue/Cancel mean "choose nothing"; CancelActionReq already answers
+        // an empty choice when Forge's own minimum is 0.
+        bool optionalSingle=!entities && !kicker && req.MinSel==0 && req.MaxSel==1 && req.Ids.Count is > 0 and <= 6
+            && !(input.TryGetProperty("proliferateSelection",out var optionalProliferate) && optionalProliferate.GetBoolean());
+        if(optionalSingle)req.MinSel=1;
         if(!entities && input.TryGetProperty("title",out var question) && !string.IsNullOrWhiteSpace(question.GetString())
             && !input.TryGetProperty("promptId",out _) && prompt.Parameters.Count<=64) {
             prompt.PromptId=2920000u+(uint)prompt.Parameters.Count;
             prompt.Parameters.Add(new PromptParameter {ParameterName="question",Type=ParameterType.NonLocalizedString,
-                StringValue=question.GetString()!});
+                StringValue=ManaMenuSymbols.Format(question.GetString()!)});
         }
         return new GREToClientMessage {Type=(GREMessageType)22,MsgId=msgId,GameStateId=stateId,SystemSeatIds={1},Prompt=prompt,SelectNReq=req,
-            AllowCancel=req.MinSel==0?AllowCancel.Continue:AllowCancel.No};
+            AllowCancel=kickerCancel?AllowCancel.Abort:req.MinSel==0 || optionalSingle?AllowCancel.Continue:AllowCancel.No};
     }
     public static GREToClientMessage? Create(JsonElement input,uint msgId,uint stateId)
     {
@@ -113,10 +164,15 @@ static class BattleGuiRequests
                 message.OrderReq.Ids.AddRange(input.GetProperty("options").EnumerateArray().Select(o=>o.GetProperty("id").GetUInt32()));
                 break;
             case "InputGuiText":
-                message.Type=GREMessageType.StringInputReq;message.StringInputReq=new StringInputReq {SourceId=input.GetProperty("sourceId").GetUInt32()};
+                message.Type=(GREMessageType)22;
+                message.SelectNReq=new SelectNReq {SourceId=input.GetProperty("sourceId").GetUInt32(),
+                    MinSel=1,MaxSel=1,ListType=SelectionListType.Static,StaticList=StaticList.CardNames,
+                    Context=SelectionContext.Resolution,OptionContext=OptionContext.Resolution,
+                    ValidationType=SelectionValidationType.NonRepeatable};
                 if(input.TryGetProperty("title",out var textQuestion))message.Prompt=new Prompt {PromptId=2920000,
                     Parameters={new PromptParameter {ParameterName="question",Type=ParameterType.NonLocalizedString,
                         StringValue=textQuestion.GetString()??"Choose a card name"}}};
+                message.SelectNReq.Prompt=message.Prompt;
                 break;
             case "InputGuiGroups":
                 message.Type=GREMessageType.GroupReq;message.Prompt=new Prompt {PromptId=40};

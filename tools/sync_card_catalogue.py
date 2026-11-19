@@ -82,6 +82,8 @@ def engine_identity(config_path=ROOT / 'engine-bridge/launch.json'):
     rules = [p for directory in rule_directories if directory.is_dir()
              for p in directory.rglob('*') if p.is_file()]
     additional = list((cwd / 'engine-bridge/cards').glob('*.txt'))
+    additional.extend((cwd / 'engine-bridge').glob('*-pool.json'))
+    additional.extend((cwd / 'engine-bridge').glob('*-abilities.json'))
     profile_override = assets / 'forge.profile.properties'
     identity = {
         'launchSha256': file_sha256(config_path),
@@ -145,7 +147,8 @@ def main():
     eligible_path=ROOT/'data/commander-eligible.json'
     output_names=('catalogue.json','catalogue-metadata.json','forge-coverage.json','commander-eligible.json',
                   'arena-card-metadata.json','arena-ability-text.json','arena-activated-abilities.json',
-                  'arena-granted-ability-definitions.json','arena-generated-cards.json','arena-linked-faces.json')
+                  'arena-granted-ability-definitions.json','arena-generated-cards.json','arena-linked-faces.json',
+                  'arena-leveler-bands.json')
     if (previous.get('syncVersion')==2 and previous.get('databaseSha256')==digest
             and previous.get('engineSha256')==identity['engineSha256']
             and not identity['profileOverridePresent']

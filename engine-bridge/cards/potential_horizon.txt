@@ -1,0 +1,8 @@
+Name:Potential Horizon
+ManaCost:no cost
+Types:Land
+R:Event$ Moved | ValidCard$ Card.Self | Destination$ Battlefield | ReplacementResult$ Updated | ReplaceWith$ EnterTapped | CheckSVar$ StartingPlayer | SVarCompare$ EQ1 | Description$ If you were the starting player, this land enters tapped.
+SVar:EnterTapped:DB$ Tap | Defined$ Self | ETB$ True
+SVar:StartingPlayer:Count$StartingPlayer.1.0
+A:AB$ ChangeZone | Cost$ T Sac<1/CARDNAME> | Origin$ Library | Destination$ Battlefield | ChangeType$ Land.Plains,Land.Island,Land.Swamp,Land.Mountain,Land.Forest | ChangeNum$ 1 | SpellDescription$ Search your library for a land card with a basic land type, put it onto the battlefield, then shuffle.
+Oracle:If you were the starting player, this land enters tapped.\n{T}, Sacrifice this land: Search your library for a land card with a basic land type, put it onto the battlefield, then shuffle.

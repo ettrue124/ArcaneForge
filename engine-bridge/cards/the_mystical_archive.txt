@@ -1,0 +1,9 @@
+Name:The Mystical Archive
+ManaCost:no cost
+Types:Land
+K:ETBReplacement:Other:Draft
+SVar:Draft:DB$ Draft | Spellbook$ Abrade,Ad Nauseam,Armageddon,Berserk,Big Score,Bulk Up,Crackle with Power,Deduce,Disdainful Stroke,Empty the Warrens,Force of Will,Giant Growth,Hop to It,Knockout Maneuver,Pick Your Poison,Pongify,Prismatic Ending,Reprieve,Requisition Raid,Shamanic Revelation,Sheoldred's Edict,Smallpox,Stargaze,Stock Up,Zombify | Zone$ Exile | FaceDown$ True | RememberDrafted$ True | SpellDescription$ As this land enters, draft a card from The Mystical Archive's spellbook and exile it face down.
+A:AB$ Mana | Cost$ T | Produced$ C | SpellDescription$ Add {C}.
+A:AB$ Mana | Cost$ 1 T | Produced$ Combo Any | Amount$ 2 | RestrictValid$ Spell.ArenaNonStartingDeck | SpellDescription$ Add two mana in any combination of colors. Spend this mana only to cast spells that aren't from your starting deck.
+A:AB$ ChangeZone | Cost$ 2 T | Origin$ Exile | Destination$ Hand | ChangeType$ Card.IsRemembered | ChangeNum$ 1 | Hidden$ True | Mandatory$ True | SpellDescription$ Put a card exiled with this land into its owner's hand.
+Oracle:As this land enters, draft a card from The Mystical Archive's spellbook and exile it face down.\n{T}: Add {C}.\n{1}, {T}: Add two mana in any combination of colors. Spend this mana only to cast spells that aren't from your starting deck.\n{2}, {T}: Put a card exiled with this land into its owner's hand.

@@ -64,7 +64,14 @@ static class BattleRequests
         var result = new GREToClientMessage { MsgId = msgId, GameStateId = stateId, SystemSeatIds = { 1 } };
         var nativeMenu=BattleNativeMenus.Create(snapshot,input,msgId,stateId);
         if(nativeMenu!=null)return nativeMenu;
-        if(input.GetProperty("type").GetString()!="InputGuiStackTargets" && (input.GetProperty("type").GetString()??"").StartsWith("InputGui",StringComparison.Ordinal))return BattleGuiRequests.Create(input,msgId,stateId);
+        // Use labelled choices for Forge's stack-item picker. The native stack
+        // browser can remain open over a following battlefield target request
+        // when casting immediately triggers another targeting decision.
+        // Choice and TryAnswer already map menu positions to real stack IDs.
+        // Spell/ability targets use Arena's native stack picker (SelectTargetsReq with real stack IDs).
+        // MatchDoorHost tracks clicks and answers Forge only on SubmitTargetsReq, which closes the picker.
+        if((input.GetProperty("type").GetString()??"") is var guiType && guiType.StartsWith("InputGui",StringComparison.Ordinal)
+            && guiType!="InputGuiStackTargets")return BattleGuiRequests.Create(input,msgId,stateId);
         switch (input.GetProperty("type").GetString()) {
             case "InputPayMana":
             case "InputPayManaOfCostPayment": {
@@ -122,7 +129,17 @@ static class BattleRequests
                 break;
             }
             case "InputChooseNumber":
-                if(!input.GetProperty("isX").GetBoolean() && input.GetProperty("max").GetUInt32()<=10
+                // The native casting browser does not reliably open for repeated
+                // X symbols (for example Chalice's XX). Use a direct decision.
+                bool repeatedX=input.GetProperty("isX").GetBoolean()
+                    && snapshot.TryGetProperty("cards",out var numberCards)
+                    && numberCards.EnumerateArray().Any(c=>c.GetProperty("instanceId").GetUInt32()==input.GetProperty("sourceId").GetUInt32()
+                        && c.TryGetProperty("manaCost",out var xCost)
+                        && System.Text.RegularExpressions.Regex.Matches(xCost.GetString()??"",@"\{X\}").Count>1);
+                // Single X fails too: Explosion's CastingTimeOptionsReq never opened and left no way
+                // to answer (trace local-20261118-040656-461aa936). Small ranges use labelled buttons.
+                bool isX=input.GetProperty("isX").GetBoolean();
+                if(input.GetProperty("max").GetUInt32()<=10
                     && input.GetProperty("min").GetUInt32()<=input.GetProperty("max").GetUInt32()) {
                     var first=input.GetProperty("min").GetUInt32();
                     var last=input.GetProperty("max").GetUInt32();
@@ -130,10 +147,12 @@ static class BattleRequests
                         ?offeredNumbers.EnumerateArray().Select(v=>v.GetUInt32()).ToHashSet():null;
                     var options=Enumerable.Range((int)first,(int)(last-first+1))
                         .Where(v=>permitted==null || permitted.Contains((uint)v))
-                        .Select(v=>new {id=v+1,label=v.ToString()}).ToArray();
+                        .Select(v=>new {id=v+1,label=isX || repeatedX?"X = "+v:v.ToString()}).ToArray();
                     using var choice=JsonDocument.Parse(JsonSerializer.Serialize(new {type="InputGuiChoice",min=1,max=1,
                         sourceId=input.GetProperty("sourceId").GetUInt32(),entityChoices=false,
-                        title=input.TryGetProperty("title",out var nt)?nt.GetString():"Choose a number",options}));
+                        title=input.TryGetProperty("readAhead",out var readAheadMenu) && readAheadMenu.GetBoolean()
+                            ? "Read ahead: choose the chapter to start on"
+                            : input.TryGetProperty("title",out var nt)?nt.GetString():"Choose a number",options}));
                     return BattleGuiRequests.Choice(choice.RootElement,msgId,stateId);
                 }
                 var numeric=new NumericInputReq {MinValue=input.GetProperty("min").GetUInt32(),MaxValue=input.GetProperty("max").GetUInt32(),StepSize=1,
@@ -143,7 +162,8 @@ static class BattleRequests
                     numeric.SuggestedValues.AddRange(values.Order());
                     for(uint v=numeric.MinValue;v<=numeric.MaxValue;v++)if(!values.Contains(v))numeric.DisallowedValues.Add(v);
                 }
-                if(!input.GetProperty("isX").GetBoolean()) {
+                if(!input.GetProperty("isX").GetBoolean() || repeatedX) {
+                    if(repeatedX)numeric.NumericInputType=NumericInputType.ChooseAnyAmount;
                     result.Type=GREMessageType.NumericInputReq;
                     result.NumericInputReq=numeric;
                     result.AllowCancel=AllowCancel.No;
@@ -241,6 +261,19 @@ static class BattleRequests
                         result.OptionalActionMessage=new OptionalActionMessage {SourceId=source,Prompt=explorePrompt,
                             OptionalActionTypes={CardMechanicType.Explore},RecipientIds={exploredId}};
                         return result;
+                    }
+                    if(input.TryGetProperty("cardName",out var sylvanName) && sylvanName.GetString()=="Sylvan Library") {
+                        bool life=msg.Contains("pay 4 life",StringComparison.OrdinalIgnoreCase);
+                        bool draw=msg.Contains("draw",StringComparison.OrdinalIgnoreCase);
+                        if(life || draw) {
+                            using var sylvanChoice=JsonDocument.Parse(JsonSerializer.Serialize(new {
+                                sourceId=source,title=life?"Sylvan Library: keep a card or return it": "Sylvan Library: draw two additional cards?",
+                                min=1,max=1,entityChoices=false,
+                                options=new[]{new {id=1,label=life?"Pay 4 life — keep this card":"Draw two additional cards"},
+                                    new {id=2,label=life?"Return a card to the top":"Skip the additional draw"}}
+                            }));
+                            return BattleGuiRequests.Choice(sylvanChoice.RootElement,msgId,stateId);
+                        }
                     }
                     var lifePayment=System.Text.RegularExpressions.Regex.Match(msg.Trim(),
                         @"^(?:(?:Do you want to|Would you like to|You may)\s+)?pay\s+(\d+)\s+life[?.]?$",

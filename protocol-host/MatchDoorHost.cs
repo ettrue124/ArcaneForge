@@ -29,6 +29,32 @@ sealed class MatchSessionState
     }
     public bool IsCurrentResponse(uint id) => requests.TryGetValue(id,out var request) && request.Button!=0 && request.Button==ButtonEventId && request.Input==InputType;
     public long LastPublishedButtonId;
+    // Spell/ability targets clicked in Arena's native stack picker for the current Forge prompt.
+    // Forge only receives them when Arena sends SubmitTargetsReq (the picker's Submit button).
+    public readonly HashSet<uint> StackTargetSelection = new();
+    public long StackSelectionButton;
+    // Trigger keys in resolution order, from Arena's Order Triggers browser; answers Forge's follow-up picks.
+    public readonly List<uint> TriggerOrderPlan = new();
+    public long TriggerOrderButton;
+    // Repeat targeting: targets chosen for a prompt (same card + ability text) this turn are reused when
+    // the identical prompt returns (Storm copies, repeated triggers). Full Control disables it.
+    public readonly Dictionary<string,uint[]> TargetMemory = new(StringComparer.Ordinal);
+    public uint TargetMemoryTurn;
+    public string? AutoTargetKey;
+    internal static string? TargetKey(JsonElement snapshot) {
+        if(!snapshot.TryGetProperty("input",out var input))return null;
+        string type=input.GetProperty("type").GetString()??"";
+        if(type is not ("InputGuiStackTargets" or "InputSelectTargets"))return null;
+        string card=input.TryGetProperty("cardName",out var name)?name.GetString()??"":"";
+        string text=input.TryGetProperty("description",out var description)?description.GetString()??"":"";
+        return card.Length==0 && text.Length==0 ? null : $"{type}|{card}|{text}";
+    }
+    internal void Remember(string? key,uint turn,IEnumerable<uint> targets) {
+        var chosen=targets.ToArray();
+        if(key==null || chosen.Length==0)return;
+        if(TargetMemoryTurn!=turn) { TargetMemory.Clear(); TargetMemoryTurn=turn; }
+        TargetMemory[key]=chosen;
+    }
     public readonly SemaphoreSlim PushGate = new(1, 1);
     public GameStateMessage? PreviousBoard;
     public uint NextAnnotationId = 1;
@@ -38,6 +64,14 @@ sealed class MatchSessionState
     public long LastSettingsRevision;
     public readonly StackPlaybackPacer StackPacer = new();
     public GameplayTrace? Trace;
+    public DecisionTimerSettings? Timing;
+    public readonly DecisionTimer Decision = new();
+    // Forge keeps reporting an answered InputPassPriority while the AI responds.
+    // Re-offering that decision left Arena without a Pass button once (trace
+    // local-20261026-010226 seq 2705-2711), so hold it back briefly.
+    public long PassedButton;
+    public long PassedAtMs;
+    public const long PassedHoldMs = 3000;
 }
 
 static class MatchDoorHost
@@ -48,17 +82,19 @@ static class MatchDoorHost
         var ids = handIds.ToArray();
         if (count == 0 || count > ids.Length || ids.Distinct().Count() != ids.Length)
             throw new InvalidDataException("Invalid London selection count or hand");
-        // Verified client-localized prompts: 2428 = Choose a card; 193 = Choose two cards.
-        // BaseUserRequest ignores prompt IDs 0/1; the UI requires a non-null Prompt.
-        var prompt = new Prompt { PromptId = count == 2 ? 193u : 2428u };
+        // Arena's own London mulligan screen (LondonWorkflow) opens for a GroupReq with
+        // GroupingContext.LondonMulligan. It reads GroupSpecs[1].LowerBound as the number
+        // of cards to put back and replies with a hand group and a library-bottom group.
+        // BaseUserRequest ignores prompt IDs 0/1; the workflow supplies its own header text.
         var request = new GREToClientMessage {
-            Type = (GREMessageType)22, SystemSeatIds = { 1 }, MsgId = msgId, GameStateId = stateId,
-            Prompt = prompt,
-            SelectNReq = new SelectNReq { MinSel = (int)count, MaxSel = count,
-                IdType = IdType.InstanceId, ListType = SelectionListType.Dynamic,
-                Context = SelectionContext.Resolution, OptionContext = OptionContext.Resolution, Prompt = prompt }
+            Type = GREMessageType.GroupReq, SystemSeatIds = { 1 }, MsgId = msgId, GameStateId = stateId,
+            Prompt = new Prompt { PromptId = 40 },
+            GroupReq = new GroupReq { GroupType = GroupType.Ordered, Context = GroupingContext.LondonMulligan }
         };
-        request.SelectNReq.Ids.AddRange(ids);
+        request.GroupReq.InstanceIds.AddRange(ids);
+        uint keep = (uint)ids.Length - count;
+        request.GroupReq.GroupSpecs.Add(new GroupSpecification { LowerBound = keep, UpperBound = keep, ZoneType = ZoneType.Hand, SubZoneType = SubZoneType.Top });
+        request.GroupReq.GroupSpecs.Add(new GroupSpecification { LowerBound = count, UpperBound = count, ZoneType = ZoneType.Library, SubZoneType = SubZoneType.Bottom });
         return request;
     }
     internal static GREToClientMessage CreateMulliganRequest(uint msgId, uint stateId, int handSize, uint mulliganCount = 0)
@@ -156,6 +192,22 @@ static class MatchDoorHost
         finally { gate.Release(); }
     }
     internal static Frame? HeartbeatReply(Frame frame) => frame.Type == 2 ? frame with { Type = 3 } : null;
+    // Live MatchDoor connections per human-vs-human play room, for relaying emotes.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Concurrent.ConcurrentDictionary<Stream, (byte Version, MatchSessionState State)>> Rooms = new();
+    const int MaxEmoteLength = 200;
+    /// The emote as the opponent's client should receive it, or null when the UI message is not a valid emote.
+    internal static MatchServiceToClientMessage? EmoteRelay(UIMessage? ui, uint msgId)
+    {
+        if (ui?.OnChat is not { } chat || string.IsNullOrEmpty(chat.Text) || chat.Text.Length > MaxEmoteLength) return null;
+        return new MatchServiceToClientMessage { GreToClientEvent = new GreToClientEvent { GreToClientMessages = {
+            new GREToClientMessage { Type = GREMessageType.Uimessage, MsgId = msgId, SystemSeatIds = { 1 },
+                UiMessage = new UIMessage { SeatIds = { 1 }, OnChat = new OnChat { Text = chat.Text } } } } } };
+    }
+    /// Arena's "not allowed" reply for a prompt answer the host could not apply.
+    internal static MatchServiceToClientMessage IllegalRequestReply(ClientToGREMessage gre, uint msgId, uint gameStateId) => new() {
+        GreToClientEvent = new GreToClientEvent { GreToClientMessages = {
+            new GREToClientMessage { Type = GREMessageType.IllegalRequest, MsgId = msgId, GameStateId = gameStateId, SystemSeatIds = { 1 },
+                IllegalRequestMessage = new IllegalRequestMessage { InvalidMessage = gre } } } } };
     public static async Task Serve(TcpClient client, X509Certificate2 cert, string backend, X509Certificate2Collection? extraCertificates = null)
     {
         // Small priority and animation frames must not wait for TCP batching.
@@ -236,6 +288,11 @@ static class MatchDoorHost
                                 clientToken = ActiveMatches.GetToken(activeMatchId);
                             }
                             Console.WriteLine($"MatchDoor ClientToMatchDoorConnectRequest for match: {activeMatchId}");
+                            if (!string.IsNullOrEmpty(authorizedMatch.RoomId))
+                                Rooms.GetOrAdd(authorizedMatch.RoomId, _ => new())[stream] = (frame.Version, state);
+                            state.Timing = BattleTimers.LoadSettings();
+                            if (state.Timing is { } timing)
+                                Console.WriteLine($"Decision timer: {timing.Seconds}s, rope at {timing.WarningSeconds}s, loss on timeout {timing.TimeoutsToLose}.");
 
                             // 1. Send MatchGameRoomStateChangedEvent (Playing)
                             var roomMsg = new MatchServiceToClientMessage {
@@ -319,6 +376,20 @@ static class MatchDoorHost
                             var gre = ClientToGREMessage.Parser.ParseFrom(msg.Payload);
                             state.Trace?.RecordProtobuf("client.gre", gre);
                             if(state.CompletionSent)break;
+                            if (gre.UiMessage != null) {
+                                // Emotes go to the other human player. Hover/select/generic UI
+                                // signals use per-view object IDs and are not relayed.
+                                var room = activeMatchId is null ? "" : ActiveMatches.Get(activeMatchId)?.RoomId ?? "";
+                                if (gre.UiMessage.OnChat != null && room.Length > 0 && Rooms.TryGetValue(room, out var peers)) {
+                                    foreach (var (peer, info) in peers) {
+                                        if (ReferenceEquals(peer, stream)) continue;
+                                        if (EmoteRelay(gre.UiMessage, info.State.NextMsgId++) is not { } relay) break;
+                                        try { await WriteFrame(peer, new Frame(info.Version, 1, 2, relay.ToByteArray()), timeout.Token); }
+                                        catch (Exception e) when (e is IOException or ObjectDisposedException) { }
+                                    }
+                                }
+                                break;
+                            }
                             bool answersPrompt=gre.PerformActionResp!=null || gre.SelectTargetsResp!=null || gre.DeclareAttackersResp!=null || gre.DeclareBlockersResp!=null
                                 || gre.CastingTimeOptionsResp!=null || gre.SelectNResp!=null || gre.MulliganResp!=null || gre.OptionalResp!=null || gre.ChooseStartingPlayerResp!=null
                                 || gre.NumericInputResp!=null || gre.StringInputResp!=null || gre.OrderResp!=null || gre.GroupResp!=null || gre.DistributionResp!=null || gre.AssignDamageResp!=null || gre.CancelActionReq!=null
@@ -358,6 +429,43 @@ static class MatchDoorHost
                                 else state.LastPublishedButtonId=0;
                                 await Task.Delay(30,timeout.Token);
                                 await PushStateAndActions(stream,backend,clientToken,activeMatchId,frame.Version,state,timeout.Token);
+                            } else if(state.InputType=="InputGuiChoice" && gre.SelectNResp is {} triggerOrder && triggerOrder.Ids.Count>1
+                                && triggerOrder.Ids.All(id=>id>=BattlePresentation.TriggerOrderBase && id<BattlePresentation.TriggerOrderBase+1_000_000u)) {
+                                // Order Triggers browser: Arena lists left ("Last") to right ("First"); Forge wants first-to-resolve first.
+                                state.TriggerOrderPlan.Clear();
+                                state.TriggerOrderPlan.AddRange(triggerOrder.Ids.Reverse().Select(id=>id-BattlePresentation.TriggerOrderBase));
+                                state.TriggerOrderButton=state.ButtonEventId;
+                                state.LastPublishedButtonId=0;
+                                await PushStateAndActions(stream,backend,clientToken,activeMatchId,frame.Version,state,timeout.Token);
+                            } else if(state.InputType=="InputGuiStackTargets" && gre.SelectTargetsResp!=null) {
+                                // A click only updates the selection; Arena keeps its picker open until Submit.
+                                // Answering Forge here left the picker (Submit 0) over the next prompt.
+                                if(state.StackSelectionButton!=state.ButtonEventId) { state.StackTargetSelection.Clear(); state.StackSelectionButton=state.ButtonEventId; }
+                                uint maxTargets=1;
+                                if(state.LastSnapshotJson!=null) {
+                                    using var targetSnapshot=JsonDocument.Parse(state.LastSnapshotJson);
+                                    if(targetSnapshot.RootElement.GetProperty("input").TryGetProperty("max",out var maxProp))maxTargets=maxProp.GetUInt32();
+                                }
+                                foreach(var clicked in gre.SelectTargetsResp.Target.Targets.Select(t=>t.TargetInstanceId)) {
+                                    if(!state.StackTargetSelection.Remove(clicked)) {
+                                        if(maxTargets<=1)state.StackTargetSelection.Clear();
+                                        if(state.StackTargetSelection.Count<maxTargets)state.StackTargetSelection.Add(clicked);
+                                    }
+                                }
+                                state.LastPublishedButtonId=0;
+                                await PushStateAndActions(stream,backend,clientToken,activeMatchId,frame.Version,state,timeout.Token);
+                            } else if(state.InputType=="InputGuiStackTargets" && gre.Type==(ClientMessageType)37) {
+                                // SubmitTargetsReq: hand Forge the spells/abilities picked in the native picker.
+                                var chosenTargets=state.StackSelectionButton==state.ButtonEventId ? state.StackTargetSelection.ToArray() : Array.Empty<uint>();
+                                state.StackTargetSelection.Clear();
+                                if(state.LastSnapshotJson!=null) {
+                                    using var submitted=JsonDocument.Parse(state.LastSnapshotJson);
+                                    state.Remember(MatchSessionState.TargetKey(submitted.RootElement),
+                                        submitted.RootElement.GetProperty("turn").GetProperty("number").GetUInt32(),chosenTargets);
+                                }
+                                await SendEngineAnswer(backend,clientToken,state.ButtonEventId,chosenTargets,timeout.Token);
+                                await Task.Delay(30,timeout.Token);
+                                await PushStateAndActions(stream,backend,clientToken,activeMatchId,frame.Version,state,timeout.Token);
                             } else if(BattleGuiResponses.TryAnswer(gre,state.InputType,out var guiAnswer,state.LastSnapshotJson)) {
                                 await SendEngineAnswer(backend,clientToken,state.ButtonEventId,guiAnswer!,timeout.Token);
                                 await Task.Delay(30,timeout.Token);
@@ -384,6 +492,14 @@ static class MatchDoorHost
                                     state.LastPublishedButtonId=0;
                                     await PushStateAndActions(stream,backend,clientToken,activeMatchId,frame.Version,state,timeout.Token);
                                     break;
+                                }
+                                if(expectedInput=="InputSelectTargets" && state.LastSnapshotJson!=null) {
+                                    using var submitted=JsonDocument.Parse(state.LastSnapshotJson);
+                                    var submittedInput=submitted.RootElement.GetProperty("input");
+                                    if(submittedInput.TryGetProperty("selected",out var picked))
+                                        state.Remember(MatchSessionState.TargetKey(submitted.RootElement),
+                                            submitted.RootElement.GetProperty("turn").GetProperty("number").GetUInt32(),
+                                            picked.EnumerateArray().Select(t=>t.GetUInt32()));
                                 }
                                 await SendEngineAction(state, backend, clientToken, JsonSerializer.Serialize(new { type = "ok", eventId = state.ButtonEventId }), timeout.Token);
                                 await PushStateAndActions(stream, backend, clientToken, activeMatchId, frame.Version, state, timeout.Token);
@@ -452,6 +568,7 @@ static class MatchDoorHost
                                             continue;
                                         }
                                     }
+                                    if(state.InputType=="InputPassPriority") { state.PassedButton=state.ButtonEventId; state.PassedAtMs=Environment.TickCount64; }
                                     await SendEngineAction(state, backend, clientToken, JsonSerializer.Serialize(new { type = "ok", eventId = state.ButtonEventId }), timeout.Token);
                                 } else {
                                     await SendEngineAction(state, backend, clientToken, act.Selection != 0
@@ -476,8 +593,12 @@ static class MatchDoorHost
                             } else if (gre.SelectNResp != null && state.InputType is "InputSelectCardsFromList" or "InputSelectEntitiesFromList") {
                                 await SendEngineAction(state, backend, clientToken, JsonSerializer.Serialize(new { type = "selectMany", instanceIds = gre.SelectNResp.Ids.ToArray(), eventId = state.ButtonEventId }), timeout.Token);
                                 await PushStateAndActions(stream, backend, clientToken, activeMatchId, frame.Version, state, timeout.Token);
-                            } else if (gre.SelectNResp != null && state.InputType == "InputLondonMulligan") {
-                                await SendEngineAction(state, backend, clientToken, JsonSerializer.Serialize(new { type = "bottomCards", instanceIds = gre.SelectNResp.Ids.ToArray(), eventId = state.ButtonEventId }), timeout.Token);
+                            } else if ((gre.GroupResp != null || gre.SelectNResp != null) && state.InputType == "InputLondonMulligan") {
+                                // London screen replies with groups; the library-bottom group holds the cards to put back.
+                                var bottomIds = gre.GroupResp != null
+                                    ? gre.GroupResp.Groups.Where(g => g.ZoneType == ZoneType.Library).SelectMany(g => g.Ids).ToArray()
+                                    : gre.SelectNResp!.Ids.ToArray();
+                                await SendEngineAction(state, backend, clientToken, JsonSerializer.Serialize(new { type = "bottomCards", instanceIds = bottomIds, eventId = state.ButtonEventId }), timeout.Token);
                                 await Task.Delay(50, timeout.Token);
                                 await PushStateAndActions(stream, backend, clientToken, activeMatchId, frame.Version, state, timeout.Token);
                             } else if (gre.MulliganResp != null) {
@@ -522,9 +643,22 @@ static class MatchDoorHost
                                 // outcome is available instead of racing it with an empty result.
                                 await Task.Delay(50, timeout.Token);
                                 await PushStateAndActions(stream, backend, clientToken, activeMatchId, frame.Version, state, timeout.Token);
+                            } else {
+                                // Previously dropped silently. Log it so live play shows which gaps occur.
+                                Console.WriteLine($"MatchDoor: unhandled client message {gre.Type} while Forge waits on {state.InputType}.");
+                                if (answersPrompt) {
+                                    var illegal = IllegalRequestReply(gre, state.NextMsgId++, state.CurrentGameStateId);
+                                    state.Trace?.RecordProtobuf("server.gre", illegal);
+                                    await WriteFrame(stream, new Frame(frame.Version, 1, 2, illegal.ToByteArray()), timeout.Token);
+                                    state.LastPublishedButtonId = 0;
+                                    await PushStateAndActions(stream, backend, clientToken, activeMatchId, frame.Version, state, timeout.Token);
+                                }
                             }
                             break;
                         }
+                        default:
+                            Console.WriteLine($"MatchDoor: unhandled match service message {msg.ClientToMatchServiceMessageType}.");
+                            break;
                     }
                 }
                 pollCts?.Cancel();
@@ -532,6 +666,9 @@ static class MatchDoorHost
                 Console.WriteLine($"MatchDoor connection ended: {ex.GetType().Name}");
             } finally {
                 pollCts?.Cancel();
+                foreach (var (room, peers) in Rooms) {
+                    if (peers.TryRemove(stream, out _) && peers.IsEmpty) Rooms.TryRemove(room, out _);
+                }
                 if (state.Trace is not null) {
                     Console.WriteLine($"Saved local gameplay trace: {state.Trace.DirectoryPath}");
                     state.Trace.Dispose();
@@ -586,8 +723,54 @@ static class MatchDoorHost
         state.InputType = snapDoc.RootElement.GetProperty("input").GetProperty("type").GetString() ?? "";
         state.ButtonEventId = currentButton;
         bool shouldPass=!completed && state.ButtonEventId!=0 && state.Flow.ShouldPass(snapDoc.RootElement);
-        // These Forge matches are untimed. Do not advertise a fresh 30-second
-        // timeout at every update without an authoritative timeout lifecycle.
+        // Trigger order is only asked in Full Control (held or toggled) or with auto-pass cleared;
+        // otherwise take Forge's default order (its first option) without showing a prompt.
+        uint? autoTriggerOrder=null;
+        if(!completed && state.ButtonEventId!=0 && state.InputType=="InputGuiChoice"
+            && snapDoc.RootElement.GetProperty("input") is var orderInput
+            && orderInput.TryGetProperty("title",out var orderTitle)
+            && (orderTitle.GetString()??"") is var orderText
+            && (orderText.StartsWith("Order your triggers",StringComparison.Ordinal) || orderText.StartsWith("Choose the trigger to resolve next",StringComparison.Ordinal))
+            && orderInput.TryGetProperty("options",out var orderOptions) && orderOptions.GetArrayLength()>0) {
+            // A new ordering session discards an older plan; its own first prompt keeps the plan just chosen.
+            if(orderText.StartsWith("Order your triggers",StringComparison.Ordinal) && state.TriggerOrderButton!=state.ButtonEventId)
+                state.TriggerOrderPlan.Clear();
+            if(state.TriggerOrderPlan.Count>0 && orderInput.TryGetProperty("triggers",out var orderTriggers)) {
+                var optionByKey=new Dictionary<uint,uint>();
+                foreach(var trigger in orderTriggers.EnumerateArray())
+                    optionByKey.TryAdd(trigger.GetProperty("key").GetUInt32(),trigger.GetProperty("option").GetUInt32());
+                while(state.TriggerOrderPlan.Count>0 && !optionByKey.ContainsKey(state.TriggerOrderPlan[0]))state.TriggerOrderPlan.RemoveAt(0);
+                if(state.TriggerOrderPlan.Count>0) { autoTriggerOrder=optionByKey[state.TriggerOrderPlan[0]]; state.TriggerOrderPlan.RemoveAt(0); }
+            }
+            // Only Full Control (held or toggled) or cleared auto-pass asks; otherwise Forge's default order.
+            if(autoTriggerOrder==null && (int)state.Flow.Mode is not (7 or 4))
+                autoTriggerOrder=orderOptions[0].GetProperty("id").GetUInt32();
+        }
+        // Repeat targeting: an identical prompt this turn (same card + ability text) reuses the remembered
+        // targets while they are still legal. Spell targets answer at once; a permanent/player target is
+        // selected first and submitted on the following update. Full Control always asks.
+        uint[]? autoTargets=null;
+        bool autoTargetSubmit=false;
+        string? targetKey=!completed && state.ButtonEventId!=0 && (int)state.Flow.Mode!=7 ? MatchSessionState.TargetKey(snapDoc.RootElement) : null;
+        if(targetKey!=null) {
+            uint turnNow=snapDoc.RootElement.GetProperty("turn").GetProperty("number").GetUInt32();
+            if(state.TargetMemoryTurn!=turnNow) { state.TargetMemory.Clear(); state.TargetMemoryTurn=turnNow; }
+            var targetInput=snapDoc.RootElement.GetProperty("input");
+            var selectedNow=targetInput.TryGetProperty("selected",out var selectedTargets)
+                ? selectedTargets.EnumerateArray().Select(v=>v.GetUInt32()).ToHashSet() : new HashSet<uint>();
+            if(state.AutoTargetKey==targetKey && state.TargetMemory.TryGetValue(targetKey,out var applied) && selectedNow.SetEquals(applied))
+                autoTargetSubmit=true;
+            else if(selectedNow.Count==0 && state.TargetMemory.TryGetValue(targetKey,out var remembered)) {
+                var offered=targetInput.GetProperty("targets").EnumerateArray().Select(v=>v.GetUInt32()).ToHashSet();
+                uint minTargets=targetInput.GetProperty("min").GetUInt32(),maxTargets=targetInput.GetProperty("max").GetUInt32();
+                bool stackPrompt=state.InputType=="InputGuiStackTargets";
+                if(remembered.All(offered.Contains) && remembered.Length>=minTargets && remembered.Length<=maxTargets
+                    && (stackPrompt || remembered.Length==1))
+                    autoTargets=remembered;
+            }
+        }
+        // Matches are untimed unless match-settings.json enables the decision
+        // timer; EnforceDecisionTimer then owns the rope and its timeouts.
         var followups=new List<GREToClientMessage>();
         if(state.LastSettingsRevision!=state.Flow.SettingsRevision) {
             var settingsUpdate=new GREToClientMessage {Type=GREMessageType.SetSettingsResp,MsgId=state.NextMsgId++,GameStateId=state.CurrentGameStateId,SystemSeatIds={1},SetSettingsResp=new SetSettingsResp {Settings=state.Flow.SnapshotSettings()}};
@@ -608,6 +791,14 @@ static class MatchDoorHost
             uint bottomCount=snapDoc.RootElement.TryGetProperty("bottomCount",out var bottom)?bottom.GetUInt32():state.MulliganCount;
             followups.Add(CreateBottomCardRequest(state.RequestMsgId,state.CurrentGameStateId,bottomCount,board.Zones.Single(z=>z.ZoneId==102).ObjectInstanceIds));
         }
+        else if(state.InputType=="InputPassPriority" && state.ButtonEventId==state.PassedButton
+            && Environment.TickCount64-state.PassedAtMs<MatchSessionState.PassedHoldMs) {
+            // Already passed; publish the board only. PollBattle re-offers the
+            // decision if Forge is still on it once the hold expires.
+        }
+        else if(autoTriggerOrder!=null || autoTargets!=null || autoTargetSubmit) {
+            // Answered below after the board is published; no prompt for the player.
+        }
         else if(!shouldPass && state.ButtonEventId!=0) {
             var request=BattleRequests.Create(snapDoc.RootElement,state.NextMsgId,state.CurrentGameStateId);
             bool payingMana=state.InputType.StartsWith("InputPayMana",StringComparison.Ordinal);
@@ -620,12 +811,28 @@ static class MatchDoorHost
                     else request.ActionsAvailableReq.Actions.Add(offered);
                 }
             }
+            if(request?.SelectTargetsReq is {} stackRequest && state.InputType=="InputGuiStackTargets"
+                && state.StackSelectionButton==state.ButtonEventId && state.StackTargetSelection.Count>0) {
+                // Forge's GUI choice has no running selection; show the host-tracked one.
+                var targetSet=stackRequest.Targets[0];
+                foreach(var t in targetSet.Targets)
+                    if(state.StackTargetSelection.Contains(t.TargetInstanceId))t.LegalAction=SelectAction.Unselect;
+                targetSet.SelectedTargets=(uint)state.StackTargetSelection.Count;
+            }
             if(request!=null) {
                 request.AllowUndo=(state.InputType=="InputPassPriority" || payingMana) && snapDoc.RootElement.TryGetProperty("canUndo",out var canUndo) && canUndo.GetBoolean();
                 // Preserve the payment adapter's mandatory-cost restriction.
                 // Overwriting it here used to expose Cancel on mandatory costs.
                 state.RequestMsgId=state.NextMsgId++;followups.Add(request);
             }
+        }
+        if(state.Timing is { } timing) {
+            // Only a decision actually put to the player, with a safe default answer, is timed.
+            long now=Environment.TickCount64;
+            bool timed=!completed && followups.Any(m=>m.Type!=GREMessageType.SetSettingsResp)
+                && BattleTimers.TimeoutAnswer(snapDoc.RootElement)!=null;
+            state.Decision.Track(state.ButtonEventId,state.InputType,timed,now);
+            BattleTimers.Apply(board,1,state.Decision,timing,now);
         }
         var wire=greStateMsg.GreToClientEvent.GreToClientMessages.Single();
         wire.GameStateMessage=BattleUpdates.WireState(board,state.PreviousBoard);
@@ -644,6 +851,30 @@ static class MatchDoorHost
             await WriteFrame(stream,new Frame(version,1,2,completion.ToByteArray()),ct);
             state.CompletionSent=true;
             Console.WriteLine("Sent final Forge outcome, Arena intermission and match completion.");
+            return;
+        }
+        if(autoTargetSubmit) {
+            state.AutoTargetKey=null;
+            await SendEngineAction(backend,token,JsonSerializer.Serialize(new {type="ok",eventId=state.ButtonEventId}),ct);
+            state.LastSnapshotJson=null;
+            state.LastPublishedButtonId=0;
+            return;
+        }
+        if(autoTargets!=null) {
+            if(state.InputType=="InputGuiStackTargets")
+                await SendEngineAnswer(backend,token,state.ButtonEventId,autoTargets,ct);
+            else {
+                state.AutoTargetKey=targetKey;
+                await SendEngineAction(backend,token,JsonSerializer.Serialize(new {type="selectTarget",instanceId=autoTargets[0],eventId=state.ButtonEventId}),ct);
+            }
+            state.LastSnapshotJson=null;
+            state.LastPublishedButtonId=0;
+            return;
+        }
+        if(autoTriggerOrder is uint firstTrigger) {
+            await SendEngineAnswer(backend,token,state.ButtonEventId,new uint[]{firstTrigger},ct);
+            state.LastSnapshotJson=null;
+            state.LastPublishedButtonId=0;
             return;
         }
         if(shouldPass) {
@@ -678,9 +909,17 @@ static class MatchDoorHost
                 if(failures>0)Console.WriteLine("Battle updates recovered after a temporary backend error.");
                 failures=0;
                 if(state.CompletionSent || closed)break;
+                if(state.PassedButton!=0 && Environment.TickCount64-state.PassedAtMs>=MatchSessionState.PassedHoldMs) {
+                    // The pass never advanced Forge: offer the same decision again.
+                    if(state.ButtonEventId==state.PassedButton)state.LastPublishedButtonId=0;
+                    state.PassedButton=0;
+                }
+                await EnforceDecisionTimer(stream,backend,token,matchId,version,state,ct);
             } catch(OperationCanceledException) when(ct.IsCancellationRequested) {break;}
               catch(Exception ex) when(ex is HttpRequestException http && (http.StatusCode is null || (int)http.StatusCode>=500 || (int)http.StatusCode is 408 or 429) || ex is TaskCanceledException) {
                 failures++;
+                state.LastSnapshotJson=null;
+                state.LastPublishedButtonId=0;
                 Console.WriteLine($"Temporary battle backend error; retry {failures}: {ex.Message}");
                 if(failures>=20) {stream.Dispose();break;}
             } catch(Exception ex) {
@@ -690,6 +929,62 @@ static class MatchDoorHost
         }
     }
 
+    // Shows the rope at the warning point and answers the decision when it
+    // runs out: the safe default, or a concession on the losing timeout.
+    private static async Task EnforceDecisionTimer(Stream stream,string backend,string? token,string matchId,byte version,MatchSessionState state,CancellationToken ct)
+    {
+        if(state.Timing is not { } timing)return;
+        long now=Environment.TickCount64;
+        if(!state.Decision.WarningDue(timing,now) && !state.Decision.ExpiryDue(timing,now))return;
+        bool concede=false;
+        await state.PushGate.WaitAsync(ct);
+        try {
+            // Only the decision the client is actually showing can time out.
+            if(state.CompletionSent || state.LastSnapshotJson==null || state.LastPublishedButtonId!=state.ButtonEventId
+                || !state.Decision.IsCurrent(state.ButtonEventId,state.InputType))return;
+            now=Environment.TickCount64;
+            if(!state.Decision.ExpiryDue(timing,now)) {
+                if(state.Decision.WarningDue(timing,now))
+                    await WriteGre(stream,version,state,BattleTimers.CreateTimerStateMessage(state.NextMsgId++,state.CurrentGameStateId,1,
+                        new[] {state.Decision.MarkWarned(timing,now)}),ct);
+                return;
+            }
+            using var snapshot=JsonDocument.Parse(state.LastSnapshotJson);
+            if(BattleTimers.TimeoutAnswer(snapshot.RootElement) is not { } answer) { state.Decision.Exempt(); return; }
+            uint used=state.Decision.TimeoutsUsed+1;
+            concede=used>=timing.TimeoutsToLose;
+            try {
+                if(concede)await SendEngineAction(backend,token,"{\"type\":\"concede\"}",ct);
+                else if(answer.EmptyChoice)await SendEngineAnswer(backend,token,state.ButtonEventId,Array.Empty<uint>(),ct);
+                else {
+                    if(answer.Pass)state.Flow.ManualPass(snapshot.RootElement);
+                    await SendEngineAction(backend,token,JsonSerializer.Serialize(new {type=answer.Action,eventId=state.ButtonEventId}),ct);
+                }
+            } catch(HttpRequestException ex) when(ex.StatusCode==System.Net.HttpStatusCode.BadRequest) {
+                // For example a required attack: leave the decision with the player.
+                Console.WriteLine("Forge rejected the timeout default; this decision is no longer timed.");
+                state.Decision.Exempt();
+                return;
+            }
+            used=state.Decision.RecordTimeout();
+            Console.WriteLine(concede?$"Decision timer expired ({used}/{timing.TimeoutsToLose}); conceding the game."
+                :$"Decision timer expired ({used}/{timing.TimeoutsToLose}); took the default answer.");
+            await WriteGre(stream,version,state,BattleTimers.CreateTimeoutMessage(state.NextMsgId++,state.CurrentGameStateId,1,
+                BattleTimers.SpareTimeouts(timing,used),DecisionTimer.Expired(timing)),ct);
+            state.LastSnapshotJson=null; state.LastPublishedButtonId=0;
+        } finally { state.PushGate.Release(); }
+        // Concede runs on Forge's EDT, as with the client's own concession.
+        await Task.Delay(concede?50:30,ct);
+        await PushStateAndActions(stream,backend,token,matchId,version,state,ct);
+    }
+
+    private static async Task WriteGre(Stream stream,byte version,MatchSessionState state,GREToClientMessage message,CancellationToken ct)
+    {
+        var reply=new MatchServiceToClientMessage {GreToClientEvent=new GreToClientEvent {GreToClientMessages={message}}};
+        state.Trace?.RecordProtobuf("server.gre",reply);
+        await WriteFrame(stream,new Frame(version,1,2,reply.ToByteArray()),ct);
+    }
+
     private static async Task<string> FetchSnapshot(string backend, string? token, CancellationToken ct, long afterPlaybackId = 0)
     {
         var http = BattleBackendHttp;
@@ -697,6 +992,12 @@ static class MatchDoorHost
         req.Content = new StringContent(JsonSerializer.Serialize(new { afterPlaybackId }),Encoding.UTF8,"application/json");
         if (!string.IsNullOrEmpty(token)) req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         using var resp = await http.SendAsync(req, ct);
+        if(resp.StatusCode==System.Net.HttpStatusCode.BadRequest) {
+            // Karn's restart rebuilds zones, permissions and opening-hand
+            // decisions. A rejected snapshot must not kill a healthy match.
+            Console.WriteLine("Forge snapshot temporarily unavailable: "+await resp.Content.ReadAsStringAsync(ct));
+            throw new HttpRequestException("Rules snapshot is transitioning",null,System.Net.HttpStatusCode.ServiceUnavailable);
+        }
         resp.EnsureSuccessStatusCode();
         return await resp.Content.ReadAsStringAsync(ct);
     }
@@ -707,6 +1008,10 @@ static class MatchDoorHost
         using var req = new HttpRequestMessage(HttpMethod.Get, backend.TrimEnd('/') + "/api/interactive/poll");
         if (!string.IsNullOrEmpty(token)) req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         using var resp = await http.SendAsync(req, ct);
+        if(resp.StatusCode==System.Net.HttpStatusCode.BadRequest) {
+            Console.WriteLine("Forge poll temporarily unavailable: "+await resp.Content.ReadAsStringAsync(ct));
+            throw new HttpRequestException("Rules state is transitioning",null,System.Net.HttpStatusCode.ServiceUnavailable);
+        }
         resp.EnsureSuccessStatusCode();
         return await resp.Content.ReadAsStringAsync(ct);
     }

@@ -1,0 +1,13 @@
+Name:Boisterous Clique
+ManaCost:1 B B
+Types:Creature Faerie Warlock
+PT:3/1
+K:Flash
+K:Flying
+T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self | Execute$ LookAtHand | TriggerDescription$ When this creature enters, look at all nonland cards in target player's hand. You may exile one of those cards. If you do, that player conjures a card named Mind Stone into their hand.
+SVar:LookAtHand:DB$ RevealHand | ValidTgts$ Player | RevealValid$ Card.nonLand | Look$ True | SubAbility$ ExileCard
+SVar:ExileCard:DB$ ChangeZone | Origin$ Hand | Destination$ Exile | DefinedPlayer$ Targeted | Chooser$ You | ChangeType$ Card.nonLand | ChangeNum$ 1 | RememberChanged$ True | SubAbility$ ConjureStone
+SVar:ConjureStone:DB$ MakeCard | Conjure$ True | Name$ Mind Stone | Defined$ Targeted | Zone$ Hand | ConditionCheckSVar$ ExiledCount | ConditionSVarCompare$ GE1 | SubAbility$ Cleanup
+SVar:ExiledCount:Count$Remembered
+SVar:Cleanup:DB$ Cleanup | ClearRemembered$ True
+Oracle:Flash\nFlying\nWhen this creature enters, look at all nonland cards in target player's hand. You may exile one of those cards. If you do, that player conjures a card named Mind Stone into their hand.

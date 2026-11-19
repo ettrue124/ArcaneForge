@@ -1,0 +1,7 @@
+Name:Flourishing Forces
+ManaCost:G W W
+Types:Sorcery
+A:SP$ Token | TokenScript$ cadet | TokenAmount$ X | SpellDescription$ Create a 2/2 colorless Wizard Soldier creature token named Cadet. For every 3 life you gained this game, create an additional one of those tokens.
+SVar:Third:Count$ArenaLifeGainedGame/ThirdDown
+SVar:X:SVar$Third/Plus.1
+Oracle:Create a 2/2 colorless Wizard Soldier creature token named Cadet. For every 3 life you gained this game, create an additional one of those tokens.

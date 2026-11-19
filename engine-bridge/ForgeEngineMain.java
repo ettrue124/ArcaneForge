@@ -115,6 +115,8 @@ public final class ForgeEngineMain {
         });
         FModel.initialize(null, null);
         BattleAdditionalCards.load();
+        BattleBotAi.initialize(assets);
+        FModel.getPreferences().setPref(forge.localinstance.properties.ForgePreferences.FPref.UI_ENABLE_AI_CHEATS,"false");
         FModel.getPreferences().setPref(forge.localinstance.properties.ForgePreferences.FPref.UI_SELECT_FROM_CARD_DISPLAYS, "true");
         FModel.getPreferences().setPref(forge.localinstance.properties.ForgePreferences.FPref.YIELD_SKIP_PHASE_DELAY, "true");
         FModel.getPreferences().setPref(forge.localinstance.properties.ForgePreferences.FPref.YIELD_SKIP_RESOLVE_DELAY, "true");
@@ -150,6 +152,7 @@ public final class ForgeEngineMain {
             PaperCard card=findCard(name);
             cards.add(object("name",name,"supported",card!=null,
                     "forgeName",card==null?null:card.getName(),"edition",card==null?null:card.getEdition(),
+                    "rulesFaces",card==null?List.of():card.getRules().getAllFaces().stream().map(face->face.getName()).toList(),
                     "canBeCommander",card!=null && card.getRules().canBeCommander()));
         }
         return object("cards",cards);
@@ -181,6 +184,8 @@ public final class ForgeEngineMain {
                 "protection",p.getKeywords().getValues().stream().filter(k->k.getKeyword()==forge.game.keyword.Keyword.PROTECTION)
                     .map(k->k.getOriginal()).distinct().toList(),
                 "maxHandSize",p.getMaxHandSize(),"unlimitedHandSize",p.isUnlimitedHandSize(),
+                // Storm counts every spell cast this turn (all players); Arena shows it as a gamewide count badge.
+                "stormCount",game.getStack().getSpellsCastThisTurn().size(),
                 "monarch",p.isMonarch(),"citysBlessing",p.hasBlessing(),
                 "counters",p.getCounters().entrySet().stream().map(e->object("type",e.getElement().toString(),"count",e.getCount())).toList(),
                 "lossReason",p.hasLost()?String.valueOf(p.getStats().getOutcome().lossState):""));
@@ -249,6 +254,35 @@ public final class ForgeEngineMain {
                                 "qualification",cantBlock?"CantBlock":"CantBeBlocked"));
                         }
                     encoded.put("blockingRestrictions",blockingRestrictions);
+                    // Arena's CantUntap badge. Stun counters already display as
+                    // counters; next-untap keywords carry no source in Forge.
+                    if(c.isInPlay() && !c.isPhasedOut() && c.getController()!=null
+                            && c.getCounters(forge.game.card.CounterEnumType.STUN)==0) {
+                        Player untapper=c.getController();
+                        String untapReason=c.hasKeyword("This card doesn't untap during your next untap step.")?"next"
+                            :c.isExertedBy(untapper)?"exerted":!c.canUntap(untapper,true)?"static":null;
+                        if(untapReason!=null) {
+                            var untap=new LinkedHashMap<String,Object>();
+                            untap.put("reason",untapReason);
+                            if(untapReason.equals("static")) {
+                                Map<forge.game.ability.AbilityKey,Object> untapParams=forge.game.ability.AbilityKey.mapFromAffected(c);
+                                untapParams.put(forge.game.ability.AbilityKey.Player,untapper);
+                                search:
+                                for(var untapSource:game.getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES))
+                                    for(var replacement:untapSource.getReplacementEffects()) {
+                                        if(replacement.getMode()!=forge.game.replacement.ReplacementType.Untap || replacement.isSuppressed()
+                                            || !replacement.canReplace(untapParams))continue;
+                                        Integer untapPrinting=identities.get(untapSource.getId());
+                                        if(untapPrinting==null)continue;
+                                        untap.put("sourceId",forge.game.ArenaCardIds.id(untapSource.getId()));
+                                        untap.put("sourceGrpId",untapPrinting);untap.put("cardName",untapSource.getName());
+                                        untap.put("description",replacement.getParamOrDefault("Description",""));
+                                        break search;
+                                    }
+                            }
+                            encoded.put("cantUntap",untap);
+                        }
+                    }
                     if(c.isInPlay() && c.isCreature()) {
                         var powerStats=c.getNetPowerBreakdown();
                         var toughnessStats=c.getNetToughnessBreakdown();
@@ -264,6 +298,11 @@ public final class ForgeEngineMain {
                         && c.getSpellAbilities().stream().noneMatch(a->a.isActivatedAbility()));
                     encoded.put("monstrous",c.isMonstrous());
                     encoded.put("renowned",c.isRenowned());
+                    // Leaves the battlefield at end of turn (unearth, Dash, Blitz, Warp, "sacrifice at end of turn" tokens).
+                    encoded.put("temporary",c.isInPlay() && c.hasSVar("EndOfTurnLeavePlay"));
+                    // Suspended: exiled with suspend and time counters (Arena's suspend indicator).
+                    encoded.put("suspended",c.isInZone(ZoneType.Exile) && c.hasKeyword(forge.game.keyword.Keyword.SUSPEND)
+                        && c.getCounters(forge.game.card.CounterEnumType.TIME)>0);
                     var activeAbilities=c.getSpellAbilities();
                     var activeKeywords=c.getUnhiddenKeywords().getValues();
                     encoded.put("decayed",c.isCreature() && activeKeywords.stream().anyMatch(k->k.getKeyword()==forge.game.keyword.Keyword.DECAYED));
@@ -280,6 +319,8 @@ public final class ForgeEngineMain {
                         .filter(k->activeKeywords.stream().noneMatch(a->a.isIntrinsic() && a.getKeyword()==k.getKeyword()))
                         .map(k->k.getOriginal()).distinct().toList());
                     encoded.put("grantedKeywords",activeKeywords.stream().filter(k->!k.isIntrinsic()).map(k->k.getOriginal()).distinct().toList());
+                    if(c.isToken())encoded.put("tokenIntrinsicKeywords",activeKeywords.stream()
+                        .filter(k->k.isIntrinsic()).map(k->k.getOriginal()).distinct().toList());
                     if(c.isClassCard())encoded.put("classLevel",c.getClassLevel());
                     if(copyPrinting!=null) {
                         encoded.put("isCopy",true);
@@ -301,20 +342,34 @@ public final class ForgeEngineMain {
                         encoded.put("loyalty",loyalty);
                         encoded.put("loyaltyActivationsRemaining",c.planeswalkerActivationLimitUsed()?0:1);
                     }
-                    String devotionRule=c.getSVar("X");
+                    if(c.isInPlay()) {
+                        List<Object> manaPreviews=new ArrayList<>();
+                        for(var manaAbility:c.getManaAbilities()) {
+                            String amount=manaAbility.getParamOrDefault("Amount","1");
+                            String produced=manaAbility.getParamOrDefault("Produced","");
+                            if(amount.matches("[0-9]+") || !produced.matches("[WUBRGC]"))continue;
+                            String amountRule=manaAbility.getSVar(amount);
+                            if(amountRule.isEmpty())amountRule=c.getSVar(amount);
+                            if(!amountRule.equals("Count$Valid Forest.YouCtrl"))continue;
+                            // Evaluate the same amount expression as ManaEffect without
+                            // resolving the ability or asking for any choices.
+                            var previousActivator=manaAbility.getActivatingPlayer();
+                            int value;
+                            try {
+                                manaAbility.setActivatingPlayer(c.getController());
+                                value=forge.game.ability.AbilityUtils.calculateAmount(c,amount,manaAbility);
+                            } finally {manaAbility.setActivatingPlayer(previousActivator);}
+                            manaPreviews.add(object("amount",Math.max(0,value),"word","NumberOfForestsYouControl","color",produced,
+                                "description",ForgePlayback.abilityDescription(manaAbility)));
+                        }
+                        if(!manaPreviews.isEmpty())encoded.put("manaPreviews",manaPreviews);
+                    }
                     if(activeAbilities.stream().anyMatch(a->"Metalcraft".equals(a.getParamOrDefault("Activation","")))) {
                         encoded.put("metalcraftActive",c.getController().hasMetalcraft());
                         encoded.put("metalcraftCount",c.getController().getCardsIn(ZoneType.Battlefield).stream().filter(Card::isArtifact).count());
                     }
-                    if(devotionRule.startsWith("Count$Devotion.")) {
-                        String[] devotionColors=devotionRule.substring("Count$Devotion.".length()).split("\\.");
-                        byte devotionMask=0;
-                        for(String devotionColor:devotionColors)devotionMask |= forge.card.mana.ManaAtom.fromName(devotionColor);
-                        int devotion=c.getController().getDevotionMod();
-                        for(var permanent:c.getController().getCardsIn(ZoneType.Battlefield))
-                            for(var shard:permanent.getManaCost())if(shard.isColor(devotionMask))devotion++;
-                        encoded.put("devotion",devotion);
-                    }
+                    Integer devotion=BattleDevotionDisplay.preview(c);
+                    if(devotion!=null)encoded.put("devotion",devotion);
                     encoded.put("cardTypes",c.getType().getCoreTypes().stream().map(Enum::name).toList());
                     encoded.put("subtypes",c.getType().getSubtypes().stream().toList());
                     encoded.put("supertypes",c.getType().getSupertypes().stream().map(Enum::name).toList());
@@ -351,6 +406,11 @@ public final class ForgeEngineMain {
                     if(c.isCommander()) {
                         encoded.put("commander",true);
                         encoded.put("commanderCastCount",c.getOwner().getCommanderCast(c));
+                        if(c.isInZone(ZoneType.Command)) {
+                            var commandCost=new forge.game.mana.ManaCostBeingPaid(c.getManaCost());
+                            commandCost.increaseGenericMana(c.getOwner().getCommanderCast(c)*2);
+                            encoded.put("commanderCastCost",commandCost.toString());
+                        }
                     }
                     if(c.isBattle() && c.getProtectingPlayer()!=null)
                         encoded.put("protectorSeat",seats.get(c.getProtectingPlayer()));
@@ -465,7 +525,7 @@ public final class ForgeEngineMain {
             }
             if (count<1) throw new IllegalArgumentException("Deck cannot be empty");
             groupIds.add(map);
-            registered.add(new RegisteredPlayer(deck).setPlayer(new LobbyPlayerAi(name,null)));
+            registered.add(new RegisteredPlayer(deck).setPlayer(BattleBotAi.create(name)));
         }
         if (input.has("seed") && (!input.get("seed").isJsonPrimitive()
                 || !input.get("seed").getAsJsonPrimitive().isNumber()
@@ -478,6 +538,7 @@ public final class ForgeEngineMain {
         rules.setGamesPerMatch(1);
         Match match=new Match(rules,registered,"Local Forge bridge");
         Game game=match.createGame();
+        forge.game.arena.ArenaDigitalState.install(game);
         game.setNoGUIUser();
         Map<Integer,Integer> identities=new HashMap<>();
         Map<Player,Integer> seats=new LinkedHashMap<>();

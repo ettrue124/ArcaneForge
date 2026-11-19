@@ -1,0 +1,7 @@
+Name:Remnants of Beleren
+ManaCost:1 U
+Types:Artifact
+S:Mode$ Continuous | Affected$ Card.Self | ArenaEmpowerRedirect$ True | Description$ If you would empower Jace, you may instead put that many loyalty counters on a Jace you control.
+A:AB$ Empower | Cost$ T | Type$ Jace | Num$ 1 | SpellDescription$ Empower Jace 1.
+A:AB$ Draft | Cost$ 1 U T | Spellbook$ Jace; Arcane Strategist,Jace; Architect of Thought,Jace Beleren,Jace; Ingenious Mind-Mage,Jace; Memory Adept,Jace; Mirror Mage,Jace Reawakened,Jace; the Living Guildpact,Jace; the Mind Sculptor,Jace; the Perfected Mind,Jace; Unraveler of Secrets,Jace; Vryn's Prodigy,Jace; Wielder of Mysteries,Jace; Reality Sculptor,The Theorist; Jace Beleren | SpellbookName$ Beleren Spellbook | SpellDescription$ Draft a card from the Beleren Spellbook.
+Oracle:If you would empower Jace, you may instead put that many loyalty counters on a Jace you control.\n{T}: Empower Jace 1.\n{1}{U}, {T}: Draft a card from the Beleren Spellbook.

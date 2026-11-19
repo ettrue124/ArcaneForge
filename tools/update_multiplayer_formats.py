@@ -50,12 +50,11 @@ def main():
             if not title:continue
             policy=policies.get(card['name'],{})
             status=policy.get('legalities',{}).get(key,'not_legal')
-            legal=spec['base']=='NoBans60' or status in ('legal','restricted') or spec['unbanned'] and status=='banned'
+            legal=formats.card_is_legal(spec,status)
             titles[title]=titles.get(title,False) or legal
             if status=='restricted' and not spec['unbanned']:f['individualCardQuotas'][str(title)]={'min':0,'max':1}
             types=policy.get('typeLine','')
-            if legal and ('Legendary' in types and ('Creature' in types or spec['base']!='Commander' and 'Planeswalker' in types)
-                          or policy.get('canBeCommander') or spec['base']=='Commander' and card['name'] in formats.commander_names()):leaders.add(title)
+            if legal and formats.commander_is_eligible(spec,card['name'],policy):leaders.add(title)
         f['bannedTitleIds']=sorted(title for title,legal in titles.items() if not legal)
         allowed=sorted(title for title,legal in titles.items() if legal)
         if allowed and len(allowed)<len(f['bannedTitleIds']):
@@ -67,6 +66,12 @@ def main():
     response['formats']=[f for f in response['formats'] if f['name'] not in names]+entries
     for group in response.get('formatGroups',[]):
         values=group.get('formats',group.get('formatNames',[]))
+        # These exclusions encode format legality, not newly announced bans.
+        # The native popup instantiates every listed card at once and can hang
+        # on the thousands of exclusions needed by imported formats.
+        if group.get('groupName')=='BannedFormats':
+            values.clear()
+            continue
         values.extend(sorted(names-set(values)))
     fixture['commands']['GetFormats']['payload']=response
     write(path,fixture)

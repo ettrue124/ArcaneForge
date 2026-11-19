@@ -19,3 +19,18 @@ engine-bridge/launch.json
 *.log
 *.class
 stack.txt
+
+# Public repository: own code only. Local working material stays on disk.
+# analysis/ holds decompiled Arena client code, patched Arena binaries and traces.
+analysis/
+# Agent memory and progress log contain local network and setup details.
+.agent-memory/
+AI_SHARED_PROGRESS.txt
+docs/IOS-INVESTIGATION.md
+docs/IOS-RECONSTRUCTION-AUDIT.md
+engine-bridge/launch.*.json
+# Arena/Wizards binaries and assets.
+*.dll
+*.mtga
+*.il
+*.ipa

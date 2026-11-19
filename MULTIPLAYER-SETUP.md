@@ -40,9 +40,9 @@ python tools/update_multiplayer_formats.py
 
 Use Wizards' [banned and restricted list](https://magic.wizards.com/en/banned-restricted-list) as the official reference. Arena's [format announcement](https://magic.wizards.com/en/news/mtg-arena/state-of-the-formats-2026) also describes digital-card format support and the Alchemy transition. Alchemy is retained here because it was explicitly requested.
 
-**All Arena-only cards do not work yet.** The digital-card inventory covers 799 Arena digital/rebalanced entries, 681 present in this installed catalogue. Of those installed entries, 32 lack an exact Forge rules match. Matching names for other cards does not prove correct rules or visuals. These need individual rules implementations and gameplay checks; paper substitutions are not applied automatically.
+**Arena-only coverage:** all 799 digital/rebalanced entries in the current inventory now have installed display records and available rules, including linked forms. There are no remaining missing-rules entries. Full gameplay/native visual equivalence is still unverified. See [ARENA-ONLY-CARDS.md](ARENA-ONLY-CARDS.md) for the additions, data sources, and focused checks. Paper substitutions are not applied automatically.
 
-Read `data/arena-digital-support.json`, or authenticated `/api/card-support`, for details. Rebuild its lookup inventory with `python tools/audit_arena_digital_cards.py`. It checks exact rules-name availability, not gameplay equivalence.
+Read `data/arena-digital-support.json`, or authenticated `/api/card-support`, for details. Rebuild its lookup inventory with `python tools/audit_arena_digital_cards.py`. It checks exact names and linked rules forms, not gameplay equivalence.
 
 ## API
 
@@ -55,3 +55,15 @@ All play endpoints require the local server bearer session. Clients cannot choos
 - `POST /api/play/snapshot`, `/poll`, `/action`, `/answer`
 
 The original single-player interactive API now resolves the signed-in account's room. Anonymous battle access and cross-account deck fallback have been removed. Feature Lab is restricted to the initial local administrator account. The legacy control-panel queue remains a separate simulation lobby; use Arena's Players events for the new live queues.
+
+## Random public Moxfield bot decks
+
+Bot matches now try a random public Moxfield list for the chosen format. The server resolves every card against the installed catalogue and supported rules, validates deck size, copy limits, commander identity and format legality, and rejects incomplete or unavailable lists. It never removes unavailable cards to make a list fit. Commander sideboard suggestions and maybeboards are not played.
+
+Validated source lists are cached in `data/moxfield-bot-decks` and revalidated before reuse. Discovery has a 22-second budget, at least 1.1 seconds between requests, and a backoff after rate limiting or denied access. If no valid list is found, the existing local bot decks remain available. Search samples random pages of public results; it does not sample every deck on Moxfield uniformly. No Moxfield account or private decks are used. The chosen public deck URL appears in the backend log. Per-card gameplay and AI strategy are not certified by deck validation.
+
+## Competitive Commander bots
+
+Commander bots now use only Moxfield lists referenced in the cEDH Decklist Database's `COMPETITIVE` section. The 113 source links are recorded in `data/cedh-bot-pool.json`; every downloaded or cached list still passes the selected format and installed-rules checks. Casual cached lists and starter-deck fallbacks are excluded from Commander selection. If no vetted list can be loaded, matchmaking reports an error. Other formats retain their format-specific selection.
+
+Forge bots use the `ArcaneCompetitive` profile and hybrid simulation safety checks. The profile raises low-cost interaction willingness, recognizes named combo engines, avoids random unfavorable combat trades, and enables alternative Intuition/reanimation logic. Mana-cheating preferences are disabled. Hybrid checks preserve Forge's card-specific heuristics; they do not provide expert cEDH combo planning or certify a win-rate improvement. Complex combos can still be misplayed.

@@ -23,6 +23,9 @@ sealed class LocalStartup : IDisposable
     private readonly HttpClient _http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(120) };
     private string? _token;
     private DateTime _tokenValidUntil = DateTime.MinValue;
+    // Mobile clients reach this PC directly over Tailscale; PC clients (local or
+    // VPN) reach the MatchDoor through their own 127.0.0.1 relay.
+    private bool _mobileClient;
     private string? _lastSelectedDeckId;
     private string _lastSelectedEventName = "AIBotMatch";
     internal static string EventName(JToken payload, string fallback) =>
@@ -43,7 +46,12 @@ sealed class LocalStartup : IDisposable
         return Math.Max(2, BinaryPrimitives.ReadInt32BigEndian(hash) & int.MaxValue);
     }
     private static readonly HashSet<string> BackendCommands = new(StringComparer.Ordinal) {
-        "DeckGetDeckSummariesV3", "DeckGetDeck", "DeckUpsertDeckV3", "DeckDeleteDeck", "CardGetAllCards", "CardGetCardSet"
+        "DeckGetDeckSummariesV3", "DeckGetDeck", "DeckUpsertDeckV3", "DeckDeleteDeck", "CardGetAllCards", "CardGetCardSet",
+        "GetPlayerPreferences", "SetPlayerPreferences"
+    };
+    // Requests with nothing to store here: acknowledge them so Arena shows no error.
+    private static readonly HashSet<CmdType> QuietCommands = new() {
+        CmdType.LogBusinessEvents, CmdType.SetGlobalWpnNotificationPreference, CmdType.SetOrganizationNotificationPreference
     };
     public readonly System.Collections.Concurrent.ConcurrentQueue<Frame> PendingPushes = new();
     private (string Deck,string Event,byte Version)? _queuedMatch;
@@ -56,6 +64,22 @@ sealed class LocalStartup : IDisposable
         var auth = JsonConvert.DeserializeObject<Wizards.Unification.Models.FrontDoor.AuthenticateReq>(cmd.JsonPayload.ToStringUtf8());
         _token = auth?.Token;
         _tokenValidUntil = DateTime.UtcNow.AddMinutes(5);
+        var platform = auth?.PlatformId ?? "";
+        _mobileClient = new[] { "ios", "iphone", "ipad", "android" }.Any(p => platform.Contains(p, StringComparison.OrdinalIgnoreCase));
+        Console.WriteLine($"FrontDoor client platform: {(platform.Length == 0 ? "(none)" : platform)}");
+    }
+    /// The MatchDoor address a client should dial: this PC's Tailscale address
+    /// (100.64.0.0/10) for mobile clients, which the TLS certificate names.
+    string MatchEndpointHost()
+    {
+        if (!_mobileClient) return "127.0.0.1";
+        foreach (var nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            foreach (var unicast in nic.GetIPProperties().UnicastAddresses) {
+                var bytes = unicast.Address.GetAddressBytes();
+                if (bytes.Length == 4 && bytes[0] == 100 && (bytes[1] & 0xC0) == 64) return unicast.Address.ToString();
+            }
+        Console.WriteLine("Mobile client but no Tailscale address found; MatchDoor host falls back to 127.0.0.1.");
+        return "127.0.0.1";
     }
     public async Task<Frame?> TryReply(Frame frame, CancellationToken ct)
     {
@@ -63,7 +87,7 @@ sealed class LocalStartup : IDisposable
         var cmd = Cmd.Parser.ParseFrom(frame.Body);
         string name = cmd.Type.ToString();
         JObject? fixture = Fixture(name);
-        if (cmd.Type != CmdType.ChallengeCreate && cmd.Type != CmdType.ChallengeExit && cmd.Type != CmdType.EventLeavePairing && cmd.Type != CmdType.EventDrop && cmd.Type != CmdType.EventResign && cmd.Type != CmdType.EventAiBotMatch && cmd.Type != CmdType.EventEnterPairing && cmd.Type != CmdType.GraphGetGraphDefinitions && cmd.Type != CmdType.StartHook && !BackendCommands.Contains(name) && fixture is null) return null;
+        if (cmd.Type != CmdType.ChallengeCreate && cmd.Type != CmdType.ChallengeExit && cmd.Type != CmdType.EventLeavePairing && cmd.Type != CmdType.EventDrop && cmd.Type != CmdType.EventResign && cmd.Type != CmdType.EventAiBotMatch && cmd.Type != CmdType.EventEnterPairing && cmd.Type != CmdType.GraphGetGraphDefinitions && cmd.Type != CmdType.StartHook && !BackendCommands.Contains(name) && !QuietCommands.Contains(cmd.Type) && fixture is null) return null;
         try {
         if (DateTime.UtcNow > _tokenValidUntil) {
             using var request = new HttpRequestMessage(HttpMethod.Get, _backend.TrimEnd('/') + "/api/me");
@@ -141,8 +165,17 @@ sealed class LocalStartup : IDisposable
             reply = ProtoReply(cmd, new PreferredCosmetics {
                 Avatar = new CosmeticsAvatarEntry { Id = "Avatar_Default" }
             }, frame.Version);
+        } else if (cmd.Type == CmdType.SetGlobalWpnNotificationPreference) {
+            reply = ProtoReply(cmd, new SetGlobalWpnNotificationPreferenceResp(), frame.Version);
+        } else if (cmd.Type == CmdType.SetOrganizationNotificationPreference) {
+            reply = ProtoReply(cmd, new SetOrganizationNotificationPreferenceResp(), frame.Version);
+        } else if (cmd.Type == CmdType.LogBusinessEvents) {
+            // Same raw-string acknowledgement as LogBusinessEventsV2; telemetry is discarded, never forwarded.
+            reply = new Frame(frame.Version, 1, 2, new Response { RawTransId = cmd.RawTransId, JsonPayload = ByteString.Empty }.ToByteArray());
         } else if (BackendCommands.Contains(name)) {
-            var payload=await BackendCommand(name, RequestJson(cmd), ct);
+            // GetPlayerPreferences is sent with no request body.
+            var request = cmd.Type == CmdType.GetPlayerPreferences && cmd.PayloadCase != Cmd.PayloadOneofCase.JsonPayload ? new JObject() : RequestJson(cmd);
+            var payload=await BackendCommand(name, request, ct);
             // Arena uses StringUtils.DeserializeString (raw UTF-8) for deletion.
             // JSON quoting turns success into a failed client-side deletion.
             if(cmd.Type==CmdType.DeckDeleteDeck) {
@@ -284,12 +317,25 @@ sealed class LocalStartup : IDisposable
         using var req=new HttpRequestMessage(body is null?HttpMethod.Get:HttpMethod.Post,_backend.TrimEnd('/')+"/api/play/"+path);
         req.Headers.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",_token);
         if(body is not null)req.Content=new StringContent(JsonConvert.SerializeObject(body),Encoding.UTF8,"application/json");
-        using var response=await _http.SendAsync(req,ct);response.EnsureSuccessStatusCode();
-        return JObject.Parse(await response.Content.ReadAsStringAsync(ct));
+        using var response=await _http.SendAsync(req,ct);
+        var text=await response.Content.ReadAsStringAsync(ct);
+        if(!response.IsSuccessStatusCode) {
+            // Arena only shows a generic network error, so record the server's reason here.
+            string reason;
+            try { reason=JObject.Parse(text)["error"]?.ToString() ?? text; } catch(JsonException) { reason=text; }
+            if(reason.Length>300)reason=reason[..300];
+            Console.WriteLine($"Play {path} refused ({(int)response.StatusCode}): {reason}");
+            response.EnsureSuccessStatusCode();
+        }
+        return JObject.Parse(text);
     }
     public async Task PollMatchmaking(CancellationToken ct) {
         if(_queuedMatch is not {} queued)return;
         var status=await PlayRequest("status",null,ct);
+        if(status["status"]?.ToString()=="failed") {
+            _queuedMatch=null;
+            throw new InvalidDataException("Local match startup failed: "+status["error"]?.ToString());
+        }
         if(status["status"]?.ToString()!="matched")return;
         _queuedMatch=null;
         await CompleteMatchmaking(status,queued.Deck,queued.Event,queued.Version,ct);
@@ -319,11 +365,12 @@ sealed class LocalStartup : IDisposable
         }
         using var startReq = new HttpRequestMessage(HttpMethod.Post, _backend.TrimEnd('/') + "/api/interactive/start");
         startReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _token);
-        startReq.Content = new StringContent(JsonConvert.SerializeObject(new { deckId, botDeckId, mode=GameMode(eventName) }), Encoding.UTF8, "application/json");
+        startReq.Content = new StringContent(JsonConvert.SerializeObject(new { deckId, botDeckId, mode=GameMode(eventName), asyncStart=true }), Encoding.UTF8, "application/json");
         using var startResp = await _http.SendAsync(startReq, ct);
         startResp.EnsureSuccessStatusCode();
         var started=JObject.Parse(await startResp.Content.ReadAsStringAsync(ct));
-        await CompleteMatchmaking(started,deckId,eventName,version,ct);
+        if(started["status"]?.ToString()=="starting")_queuedMatch=(deckId,eventName,version);
+        else await CompleteMatchmaking(started,deckId,eventName,version,ct);
         return JsonReply(cmd,"",version);
     }
     async Task CompleteMatchmaking(JObject started,string deckId,string eventName,byte version,CancellationToken ct)
@@ -359,10 +406,11 @@ sealed class LocalStartup : IDisposable
         using var ownerReply=await _http.SendAsync(ownerRequest,ct);ownerReply.EnsureSuccessStatusCode();
         var owner=JObject.Parse(await ownerReply.Content.ReadAsStringAsync(ct));
         string persona=owner["persona_id"]?.ToString()??owner["id"]!.ToString();
-        ActiveMatches.Register(matchId, _token!, deckId, deckCards, sbCards, commanderCards,persona);
+        string roomId=started["opponentType"]?.ToString()=="human" ? started["roomId"]?.ToString() ?? "" : "";
+        ActiveMatches.Register(matchId, _token!, deckId, deckCards, sbCards, commanderCards,persona,roomId);
 
         var matchInfo = new Wizards.Arena.Models.Network.ClientMatchInfoV4 {
-            MatchEndpointHost = "127.0.0.1",
+            MatchEndpointHost = MatchEndpointHost(),
             MatchEndpointPort = 9444,
             MatchId = matchId,
             McFabricId = "fabric:/match/" + matchId,

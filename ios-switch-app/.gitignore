@@ -1,0 +1,8 @@
+rust/target/
+build/
+Payload/
+*.ipa
+ArcaneSwitch.xcodeproj/
+# Pairing files grant full access to the phone; never commit them.
+*.plist
+*.mobiledevicepairing

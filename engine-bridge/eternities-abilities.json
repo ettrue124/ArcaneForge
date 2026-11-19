@@ -1,0 +1,294 @@
+{
+  "source": "Installed Arena ability template 108029 / title 1141907",
+  "abilities": [
+    {
+      "id": 210010,
+      "textId": 1141908,
+      "cost": "+1",
+      "text": "Create a 1/1 green Elf Druid creature token with \"{T}: Add {G}.\"",
+      "lines": [
+        "A:AB$ Token | TokenScript$ g_1_1_elf_druid_g | Cost$ AddCounter<1/LOYALTY> | Planeswalker$ True | SpellDescription$ Create a 1/1 green Elf Druid creature token with \"{T}: Add {G}.\""
+      ]
+    },
+    {
+      "id": 210011,
+      "textId": 1141909,
+      "cost": "+1",
+      "text": "Untap up to two target lands.",
+      "lines": [
+        "A:AB$ Untap | ValidTgts$ Land | TargetMin$ 0 | TargetMax$ 2 | Cost$ AddCounter<1/LOYALTY> | Planeswalker$ True | SpellDescription$ Untap up to two target lands."
+      ]
+    },
+    {
+      "id": 1323,
+      "textId": 180794,
+      "cost": "+1",
+      "text": "Draw a card.",
+      "lines": [
+        "A:AB$ Draw | NumCards$ 1 | Cost$ AddCounter<1/LOYALTY> | Planeswalker$ True | SpellDescription$ Draw a card."
+      ]
+    },
+    {
+      "id": 210012,
+      "textId": 1141910,
+      "cost": "+1",
+      "text": "Until your next turn, up to one target creature gets -4/-0.",
+      "lines": [
+        "A:AB$ Pump | ValidTgts$ Creature | TargetMin$ 0 | TargetMax$ 1 | NumAtt$ -4 | NumDef$ 0 | Duration$ UntilYourNextTurn | Cost$ AddCounter<1/LOYALTY> | Planeswalker$ True | SpellDescription$ Until your next turn, up to one target creature gets -4/-0."
+      ]
+    },
+    {
+      "id": 119257,
+      "textId": 229370,
+      "cost": "+1",
+      "text": "Put a +1/+1 counter on each of up to two target creatures.",
+      "lines": [
+        "A:AB$ PutCounter | ValidTgts$ Creature | TargetMin$ 0 | TargetMax$ 2 | CounterType$ P1P1 | CounterNum$ 1 | Cost$ AddCounter<1/LOYALTY> | Planeswalker$ True | SpellDescription$ Put a +1/+1 counter on each of up to two target creatures."
+      ]
+    },
+    {
+      "id": 62381,
+      "textId": 48720,
+      "cost": "+1",
+      "text": "Untap up to one target creature and up to one target land.",
+      "lines": [
+        "A:AB$ Untap | ValidTgts$ Creature | TargetMin$ 0 | TargetMax$ 1 | SubAbility$ ET62381_Land | Cost$ AddCounter<1/LOYALTY> | Planeswalker$ True | SpellDescription$ Untap up to one target creature and up to one target land.",
+        "SVar:ET62381_Land:DB$ Untap | ValidTgts$ Land | TargetMin$ 0 | TargetMax$ 1"
+      ]
+    },
+    {
+      "id": 210013,
+      "textId": 1141911,
+      "cost": "+1",
+      "text": "Up to one target land you control becomes a 3/3 Elemental creature with vigilance and haste. It's still a land.",
+      "lines": [
+        "A:AB$ Animate | ValidTgts$ Land.YouCtrl | TargetMin$ 0 | TargetMax$ 1 | Types$ Creature,Elemental | Power$ 3 | Toughness$ 3 | Keywords$ Vigilance & Haste | Duration$ Permanent | Cost$ AddCounter<1/LOYALTY> | Planeswalker$ True | SpellDescription$ Up to one target land you control becomes a 3/3 Elemental creature with vigilance and haste. It's still a land."
+      ]
+    },
+    {
+      "id": 166777,
+      "textId": 702799,
+      "cost": "+1",
+      "text": "Draw two cards. Then discard two cards unless you discard a creature card.",
+      "lines": [
+        "A:AB$ Draw | NumCards$ 2 | SubAbility$ ET166777_Discard | Cost$ AddCounter<1/LOYALTY> | Planeswalker$ True | SpellDescription$ Draw two cards. Then discard two cards unless you discard a creature card.",
+        "SVar:ET166777_Discard:DB$ Discard | NumCards$ 2 | Mode$ TgtChoose | UnlessType$ Creature"
+      ]
+    },
+    {
+      "id": 210014,
+      "textId": 1141912,
+      "cost": "+1",
+      "text": "Until your next turn, whenever a creature attacks you or a planeswalker you control, that creature gets -1/-0 until end of turn.",
+      "lines": [
+        "A:AB$ Effect | Duration$ UntilYourNextTurn | Triggers$ ET210014_Attack | Cost$ AddCounter<1/LOYALTY> | Planeswalker$ True | SpellDescription$ Until your next turn, whenever a creature attacks you or a planeswalker you control, that creature gets -1/-0 until end of turn.",
+        "SVar:ET210014_Attack:Mode$ Attacks | ValidCard$ Creature | Attacked$ You,Planeswalker.YouCtrl | TriggerZones$ Command | Execute$ ET210014_Shrink | TriggerDescription$ Whenever a creature attacks you or a planeswalker you control, that creature gets -1/-0 until end of turn.",
+        "SVar:ET210014_Shrink:DB$ Pump | Defined$ TriggeredAttacker | NumAtt$ -1 | NumDef$ 0"
+      ]
+    },
+    {
+      "id": 210015,
+      "textId": 1141913,
+      "cost": "+1",
+      "text": "You gain 2 life. Put a loyalty counter on this planeswalker.",
+      "lines": [
+        "A:AB$ GainLife | LifeAmount$ 2 | SubAbility$ ET210015_Counter | Cost$ AddCounter<1/LOYALTY> | Planeswalker$ True | SpellDescription$ You gain 2 life. Put a loyalty counter on this planeswalker.",
+        "SVar:ET210015_Counter:DB$ PutCounter | Defined$ Self | CounterType$ LOYALTY | CounterNum$ 1"
+      ]
+    },
+    {
+      "id": 101741,
+      "textId": 116157,
+      "cost": "-2",
+      "text": "Destroy target artifact or enchantment.",
+      "lines": [
+        "A:AB$ Destroy | ValidTgts$ Artifact,Enchantment | Cost$ SubCounter<2/LOYALTY> | Planeswalker$ True | SpellDescription$ Destroy target artifact or enchantment."
+      ]
+    },
+    {
+      "id": 210016,
+      "textId": 1141914,
+      "cost": "-2",
+      "text": "Create a 2/2 blue Bird creature token with flying. Draw a card, then discard a card.",
+      "lines": [
+        "A:AB$ Token | TokenScript$ u_2_2_bird_flying | SubAbility$ ET210016_Draw | Cost$ SubCounter<2/LOYALTY> | Planeswalker$ True | SpellDescription$ Create a 2/2 blue Bird creature token with flying. Draw a card, then discard a card.",
+        "SVar:ET210016_Draw:DB$ Draw | NumCards$ 1 | SubAbility$ ET210016_Discard",
+        "SVar:ET210016_Discard:DB$ Discard | NumCards$ 1 | Mode$ TgtChoose"
+      ]
+    },
+    {
+      "id": 210017,
+      "textId": 1141915,
+      "cost": "-2",
+      "text": "Draw two cards if you control a creature with the greatest power. Otherwise, draw a card.",
+      "lines": [
+        "A:AB$ Draw | NumCards$ ET210017_Num | Cost$ SubCounter<2/LOYALTY> | Planeswalker$ True | SpellDescription$ Draw two cards if you control a creature with the greatest power. Otherwise, draw a card.",
+        "SVar:ET210017_Num:Count$Compare ET210017_Ours GEET210017_All.2.1",
+        "SVar:ET210017_Ours:Count$Valid Creature.YouCtrl$GreatestPower",
+        "SVar:ET210017_All:Count$Valid Creature$GreatestPower"
+      ]
+    },
+    {
+      "id": 210018,
+      "textId": 1141916,
+      "cost": "-2",
+      "text": "Return target card from your graveyard to your hand.",
+      "lines": [
+        "A:AB$ ChangeZone | Origin$ Graveyard | Destination$ Hand | ValidTgts$ Card.YouOwn | Cost$ SubCounter<2/LOYALTY> | Planeswalker$ True | SpellDescription$ Return target card from your graveyard to your hand."
+      ]
+    },
+    {
+      "id": 210019,
+      "textId": 1141917,
+      "cost": "-2",
+      "text": "Target artifact or creature loses all abilities and becomes a green Elk creature with base power and toughness 3/3.",
+      "lines": [
+        "A:AB$ Animate | ValidTgts$ Artifact,Creature | Power$ 3 | Toughness$ 3 | RemoveAllAbilities$ True | Colors$ Green | OverwriteColors$ True | Types$ Creature,Elk | RemoveCreatureTypes$ True | RemoveCardTypes$ True | Duration$ Permanent | Cost$ SubCounter<2/LOYALTY> | Planeswalker$ True | SpellDescription$ Target artifact or creature loses all abilities and becomes a green Elk creature with base power and toughness 3/3."
+      ]
+    },
+    {
+      "id": 210020,
+      "textId": 1141918,
+      "cost": "-2",
+      "text": "Target creature you control deals damage equal to its power to target creature or planeswalker.",
+      "lines": [
+        "A:AB$ Pump | ValidTgts$ Creature.YouCtrl | SubAbility$ ET210020_Damage | Cost$ SubCounter<2/LOYALTY> | Planeswalker$ True | SpellDescription$ Target creature you control deals damage equal to its power to target creature or planeswalker.",
+        "SVar:ET210020_Damage:DB$ DealDamage | ValidTgts$ Creature,Planeswalker | DamageSource$ ParentTarget | NumDmg$ ET210020_X",
+        "SVar:ET210020_X:ParentTargeted$CardPower"
+      ]
+    },
+    {
+      "id": 210021,
+      "textId": 1141919,
+      "cost": "-2",
+      "text": "Return another target nonland permanent to its owner's hand.",
+      "lines": [
+        "A:AB$ ChangeZone | Origin$ Battlefield | Destination$ Hand | ValidTgts$ Permanent.Other+nonLand | Cost$ SubCounter<2/LOYALTY> | Planeswalker$ True | SpellDescription$ Return another target nonland permanent to its owner's hand."
+      ]
+    },
+    {
+      "id": 210022,
+      "textId": 1141920,
+      "cost": "-2",
+      "text": "Seek a noncreature, nonland card.",
+      "lines": [
+        "A:AB$ Seek | Type$ Card.nonCreature+nonLand | Cost$ SubCounter<2/LOYALTY> | Planeswalker$ True | SpellDescription$ Seek a noncreature, nonland card."
+      ]
+    },
+    {
+      "id": 210023,
+      "textId": 1141921,
+      "cost": "-2",
+      "text": "Untap one, two, or three target permanents.",
+      "lines": [
+        "A:AB$ Untap | ValidTgts$ Permanent | TargetMin$ 1 | TargetMax$ 3 | Cost$ SubCounter<2/LOYALTY> | Planeswalker$ True | SpellDescription$ Untap one, two, or three target permanents."
+      ]
+    },
+    {
+      "id": 210024,
+      "textId": 1141922,
+      "cost": "-2",
+      "text": "Conjure a card named Tropical Island onto the battlefield.",
+      "lines": [
+        "A:AB$ MakeCard | Conjure$ True | Name$ Tropical Island | Zone$ Battlefield | Cost$ SubCounter<2/LOYALTY> | Planeswalker$ True | SpellDescription$ Conjure a card named Tropical Island onto the battlefield."
+      ]
+    },
+    {
+      "id": 210025,
+      "textId": 1141923,
+      "cost": "-8",
+      "text": "Draw a card for each creature you control.",
+      "lines": [
+        "A:AB$ Draw | NumCards$ ET210025_X | Cost$ SubCounter<8/LOYALTY> | Planeswalker$ True | SpellDescription$ Draw a card for each creature you control.",
+        "SVar:ET210025_X:Count$Valid Creature.YouCtrl"
+      ]
+    },
+    {
+      "id": 210026,
+      "textId": 1141924,
+      "cost": "-8",
+      "text": "Creatures you control get +3/+3 and gain trample until end of turn.",
+      "lines": [
+        "A:AB$ PumpAll | ValidCards$ Creature.YouCtrl | NumAtt$ 3 | NumDef$ 3 | KW$ Trample | Cost$ SubCounter<8/LOYALTY> | Planeswalker$ True | SpellDescription$ Creatures you control get +3/+3 and gain trample until end of turn."
+      ]
+    },
+    {
+      "id": 210027,
+      "textId": 1141925,
+      "cost": "-8",
+      "text": "Gain control of another target permanent.",
+      "lines": [
+        "A:AB$ GainControl | ValidTgts$ Permanent.Other | LoseControl$ Never | Cost$ SubCounter<8/LOYALTY> | Planeswalker$ True | SpellDescription$ Gain control of another target permanent."
+      ]
+    },
+    {
+      "id": 210028,
+      "textId": 1141926,
+      "cost": "-8",
+      "text": "Search your library for an instant or sorcery card, exile it, then shuffle. You may cast that card without paying its mana cost.",
+      "lines": [
+        "A:AB$ ChangeZone | Origin$ Library | Destination$ Exile | ChangeType$ Instant,Sorcery | ChangeNum$ 1 | RememberChanged$ True | SubAbility$ ET210028_Play | Cost$ SubCounter<8/LOYALTY> | Planeswalker$ True | SpellDescription$ Search your library for an instant or sorcery card, exile it, then shuffle. You may cast that card without paying its mana cost.",
+        "SVar:ET210028_Play:DB$ Play | Defined$ Remembered | WithoutManaCost$ True | Optional$ True | SubAbility$ ET210028_Cleanup",
+        "SVar:ET210028_Cleanup:DB$ Cleanup | ClearRemembered$ True"
+      ]
+    },
+    {
+      "id": 210029,
+      "textId": 1141927,
+      "cost": "-8",
+      "text": "For each other nonland permanent you control, create a token that's a copy of that permanent.",
+      "lines": [
+        "A:AB$ RepeatEach | RepeatCards$ Permanent.Other+nonLand+YouCtrl | RepeatSubAbility$ ET210029_Copy | Cost$ SubCounter<8/LOYALTY> | Planeswalker$ True | SpellDescription$ For each other nonland permanent you control, create a token that's a copy of that permanent.",
+        "SVar:ET210029_Copy:DB$ CopyPermanent | Defined$ Remembered"
+      ]
+    },
+    {
+      "id": 210030,
+      "textId": 1141928,
+      "cost": "-8",
+      "text": "Add ten mana of any one color.",
+      "lines": [
+        "A:AB$ Mana | Produced$ Any | Amount$ 10 | Cost$ SubCounter<8/LOYALTY> | Planeswalker$ True | SpellDescription$ Add ten mana of any one color."
+      ]
+    },
+    {
+      "id": 210031,
+      "textId": 1141929,
+      "cost": "-8",
+      "text": "Create two 8/8 blue Octopus creature tokens.",
+      "lines": [
+        "A:AB$ Token | TokenScript$ u_8_8_octopus | TokenAmount$ 2 | Cost$ SubCounter<8/LOYALTY> | Planeswalker$ True | SpellDescription$ Create two 8/8 blue Octopus creature tokens."
+      ]
+    },
+    {
+      "id": 210033,
+      "textId": 1164628,
+      "cost": "-8",
+      "text": "You get an emblem with \"{2}: Draw a card.\"",
+      "lines": [
+        "A:AB$ Effect | Name$ Emblem — Enter the Eternities | Duration$ Permanent | Abilities$ ET210033_Draw | Cost$ SubCounter<8/LOYALTY> | Planeswalker$ True | SpellDescription$ You get an emblem with \"{2}: Draw a card.\"",
+        "SVar:ET210033_Draw:AB$ Draw | Cost$ 2 | NumCards$ 1 | SpellDescription$ Draw a card."
+      ]
+    },
+    {
+      "id": 210034,
+      "textId": 1141932,
+      "cost": "-8",
+      "text": "Take an extra turn after this one.",
+      "lines": [
+        "A:AB$ AddTurn | NumTurns$ 1 | Cost$ SubCounter<8/LOYALTY> | Planeswalker$ True | SpellDescription$ Take an extra turn after this one."
+      ]
+    },
+    {
+      "id": 210035,
+      "textId": 1141933,
+      "cost": "-8",
+      "text": "Until end of turn, whenever you cast a spell, copy it. You may choose new targets for the copy.",
+      "lines": [
+        "A:AB$ Effect | Triggers$ ET210035_Cast | Cost$ SubCounter<8/LOYALTY> | Planeswalker$ True | SpellDescription$ Until end of turn, whenever you cast a spell, copy it. You may choose new targets for the copy.",
+        "SVar:ET210035_Cast:Mode$ SpellCast | ValidCard$ Card | ValidActivatingPlayer$ You | TriggerZones$ Command | Execute$ ET210035_Copy | TriggerDescription$ Whenever you cast a spell, copy it. You may choose new targets for the copy.",
+        "SVar:ET210035_Copy:DB$ CopySpellAbility | Defined$ TriggeredSpellAbility | MayChooseTarget$ True"
+      ]
+    }
+  ]
+}

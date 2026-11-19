@@ -4,7 +4,11 @@ Set-Location -LiteralPath $PSScriptRoot
 function Test-LocalListener([int]$Port) {
     # Avoid repeatedly starting the slow Windows networking provider.
     foreach ($endpoint in [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners()) {
-        if ($endpoint.Port -eq $Port) { return $true }
+        # The VPN relay listens on the same ports on the Tailscale address; only
+        # loopback or wildcard listeners are the local services themselves.
+        $address = $endpoint.Address
+        if ($endpoint.Port -eq $Port -and ([System.Net.IPAddress]::IsLoopback($address) -or
+            $address.Equals([System.Net.IPAddress]::Any) -or $address.Equals([System.Net.IPAddress]::IPv6Any))) { return $true }
     }
     return $false
 }
@@ -30,7 +34,8 @@ if ($Restart) {
         } catch { $backendProcess = $null }
     }
     if (!$backendProcess -and (Test-LocalListener 8787)) {
-        $backendListener = Get-NetTCPConnection -State Listen -LocalPort 8787 -ErrorAction SilentlyContinue | Select-Object -First 1
+        $backendListener = Get-NetTCPConnection -State Listen -LocalPort 8787 -ErrorAction SilentlyContinue |
+            Where-Object { $_.LocalAddress -in '127.0.0.1', '::1', '0.0.0.0', '::' } | Select-Object -First 1
         if ($backendListener) {
             $backendProcess = $restartProcesses | Where-Object { $_.ProcessId -eq $backendListener.OwningProcess } | Select-Object -First 1
         }
@@ -68,6 +73,8 @@ foreach ($required in @('bootstrap.json', 'configuration-state.json', 'tls\local
 if (!(Get-Process MTGA -ErrorAction SilentlyContinue)) {
     & python (Join-Path $PSScriptRoot 'tools\install_mode_labels.py')
     if ($LASTEXITCODE -ne 0) { throw 'Could not load the local game-mode names. See the localization diagnostic above.' }
+    & python (Join-Path $PSScriptRoot 'tools\update_local_asset_manifest.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Could not align the local card asset manifests.' }
 }
 $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new("$certificatePrefix.cer")
 if ($certificate.NotAfter -lt (Get-Date)) { throw 'The localhost certificate expired; restore and rerun connection setup' }

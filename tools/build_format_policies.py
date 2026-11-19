@@ -26,9 +26,13 @@ def main():
                 rule['copyLimit']=10000
             if card['name']=='Seven Dwarves':rule['copyLimit']=7
             if card['name']=='Nazgûl':rule['copyLimit']=9
-            cards[card['name']]=rule
-            for face in card.get('card_faces',[]):
-                cards.setdefault(face['name'],rule)
+            # Tokens can share a real card's name (Fanatic of Rhonas) and would
+            # otherwise replace its colour identity and legality.
+            is_token=card.get('layout') in ('token','double_faced_token','emblem') or 'Token' in front_type.split()
+            if not is_token:
+                cards[card['name']]=rule
+                for face in card.get('card_faces',[]):
+                    cards.setdefault(face['name'],rule)
             if 'arena' in card.get('games',[]) and (card.get('digital') or card.get('name','').startswith('A-')):
                 digital.append({'name':card['name'],'status':'requires_rules_verification',
                     'mechanics':sorted(set(re.findall(r'\b(?:seek|conjure|perpetually|spellbook|intensity|heist|specialize|draft)\b',text.lower())))})

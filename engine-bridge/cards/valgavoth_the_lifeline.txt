@@ -1,0 +1,10 @@
+Name:Valgavoth, the Lifeline
+ManaCost:2 W
+Types:Legendary Creature Insect Angel
+PT:2/4
+K:Flying
+T:Mode$ LifeGained | ValidPlayer$ You | TriggerZones$ Battlefield | Execute$ Grow | TriggerDescription$ Whenever you gain life, creature cards in your hand and graveyard perpetually get +1/+1.
+SVar:Grow:DB$ PumpAll | ValidCards$ Creature.YouOwn | PumpZone$ Hand,Graveyard | NumAtt$ 1 | NumDef$ 1 | Duration$ Perpetual
+S:Mode$ Continuous | Affected$ Creature.YouOwn | AffectedZone$ Graveyard | MayPlay$ True | CheckSVar$ Life | SVarCompare$ GE1 | ArenaFinalityCast$ True | Description$ As long as you've gained life this turn, you may cast creature spells from your graveyard. If you cast a spell this way, that creature enters with a finality counter on it.
+SVar:Life:Count$LifeYouGainedThisTurn
+Oracle:Flying\nWhenever you gain life, creature cards in your hand and graveyard perpetually get +1/+1.\nAs long as you've gained life this turn, you may cast creature spells from your graveyard. If you cast a spell this way, that creature enters with a finality counter on it.

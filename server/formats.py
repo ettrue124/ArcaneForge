@@ -15,6 +15,18 @@ def legality_key(spec):
     return {'Explorer':'pioneer','StandardBrawl':'standardbrawl','Brawl':'brawl'}.get(spec['base'],spec['base'].lower())
 
 
+def card_is_legal(spec, status):
+    return (spec['base']=='NoBans60' or spec['name']=='CommanderUnbanned'
+            or status in ('legal','restricted') or spec['unbanned'] and status=='banned')
+
+
+def commander_is_eligible(spec, name, policy):
+    types=policy.get('typeLine','')
+    return ('Legendary' in types and ('Creature' in types
+            or (spec['base']!='Commander' or spec['unbanned']) and 'Planeswalker' in types)
+            or policy.get('canBeCommander') or spec['base']=='Commander' and name in commander_names())
+
+
 @lru_cache(maxsize=1)
 def commander_names():
     return set(json.loads((ROOT/'data/commander-eligible.json').read_text(encoding='utf8'))['names'])
@@ -86,8 +98,7 @@ def validate(deck, name):
             if not leader:
                 raise StorageError('Commander rules metadata is missing')
             types = leader['typeLine']
-            if not ('Legendary' in types and ('Creature' in types or spec['base'] != 'Commander' and 'Planeswalker' in types)
-                    or leader.get('canBeCommander') or spec['base']=='Commander' and commander['name'] in commander_names()):
+            if not commander_is_eligible(spec, commander['name'], leader):
                 raise StorageError('This card cannot be the commander')
             identity.update(leader['colorIdentity'])
     key = legality_key(spec)
@@ -98,7 +109,7 @@ def validate(deck, name):
         if not policy:
             raise StorageError('Missing legality metadata for '+card['name'])
         status = policy['legalities'].get(key, 'not_legal')
-        if spec['base'] != 'NoBans60' and status not in ('legal', 'restricted') and not (spec['unbanned'] and status == 'banned'):
+        if not card_is_legal(spec, status):
             raise StorageError(card['name']+' is not legal in '+name)
         canonical=policy.get('name',card['name'])
         counts[canonical] += card['quantity']
@@ -126,7 +137,7 @@ def bot_deck(catalogue, name, exclude=None):
         policy=table.get(card['name'])
         if card['grpId'] not in executable or not policy:continue
         status=policy['legalities'].get(key,'not_legal')
-        if spec['base']!='NoBans60' and status!='legal' and not(spec['unbanned'] and status=='banned'):continue
+        if not card_is_legal(spec,status):continue
         available.setdefault(card['name'],card)
     candidates=[]
     for color,land in [('W','Plains'),('U','Island'),('B','Swamp'),('R','Mountain'),('G','Forest')]:

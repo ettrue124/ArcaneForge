@@ -7,6 +7,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @lru_cache(maxsize=1)
 def definitions():
+    # The pinned definitions are shipped with the catalogue. Scanning every
+    # card file on first match entry is extremely slow on Windows.
+    import json
+    exported = ROOT / 'data/rulebreaker-definitions.json'
+    if exported.exists():
+        return json.loads(exported.read_text(encoding='utf8'))
     result = {}
     for path in (ROOT / 'vendor/forge/forge-gui/res/cardsfolder').rglob('*.txt'):
         lines = path.read_text(encoding='utf8').splitlines()

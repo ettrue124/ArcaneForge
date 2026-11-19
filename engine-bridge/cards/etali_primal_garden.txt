@@ -1,0 +1,14 @@
+Name:Etali, Primal Garden
+ManaCost:6 G
+Types:Legendary Creature Elder Dinosaur
+PT:7/7
+K:Trample
+S:Mode$ ReduceCost | ValidCard$ Card.Self | Type$ Spell | EffectZone$ All | Amount$ X | Description$ This spell costs {1} less to cast for each spell you've cast this game that wasn't from your starting deck.
+SVar:X:Count$ArenaActualized
+T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self | Execute$ Dino | TriggerDescription$ Whenever Etali enters or attacks, conjure a random Dinosaur card into exile. You may cast that card this turn without paying its mana cost.
+T:Mode$ Attacks | ValidCard$ Card.Self | Execute$ Dino | Secondary$ True | TriggerDescription$ Whenever Etali attacks, conjure a random Dinosaur card into exile. You may cast that card this turn without paying its mana cost.
+SVar:Dino:DB$ RepeatEach | ArenaDigital$ RandomConjure | RandomType$ Dinosaur | Zone$ Exile | Conjure$ True | RememberMade$ True | SubAbility$ MayCast
+SVar:MayCast:DB$ Effect | RememberObjects$ Remembered | StaticAbilities$ CastFree | ForgetOnMoved$ Exile | SubAbility$ Cleanup
+SVar:CastFree:Mode$ Continuous | MayPlay$ True | MayPlayWithoutManaCost$ True | Affected$ Card.IsRemembered | AffectedZone$ Exile | Description$ You may cast that card this turn without paying its mana cost.
+SVar:Cleanup:DB$ Cleanup | ClearRemembered$ True
+Oracle:Actualize — This spell costs {1} less to cast for each spell you've cast this game that wasn't from your starting deck.\nTrample\nWhenever Etali enters or attacks, conjure a random Dinosaur card into exile. You may cast that card this turn without paying its mana cost.

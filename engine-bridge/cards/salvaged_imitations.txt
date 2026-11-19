@@ -1,0 +1,6 @@
+Name:Salvaged Imitations
+ManaCost:X R G
+Types:Sorcery
+A:SP$ RepeatEach | Cost$ X R G XMin1 | XMin$ 1 | ArenaDigital$ SalvagedImitations | RandomType$ Artifact | Zone$ Battlefield | Conjure$ True | SpellDescription$ For each number between 1 and X, conjure a random artifact card with that mana value onto the battlefield. X can't be 0.
+SVar:X:Count$xPaid
+Oracle:For each number between 1 and X, conjure a random artifact card with that mana value onto the battlefield. X can't be 0.

@@ -66,6 +66,30 @@ final class BattleGeneratedCards {
     static Integer printing(Card card,Map<Integer,Integer> identities) {
         Card copy=card.getCopiedPermanent();
         if(copy!=null && identities.containsKey(copy.getId()))return identities.get(copy.getId());
+        if(copy!=null && copy.getPaperCard()!=null && !copy.getPaperCard().isToken()) {
+            Integer installed=installedPrinting(copy.getPaperCard().getName());
+            if(installed!=null)return installed;
+        }
+        // Empower creates a generic "Token" prototype and then names it Jace.
+        // Its prototype key otherwise wins before the native named-token lookup,
+        // leaving the client with the generic blank planeswalker placeholder.
+        if(card.isToken() && card.isPlaneswalker() && "Jace Token".equals(card.getName())
+            && card.getPaperCard()!=null && "Token".equals(card.getPaperCard().getName())
+            && card.getPaperCard().getRules().getOracleText().replace("\\n","\n")
+                .equals("[-1]: Surveil 1.\n[-3]: Draw a card.")) {
+            var namedTokens=catalogue.getAsJsonObject("tokens");
+            Integer nativeJace=null;
+            for(var entry:namedTokens.entrySet()) {
+                var token=entry.getValue().getAsJsonObject();
+                if(!"Jace".equals(token.get("name").getAsString()) || !matches(card,token))continue;
+                var rules=token.getAsJsonArray("rules");
+                if(rules.size()!=2 || !"Surveil 1.".equals(rules.get(0).getAsString())
+                    || !"Draw a card.".equals(rules.get(1).getAsString()))continue;
+                int id=Integer.parseInt(entry.getKey());
+                if(nativeJace==null || id<nativeJace)nativeJace=id;
+            }
+            if(nativeJace!=null)return nativeJace;
+        }
         var keys=catalogue.getAsJsonObject("keys");
         if(keys!=null && keys.has(tokenKey(card)))return keys.get(tokenKey(card)).getAsInt();
         var tokens=catalogue.getAsJsonObject("tokens");List<Integer> candidates=new ArrayList<>();
@@ -84,5 +108,9 @@ final class BattleGeneratedCards {
         Set<String> signatures=new HashSet<>();for(int id:candidates)signatures.add(tokens.getAsJsonObject(Integer.toString(id)).get("signature").getAsString());
         if(candidates.isEmpty() || signatures.size()!=1)return null;
         return Collections.min(candidates);
+    }
+    static Integer installedPrinting(String name) {
+        var printings=catalogue.getAsJsonObject("cardPrintings");
+        return printings!=null && printings.has(name)?printings.get(name).getAsInt():null;
     }
 }

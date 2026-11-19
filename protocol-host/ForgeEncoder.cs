@@ -11,11 +11,18 @@ static class ForgeEncoder
         JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(
             Path.Combine(Environment.CurrentDirectory, "data", "arena-card-metadata.json")))
         ?? throw new InvalidDataException("Missing Arena card metadata"));
+    sealed record LevelerBand(int Min, uint[] Granted);
+    static readonly Lazy<Dictionary<string, LevelerBand[]>> LevelerBands = new(() => {
+        string path=Path.Combine(Environment.CurrentDirectory, "data", "arena-leveler-bands.json");
+        return File.Exists(path)
+            ? JsonSerializer.Deserialize<Dictionary<string, LevelerBand[]>>(File.ReadAllText(path),new JsonSerializerOptions {PropertyNameCaseInsensitive=true}) ?? new()
+            : new();
+    });
     static readonly Lazy<Dictionary<string, Dictionary<string, uint>>> LinkedFaces = new(() =>
         JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, uint>>>(File.ReadAllText(
             Path.Combine(Environment.CurrentDirectory, "data", "arena-linked-faces.json")))
         ?? new());
-    static int Zone(string value) => value.ToUpperInvariant() switch { "LIBRARY" => 1, "HAND" => 2, "BATTLEFIELD" => 3, "STACK" => 4, "GRAVEYARD" => 5, "EXILE" => 6, "COMMAND" => 7, "LIMBO" => 9, "SIDEBOARD" => 10, "PHASEDOUT" => 12, _ => throw new InvalidDataException("Unsupported Forge zone " + value) };
+    static int Zone(string value) => value.ToUpperInvariant() switch { "LIBRARY" => 1, "HAND" => 2, "BATTLEFIELD" => 3, "STACK" => 4, "GRAVEYARD" => 5, "EXILE" => 6, "COMMAND" => 7, "REVEALED" => 8, "LIMBO" => 9, "SIDEBOARD" => 10, "PHASEDOUT" => 12, _ => throw new InvalidDataException("Unsupported Forge zone " + value) };
     static (int phase, int step) Phase(string value) => value.ToUpperInvariant() switch {
         "NONE" => (2, 0),
         "UNTAP" => (1, 1), "UPKEEP" => (1, 2), "DRAW" => (1, 3), "MAIN1" => (2, 0), "COMBAT_BEGIN" => (3, 4),
@@ -84,6 +91,10 @@ static class ForgeEncoder
             var obj = new Dictionary<string, object> { ["instanceId"] = id, ["type"] = 1, ["zoneId"] = zoneId, ["ownerSeatId"] = owner, ["controllerSeatId"] = controller,
                 ["visibility"] = visible ? (type is 1 or 2 or 10 && otherViewers.Length == 0 ? 2 : 1) : 3 };
             if(c.TryGetProperty("isToken",out var token) && token.GetBoolean())obj["type"]=2;
+            // Draft previews sit in Revealed. Arena opens its revealed-card pick
+            // browser only when every choice is a RevealedCard object; ordinary
+            // cards there fall back to in-place selection with nothing to click.
+            if(type==8)obj["type"]=(int)GameObjectType.RevealedCard;
             bool emblem=c.TryGetProperty("isEmblem",out var isEmblem) && isEmblem.GetBoolean();
             if(emblem)obj["type"]=4;
             // Public here means face-up in this viewer's sanitized state. Viewers
@@ -156,6 +167,17 @@ static class ForgeEncoder
                     obj["uniqueAbilities"]=JsonSerializer.SerializeToElement(originalAbilities).EnumerateArray()
                         .Where(a=>!removed.Contains(a.GetProperty("grpId").GetUInt32())).ToArray();
                 }
+                // Leveler bands below the current level grant nothing yet; Arena's
+                // native textbox shows a band inactive when its abilities are absent.
+                if(c.GetProperty("zone").GetString()=="Battlefield" && LevelerBands.Value.TryGetValue(displayGrp.ToString(),out var bands)
+                    && obj.TryGetValue("uniqueAbilities",out var levelAbilities)) {
+                    int level=c.TryGetProperty("counters",out var levelCounters)?levelCounters.EnumerateArray()
+                        .Where(k=>string.Equals(k.GetProperty("type").GetString(),"LEVEL",StringComparison.OrdinalIgnoreCase))
+                        .Sum(k=>k.GetProperty("count").GetInt32()):0;
+                    var inactive=bands.Where(b=>b.Min>level).SelectMany(b=>b.Granted).ToHashSet();
+                    obj["uniqueAbilities"]=JsonSerializer.SerializeToElement(levelAbilities).EnumerateArray()
+                        .Where(a=>!inactive.Contains(a.GetProperty("grpId").GetUInt32())).ToArray();
+                }
                 if(c.TryGetProperty("grantedAbilities",out var granted)) {
                     var abilities = obj.TryGetValue("uniqueAbilities",out var printed)
                         ? JsonSerializer.SerializeToElement(printed).EnumerateArray().ToList() : new List<JsonElement>();
@@ -164,6 +186,31 @@ static class ForgeEncoder
                         if(ability==0)continue;
                         abilities.Add(JsonSerializer.SerializeToElement(new {grpId=ability,id=identity.GetProperty("abilityId").GetUInt32()}));
                     }
+                    obj["uniqueAbilities"]=abilities;
+                }
+                if(c.GetProperty("zone").GetString()=="Battlefield") {
+                    var abilities=obj.TryGetValue("uniqueAbilities",out var existingLandAbilities)
+                        ?JsonSerializer.SerializeToElement(existingLandAbilities).EnumerateArray().ToList():new List<JsonElement>();
+                    foreach(uint basic in BattlePresentation.BasicLandManaAbilities(c))
+                        if(!abilities.Any(a=>a.GetProperty("grpId").GetUInt32()==basic))
+                            abilities.Add(JsonSerializer.SerializeToElement(new {grpId=basic}));
+                    obj["uniqueAbilities"]=abilities;
+                }
+                if(c.TryGetProperty("tokenIntrinsicKeywords",out var tokenKeywords)) {
+                    var activeKeywords=tokenKeywords.EnumerateArray().Select(k=>BattlePresentation.KeywordAbilityId(k.GetString()!)).Where(id=>id!=0).Distinct().ToList();
+                    // Replace only this token's own Forge keywords. PrintedKeywordId
+                    // resolves any uniquely worded ability, so a bare nonzero test
+                    // also stripped triggers such as a copied Gearhulk's ETB.
+                    var keywordIds=activeKeywords.ToHashSet();
+                    if(c.TryGetProperty("suppressedKeywords",out var tokenRemoved))
+                        keywordIds.UnionWith(tokenRemoved.EnumerateArray().Select(k=>BattlePresentation.KeywordAbilityId(k.GetString()!)).Where(id=>id!=0));
+                    var abilities=obj.TryGetValue("uniqueAbilities",out var tokenPrinted)
+                        ?JsonSerializer.SerializeToElement(tokenPrinted).EnumerateArray()
+                            .Where(a=>!keywordIds.Contains(a.GetProperty("grpId").GetUInt32())
+                                && !keywordIds.Contains(BattlePresentation.PrintedKeywordId(a.GetProperty("grpId").GetUInt32()))).ToList()
+                        :new List<JsonElement>();
+                    foreach(uint keyword in activeKeywords)
+                        abilities.Add(JsonSerializer.SerializeToElement(new {grpId=keyword}));
                     obj["uniqueAbilities"]=abilities;
                 }
                 if(c.TryGetProperty("grantedKeywords",out var newKeywords)) {
@@ -275,6 +322,20 @@ static class ForgeEncoder
             if(CardMetadata.Value.TryGetValue(source.ToString(),out var metadata)) { obj["name"]=metadata.GetProperty("name"); obj["color"]=metadata.GetProperty("color"); }
             objects.Add(obj);
         }
+        // Triggers waiting to be ordered become temporary ability objects in the Pending zone (it uses the
+        // stack card holder), so Arena's Order Triggers browser has a card view for each one.
+        if(BattlePresentation.TriggerOrderObjects(root) is {} pendingTriggers)
+            foreach(var trigger in pendingTriggers) {
+                if(!ids.Contains(trigger.Parent) || !seats.Contains(trigger.Controller) || !ids.Add(trigger.Id))continue;
+                ((List<uint>)zones[80u]["objectInstanceIds"]).Add(trigger.Id);
+                var pendingObject=new Dictionary<string,object> { ["instanceId"]=trigger.Id,["type"]=3,["grpId"]=trigger.Ability,["parentId"]=trigger.Parent,
+                    ["objectSourceGrpId"]=trigger.Source,["zoneId"]=80u,["visibility"]=1,["ownerSeatId"]=trigger.Controller,["controllerSeatId"]=trigger.Controller,
+                    ["abilityOriginalCardGrpIds"]=new[]{trigger.Source},["uniqueAbilities"]=new[]{new{grpId=trigger.Ability}} };
+                if(CardMetadata.Value.TryGetValue(trigger.Source.ToString(),out var pendingMetadata)) {
+                    pendingObject["name"]=pendingMetadata.GetProperty("name"); pendingObject["color"]=pendingMetadata.GetProperty("color");
+                }
+                objects.Add(pendingObject);
+            }
         foreach(var entry in stackEntries.Values) {
             if(!entry.TryGetProperty("selectedModes",out var selectedModes))continue;
             uint source=entry.GetProperty("sourceGrpId").GetUInt32();
@@ -339,6 +400,8 @@ static class ForgeEncoder
         BattlePresentation.StateEntryPayment(root,gre.GameStateMessage);
         BattlePresentation.StateStatModifications(root,gre.GameStateMessage);
         BattlePresentation.StateBlockingRestrictions(root,gre.GameStateMessage);
+        BattlePresentation.StateUntapRestrictions(root,gre.GameStateMessage);
+        BattlePresentation.StateTemporaryAndSuspend(root,gre.GameStateMessage);
         foreach(var card in gre.GameStateMessage.GameObjects) {
             if(card.GrpId==0 || card.GrpId==3 || !CardMetadata.Value.TryGetValue(card.GrpId.ToString(),out var printing)
                 || !printing.TryGetProperty("color",out var printedColors))continue;
@@ -355,6 +418,7 @@ static class ForgeEncoder
         BattlePresentation.StateCommanders(root,gre.GameStateMessage);
         BattlePresentation.StateBattleProtectors(root,gre.GameStateMessage);
         BattlePresentation.StateChosenTypes(root,gre.GameStateMessage);
+        BattlePresentation.StateGrantedAbilityStyles(root,gre.GameStateMessage);
         BattlePresentation.StateExileLinks(root,gre.GameStateMessage);
         BattlePresentation.StateOpponentKnowledge(root,gre.GameStateMessage,viewer);
         BattlePresentation.StateLoyaltyActivations(root,gre.GameStateMessage);

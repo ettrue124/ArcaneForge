@@ -14,7 +14,7 @@ Open **`data/magic-import/report.txt`** for the readable summary. Detailed resul
 
 The full catalogue includes cards that cannot yet be imported. Existing native Arena cards keep their native printings. New imports initially support normal card layouts; cards missing Forge rules or requiring unsupported layouts are skipped and reported. A card appearing in the catalogue does not mean it is playable, and rules availability alone does not prove every interaction or animation works.
 
-New planeswalkers, double-faced cards, and other special layouts still need dedicated display support. Existing Arena versions remain available. The importer uses [Scryfall's bulk data](https://scryfall.com/docs/api/bulk-data), following its recommendation to use bulk downloads for large card collections. [Scryfall API guidance](https://scryfall.com/docs/faqs/i-m-having-trouble-accessing-the-scryfall-api-or-i-m-blocked-17)
+A separate linked-face importer now supports missing flip, transform, modal double-faced, and Adventure cards when both exact rules faces and native display types are available. Secondary faces are linked to the deck-selectable front face. Split, prepare, meld, novelty tokens, and other special layouts still need their own adapters when no native printing exists. Existing Arena versions remain available. The importer uses [Scryfall's bulk data](https://scryfall.com/docs/api/bulk-data), following its recommendation to use bulk downloads for large card collections. [Scryfall API guidance](https://scryfall.com/docs/faqs/i-m-having-trouble-accessing-the-scryfall-api-or-i-m-blocked-17)
 
 ## Refresh while keeping your match open
 
@@ -41,3 +41,9 @@ Run these from the project folder:
 `--offline` uses an existing bulk-data cache. It is not a promise that missing artwork is available locally. Re-running the import reuses downloaded files.
 
 Installing while the server is running does not reload its cached card metadata. Restart it after the import; the card importer leaves that timing to you.
+
+## Missing unusual layouts
+
+Run `python -u tools/import_linked_cards.py` to audit the cached Oracle export and prepare supported linked faces. Then run `Restart-Arena.ps1` to install the expanded pack and refresh the catalogue. This restart ends an active match.
+
+Read `data/magic-import/unusual-layout-report.md` for each missing unusual card and its reason. The JSON report retains the source export, allocations, and counts. The 2026-10-21 batch added 105 cards (19 flip, 68 transform, 18 Adventure), in addition to Erayo. Rules-name and display-shape checks are not a complete gameplay verification.

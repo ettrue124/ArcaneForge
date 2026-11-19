@@ -365,7 +365,8 @@ static class SelfTest
             Check(Newtonsoft.Json.Linq.JObject.Parse(graphState.JsonPayload.ToStringUtf8())["NodeStates"]?["LocalCompleted"]?["Status"]?.ToString() == "Completed", "completed local tutorial graph state");
             var formats = await SendCommand(new Cmd { Type = CmdType.GetFormats, ProtobufPayload = Google.Protobuf.WellKnownTypes.Any.Pack(new GetFormatsReq()) });
             var formatState = formats.ProtobufPayload.Unpack<GetFormatsResponse>();
-            Check(formatState.Formats.Count > 0 && formatState.Formats[0].LegalSets.Count > 0 && formatState.FormatGroups.Count > 0, "typed nonempty local format configuration");
+            // legalSets is empty by design (tools/update_multiplayer_formats.py); the server validates legality.
+            Check(formatState.Formats.Count > 0 && formatState.Formats.All(f => f.LegalSets.Count == 0) && formatState.FormatGroups.Count > 0, "typed nonempty local format configuration");
             var sets = await SendCommand(new Cmd { Type = CmdType.GetSets, ProtobufPayload = new Google.Protobuf.WellKnownTypes.Any() });
             var setState = sets.ProtobufPayload.Unpack<SetMetadataResponse>();
             Check(setState.SetGroups.Any(g => g.GroupName == "AllFilters" && g.Sets.Count > 0), "set metadata supplies required AllFilters group");
@@ -657,13 +658,15 @@ static class SelfTest
             var clientRequest = Activator.CreateInstance(requestType, mulliganRequest.MulliganReq, mulliganRequest)!;
             Check((uint)requestType.GetField("StartingHandSize")!.GetValue(clientRequest)! == 7, "Installed Arena mulligan constructor accepts request");
             var bottomMessage = MatchDoorHost.CreateBottomCardRequest(11, 2, 1, new uint[] { 1001, 1002, 1003, 1004, 1005, 1006, 1007 });
-            var selectionType = clientAssembly.GetType("GreClient.Rules.SelectNRequest", throwOnError: true)!;
-            var selection = Activator.CreateInstance(selectionType, bottomMessage.SelectNReq, bottomMessage)!;
-            var baseType = selectionType.BaseType!;
-            var selectionPrompt = (Prompt?)baseType.GetProperty("Prompt")!.GetValue(selection);
-            Check(selectionPrompt is not null && selectionPrompt.PromptId > 1, "Arena bottom-selection workflow requires a display prompt");
-            Check((int)selectionType.GetField("MinSel")!.GetValue(selection)! == 1 && (uint)selectionType.GetField("MaxSel")!.GetValue(selection)! == 1, "Choose exactly one bottom card");
-            Check((bool)selectionType.GetProperty("IsInstanceIdSelection")!.GetValue(selection)!, "Arena hand-card selection classification");
+            // London bottoming opens Arena's own London mulligan browser (GroupReq, LondonMulligan context).
+            var groupType = clientAssembly.GetType("GreClient.Rules.GroupRequest", throwOnError: true)!;
+            var grouping = Activator.CreateInstance(groupType, bottomMessage.GroupReq, bottomMessage)!;
+            var groupPrompt = (Prompt?)groupType.BaseType!.GetProperty("Prompt")!.GetValue(grouping);
+            Check(groupPrompt is not null && groupPrompt.PromptId > 1, "Arena London workflow requires a display prompt");
+            Check(bottomMessage.Type == GREMessageType.GroupReq && bottomMessage.GroupReq.Context == GroupingContext.LondonMulligan
+                && bottomMessage.GroupReq.InstanceIds.Count == 7 && bottomMessage.GroupReq.GroupSpecs.Count == 2
+                && bottomMessage.GroupReq.GroupSpecs[1].LowerBound == 1 && bottomMessage.GroupReq.GroupSpecs[1].ZoneType == ZoneType.Library
+                && bottomMessage.GroupReq.GroupSpecs[0].LowerBound == 6, "London mulligan must put exactly one card on the bottom and keep six");
             Console.WriteLine("PASS: installed Arena MulliganRequest constructor and starting-hand-size parameter.");
         }
         var manaAction = new Wotc.Mtgo.Gre.External.Messaging.Action();

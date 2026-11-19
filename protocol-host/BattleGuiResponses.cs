@@ -17,6 +17,10 @@ static class BattleGuiResponses
                         :throw new InvalidDataException("Unknown stack choice")).ToArray();
                     return true;
                 }
+                if(inputType=="InputGuiChoice" && message.CancelActionReq!=null
+                    && input.TryGetProperty("kickerCanCancel",out var kickerCancel) && kickerCancel.GetBoolean()) {
+                    answer=new uint[]{3};return true;
+                }
                 if(BattleNativeMenus.TryAnswer(message,snapshot.RootElement,out answer))return true;
             }
         }
@@ -36,8 +40,13 @@ static class BattleGuiResponses
                 answer=select.Ids.ToArray();return true;
             case "InputGuiOrder" when message.OrderResp is { } order:
                 if(order.Ordering!=OrderingType.OrderAsIndicated)throw new InvalidDataException("Explicit Forge card order required");
-                // Arena SubmitOrder reverses the visual top-first order on the wire.
-                answer=order.Ids.Reverse().ToArray();return true;
+                // Preserve Arena's explicit ordering. Forge handles the insertion
+                // order needed when putting successive cards on top of a library.
+                answer=order.Ids.ToArray();return true;
+            case "InputGuiText" when message.SelectNResp is { } named:
+                if(named.Ids.Count!=1 || !BattleNamedCards.Names.Value.TryGetValue(named.Ids[0],out var cardName))
+                    throw new InvalidDataException("Unknown selected card name");
+                answer=cardName;return true;
             case "InputGuiText" when message.StringInputResp is { } text:
                 answer=text.InputValue;return true;
             case "InputGuiGroups" when message.GroupResp is { } groups:

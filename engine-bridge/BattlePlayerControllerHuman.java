@@ -90,6 +90,7 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
             String pay = "Pay kicker " + cost.getCost().toSimpleString();
             Map<String,Object> context=new LinkedHashMap<>();
             context.put("sourceId",forge.game.ArenaCardIds.id(spell.getHostCard().getId()));
+            context.put("kickerCanCancel",true);
             if(costs.size()==1 && !spell.costHasManaX() && cost.getCost().isOnlyManaCost()) {
                 var kicked=forge.game.GameActionUtil.addOptionalCosts(spell,List.of(cost));
                 context.put("nativeKind","kicker");
@@ -108,7 +109,8 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
             }
             var answer = BattlePromptContext.with(context,
                 () -> getGui().getChoices("Kicker — " + spell.getHostCard().getName(),
-                    1, 1, List.of(pay, "Cast without this kicker")));
+                    1, 1, List.of(pay, "Cast without this kicker", "Cancel casting")));
+            if(answer.contains("Cancel casting"))return null;
             if (answer.contains(pay)) selected.add(cost);
         }
         return selected;
@@ -246,7 +248,7 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
         try {
             var context=Map.<String,Object>of("nativeKind",keep?"search":"discard",
                 "selectionPurpose",keep?"keep":"discard",
-                "sourceId",sa==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
+                "sourceId",sa==null || sa.getHostCard()==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
             String title=keep?"Select "+chooseMin+" card(s) to keep":
                 min==limit?"Discard "+min+" card(s)":"Discard "+min+" to "+limit+" cards";
             var selected=BattlePromptContext.with(context,
@@ -282,8 +284,47 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
         tempShow(options);
         try {
             var context=new LinkedHashMap<String,Object>();
-            context.put("sourceId",sa==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
-            if(sa!=null && sa.getApi()==forge.game.ability.ApiType.Proliferate)context.put("proliferateSelection",true);
+            context.put("sourceId",sa==null || sa.getHostCard()==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
+            if(sa!=null && sa.getApi()==forge.game.ability.ApiType.Draft) {
+                context.put("nativeKind","draft");
+                var previews=new ArrayList<Map<String,Object>>();
+                for(var option:options)if(option instanceof Card candidate) {
+                    var preview=new LinkedHashMap<String,Object>();
+                    preview.put("instanceId",forge.game.ArenaCardIds.id(candidate.getId()));
+                    preview.put("name",candidate.getName());preview.put("manaCost",candidate.getManaCost().toString());
+                    preview.put("power",candidate.getNetPower());preview.put("toughness",candidate.getNetToughness());
+                    previews.add(preview);
+                }
+                context.put("previewCards",previews);
+            }
+            if(sa!=null && sa.getApi()==forge.game.ability.ApiType.Proliferate) {
+                counterReplacementResolution=null;
+                counterReplacementChoices.clear();
+                context.put("proliferateSelection",true);
+                var recommended=new ArrayList<Integer>();
+                for(var option:options) {
+                    boolean friendly=option instanceof Card card?!card.getController().isOpponentOf(getPlayer())
+                        :option instanceof Player player && !player.isOpponentOf(getPlayer());
+                    boolean useful=false,harmful=false;
+                    for(var counter:option.getCounters().entrySet()) {
+                        if(counter.getCount()<=0)continue;
+                        var type=counter.getElement();
+                        var category=option instanceof Card card?forge.ai.ComputerUtil.getCounterCategory(type,card):type.getAiCategory();
+                        // Burden means a larger Ring life payment. Lore/time
+                        // can cross timing thresholds, so leave those manual.
+                        if(type.is(forge.game.card.CounterEnumType.BURDEN))category=forge.game.card.CounterAiCategory.Negative;
+                        if(type.is(forge.game.card.CounterEnumType.LORE) || type.is(forge.game.card.CounterEnumType.TIME)) {
+                            harmful=true;continue;
+                        }
+                        if(category==forge.game.card.CounterAiCategory.Neutral)continue;
+                        boolean good=friendly?category==forge.game.card.CounterAiCategory.Positive
+                            :category==forge.game.card.CounterAiCategory.Negative;
+                        useful|=good;harmful|=!good;
+                    }
+                    if(useful && !harmful)recommended.add(options.indexOf(option));
+                }
+                context.put("proliferateDefaultIndexes",recommended);
+            }
             var selected = BattlePromptContext.with(context,
                 () -> getGui().getChoices(title, Math.min(min, options.size()), max < 0 ? options.size() : Math.min(max, options.size()), views.getTrackableKeys()));
             List<T> result = new ArrayList<>(); views.addToList(selected, result); return result;
@@ -300,16 +341,77 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
 
     @Override
     public List<SpellAbility> orderSimultaneousSa(List<SpellAbility> activePlayerSAs) {
-        return activePlayerSAs;
+        // Forge's own ordering dialog cannot be shown through Arena (it froze
+        // the wire), so ask one single choice at a time: each pick resolves
+        // before the remaining ones. Identical abilities need no ordering.
+        List<SpellAbility> remaining=new ArrayList<>(activePlayerSAs);
+        List<SpellAbility> ordered=new ArrayList<>();
+        while(remaining.stream().map(SpellAbility::toString).distinct().count()>1) {
+            String title=ordered.isEmpty()?"Order your triggers: choose the one to resolve first"
+                :"Choose the trigger to resolve next";
+            // Lead each option with its card so Arena's shortened buttons still say whose trigger it is.
+            List<String> labels=new ArrayList<>();
+            // The host can show Arena's native "Order Triggers" browser from this description: each
+            // trigger keeps a stable key (its position in the original list) across the follow-up picks.
+            List<Map<String,Object>> triggers=new ArrayList<>();
+            for(int i=0;i<remaining.size();i++) {
+                SpellAbility option=remaining.get(i);
+                String text=option.toString();
+                var host=option.getHostCard();
+                String name=host==null?"":host.getName();
+                labels.add(name.isEmpty() || text.startsWith(name)?text:name+": "+text);
+                var trigger=new LinkedHashMap<String,Object>();
+                trigger.put("key",activePlayerSAs.indexOf(option));
+                trigger.put("option",i+1);
+                trigger.put("parentId",host==null?0:forge.game.ArenaCardIds.id(host.getId()));
+                trigger.put("cardName",name);
+                trigger.put("description",ForgePlayback.abilityDescription(option));
+                triggers.add(trigger);
+            }
+            var orderContext=new LinkedHashMap<String,Object>();
+            orderContext.put("nativeKind","triggerOrder");
+            orderContext.put("triggers",triggers);
+            String chosen=BattlePromptContext.with(orderContext,()->getGui().one(title,labels));
+            if(chosen==null)break;
+            SpellAbility sa=remaining.get(labels.indexOf(chosen));
+            ordered.add(sa);remaining.remove(sa);
+        }
+        ordered.addAll(remaining);
+        return ordered;
     }
 
+    private Object counterReplacementResolution;
+    private final Map<String,Integer> counterReplacementChoices=new LinkedHashMap<>();
+    private static boolean isPureCounterDoubler(ReplacementEffect effect) {
+        if(!"AddCounter".equals(effect.getParamOrDefault("Event","")))return false;
+        var ability=effect.getOverridingAbility();
+        if(ability==null || ability.getApi()!=forge.game.ability.ApiType.ReplaceCounter || ability.getSubAbility()!=null)return false;
+        String amount=ability.getParamOrDefault("Amount","");
+        return "ReplaceCount$CounterNum/Twice".equals(ability.getSVar(amount));
+    }
     @Override
     public ReplacementEffect chooseSingleReplacementEffect(final List<ReplacementEffect> possibleReplacers) {
         if (possibleReplacers == null || possibleReplacers.isEmpty()) {
             return null;
         }
         if(possibleReplacers.size()==1)return possibleReplacers.get(0);
-        return getGui().getChoices("Choose the replacement effect to apply",1,1,possibleReplacers).get(0);
+        boolean repeatable=possibleReplacers.stream().allMatch(BattlePlayerControllerHuman::isPureCounterDoubler);
+        Object resolution=getPlayer().getGame().getStack().isResolving()
+            && !getPlayer().getGame().getStack().isEmpty()?getPlayer().getGame().getStack().peekAbility():null;
+        if(counterReplacementResolution!=resolution) {
+            counterReplacementResolution=resolution;counterReplacementChoices.clear();
+        }
+        String key=possibleReplacers.stream().map(ReplacementEffect::getId).sorted()
+            .map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+        if(repeatable && resolution!=null && counterReplacementChoices.containsKey(key)) {
+            int chosen=counterReplacementChoices.get(key);
+            for(var effect:possibleReplacers)if(effect.getId()==chosen)return effect;
+        }
+        var selected=getGui().getChoices(repeatable && resolution!=null
+            ?"Choose counter-doubling order — use for all matching counters this resolution"
+            :"Choose the replacement effect to apply",1,1,possibleReplacers).get(0);
+        if(repeatable && resolution!=null)counterReplacementChoices.put(key,selected.getId());
+        return selected;
     }
 
     @Override
@@ -331,13 +433,13 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
     @Override
     public int chooseNumber(SpellAbility sa,String title,int min,int max) {
         if(min>=max)return min;
-        return BattlePromptContext.with(Map.of("numberSourceId",sa==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId())),
+        return BattlePromptContext.with(Map.of("numberSourceId",sa==null || sa.getHostCard()==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId())),
             ()->getGui().getInteger(title,min,max,9));
     }
 
     @Override
     public int chooseNumber(SpellAbility sa,String title,List<Integer> choices,Player relatedPlayer) {
-        return BattlePromptContext.with(Map.of("numberSourceId",sa==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId())),
+        return BattlePromptContext.with(Map.of("numberSourceId",sa==null || sa.getHostCard()==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId())),
             ()->getGui().getChoices(title,1,1,choices).get(0));
     }
 
@@ -398,15 +500,20 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
         tempShowCards(cards);
         try {
             var context=new LinkedHashMap<String,Object>();
-            context.put("sourceId",sa==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
+            context.put("sourceId",sa==null || sa.getHostCard()==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
             if(sa!=null && sa.getApi()==forge.game.ability.ApiType.Untap
                 && cards.stream().allMatch(Card::isInPlay))
                 context.put("nativeKind","battlefield");
             if(sa!=null && sa.getApi()==forge.game.ability.ApiType.ChangeZone
                 && "Exile".equals(sa.getParamOrDefault("Destination","")) && "Hand".equals(sa.getParamOrDefault("Origin","")))
                 context.put("promptId",1117);
+            boolean sylvan=sa!=null && sa.getHostCard()!=null && "Sylvan Library".equals(sa.getHostCard().getName());
+            if(sylvan) {
+                context.put("nativeKind","cards");context.put("selectionPurpose","keep");
+            }
+            String choiceTitle=sylvan?"Choose two cards drawn this turn: pay 4 life for each or return it to the top":title;
             var selected=BattlePromptContext.with(context,
-                ()->getGui().getChoices(title,optional?0:Math.min(min,cards.size()),max<0?cards.size():Math.min(max,cards.size()),views.getTrackableKeys()));
+                ()->getGui().getChoices(choiceTitle,optional?0:Math.min(min,cards.size()),max<0?cards.size():Math.min(max,cards.size()),views.getTrackableKeys()));
             CardCollection result=new CardCollection();views.addToList(selected,result);
             if(sa!=null && context.containsKey("promptId"))for(var chosen:result)
                 forge.game.ArenaCardIds.selectedForExile(chosen.getId(),sa.getHostCard().getId());
@@ -435,12 +542,29 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
         tempShow(options);
         try {
             var context=new LinkedHashMap<String,Object>();
-            context.put("sourceId",sa==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
+            context.put("sourceId",sa==null || sa.getHostCard()==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
+            if(sa!=null && sa.getApi()==forge.game.ability.ApiType.Draft) {
+                context.put("nativeKind","draft");
+                var previews=new ArrayList<Map<String,Object>>();
+                for(var option:options)if(option instanceof Card candidate) {
+                    var preview=new LinkedHashMap<String,Object>();
+                    preview.put("instanceId",forge.game.ArenaCardIds.id(candidate.getId()));
+                    preview.put("name",candidate.getName());preview.put("manaCost",candidate.getManaCost().toString());
+                    preview.put("power",candidate.getNetPower());preview.put("toughness",candidate.getNetToughness());
+                    previews.add(preview);
+                }
+                context.put("previewCards",previews);
+            }
             boolean exileHand=sa!=null && sa.getApi()==forge.game.ability.ApiType.ChangeZone
                 && "Exile".equals(sa.getParamOrDefault("Destination","")) && "Hand".equals(sa.getParamOrDefault("Origin",""));
             if(exileHand)context.put("promptId",1117);
+            boolean sylvan=sa!=null && sa.getHostCard()!=null && "Sylvan Library".equals(sa.getHostCard().getName());
+            if(sylvan) {
+                context.put("nativeKind","cards");context.put("selectionPurpose","keep");
+            }
+            String choiceTitle=sylvan?"Choose the card to return to the top of your library":title;
             var selected = BattlePromptContext.with(context,
-                () -> getGui().getChoices(title, optional ? 0 : 1, 1, views.getTrackableKeys()));
+                () -> getGui().getChoices(choiceTitle, optional ? 0 : 1, 1, views.getTrackableKeys()));
             List<T> result = new ArrayList<>(); views.addToList(selected, result);
             if(exileHand)for(var chosen:result)if(chosen instanceof forge.game.card.Card card)
                 forge.game.ArenaCardIds.selectedForExile(card.getId(),sa.getHostCard().getId());
@@ -459,33 +583,48 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
         return super.orderedMoveToTopOfLibrary(destinationZone, source);
     }
 
+    /** True while paying an unless cost the player already accepted. */
+    private boolean unlessPaymentAccepted;
+
     @Override
     public boolean payCostToPreventEffect(final forge.game.cost.Cost cost, final SpellAbility sa,
             final boolean alreadyPaid, final forge.util.collect.FCollectionView<forge.game.player.Player> allPayers) {
         boolean cumulativeUpkeep=sa.hasParam("CumulativeUpkeep")
             || sa.isKeyword(forge.game.keyword.Keyword.CUMULATIVE_UPKEEP);
-        boolean optionalManaUnless=sa.hasParam("UnlessCost") && cost.isOnlyManaCost() && !cost.isMandatory();
-        if (!cumulativeUpkeep && !optionalManaUnless) {
+        boolean optionalUnless=sa.hasParam("UnlessCost") && !cost.isMandatory();
+        if (!cumulativeUpkeep && !optionalUnless) {
             return super.payCostToPreventEffect(cost, sa, alreadyPaid, allPayers);
         }
         try {
             // Mana payment can immediately consume floating mana. Give the
             // actual unless-payer this decision before entering that workflow.
-            // Other cost types already have their own confirmation/selection.
+            // Non-mana unless costs can jump straight to a mandatory-looking
+            // sacrifice selector. Ask before entering that payment as well.
             String payment=cost.isOnlyManaCost()?displayEffectManaCost(cost,sa):cost.toSimpleString();
+            // Non-mana costs already read "Pay 2 life"; avoid "Pay Pay 2 life".
+            String action=payment.regionMatches(true,0,"Pay ",0,4)?payment:"Pay " + payment;
             String sourceName=sa.getHostCard().getName();
             String question=cumulativeUpkeep?"Pay cumulative upkeep for " + sourceName + "?"
-                :"Pay " + payment + " for " + sourceName + "?";
+                :action + " for " + sourceName + "?";
             String decline=cumulativeUpkeep?"Sacrifice " + sourceName:"Decline";
+            String accept=action;
+            if("Chain of Vapor".equals(sourceName) && cost.getCostParts().stream().anyMatch(part->part instanceof forge.game.cost.CostSacrifice)) {
+                question="Copy Chain of Vapor by sacrificing a land?";
+                accept="Sacrifice a land to copy";
+            }
             boolean accepted=forge.gamemodes.match.input.InputConfirm.confirm(this, sa,
-                question, false, java.util.List.of("Pay " + payment, decline));
+                question, false, java.util.List.of(accept, decline));
             if (!accepted) return false;
             // Forge normally asks a separate question for a literal zero cost.
             // It is already answered here; symbolic X still uses real payment
             // so Forge records its evaluated value (including zero).
             if (cost.isFree()) return true;
+            // The player just chose to pay; Forge's per-part "Do you want to
+            // pay 2 life?" would ask the same question again (shock lands).
+            unlessPaymentAccepted=true;
             return super.payCostToPreventEffect(cost, sa, alreadyPaid, allPayers);
         } finally {
+            unlessPaymentAccepted=false;
             // The resolved payment decision cannot be reversed by undoing a
             // mana ability that supplied its payment.
             getPlayer().getGame().getStack().clearUndoStack();
@@ -520,6 +659,9 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
             return true;
         }
         if (costPart instanceof forge.game.cost.CostSacrifice cs && cs.payCostFromSource()) {
+            return true;
+        }
+        if (unlessPaymentAccepted && costPart instanceof forge.game.cost.CostPayLife) {
             return true;
         }
         return super.confirmPayment(costPart, question, sa);
@@ -557,7 +699,7 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
         }
         final var choices=offeredTypes;
         return BattlePromptContext.with(Map.of("nativeKind","type", "typeKind",kindOfType,
-            "sourceId",sa==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId())),
+            "sourceId",sa==null || sa.getHostCard()==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId())),
             ()->super.chooseSomeType(kindOfType,sa,choices,optional));
     }
 
@@ -571,24 +713,30 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
             return Map.of(colors.get(0).getColorMask(),manaAmount);
         if(manaAmount<0 || manaAmount>4 || colors.isEmpty())
             return super.specifyManaCombo(sa,colorSet,manaAmount,different);
-        var allocations=new ArrayList<Map<Byte,Integer>>();
-        manaCombinations(colors,0,manaAmount,different,new LinkedHashMap<>(),allocations);
-        if(allocations.isEmpty())throw new IllegalStateException("No legal mana combination");
-        if(allocations.size()==1)return allocations.get(0);
-        var labels=new ArrayList<String>();
-        for(var allocation:allocations) {
-            var label=new StringBuilder("Add ");
-            for(var color:colors)label.append(("{"+forge.card.MagicColor.toShortString(color.getColorMask())+"}")
-                .repeat(allocation.getOrDefault(color.getColorMask(),0)));
-            labels.add(label.toString());
+        // Arena's text-choice menu cannot reliably display every allocation
+        // (two mana of five colors already produces fifteen options).
+        // Choose one pip at a time, with at most five buttons per decision.
+        var allocation=new LinkedHashMap<Byte,Integer>();
+        for(int pip=0;pip<manaAmount;pip++) {
+            var available=new ArrayList<forge.card.MagicColor.Color>();
+            for(var color:colors)
+                if(!different || !allocation.containsKey(color.getColorMask()))available.add(color);
+            if(available.isEmpty())throw new IllegalStateException("No legal mana combination");
+            var labels=new ArrayList<String>();
+            for(var color:available)
+                labels.add("Add {"+forge.card.MagicColor.toShortString(color.getColorMask())+"}");
+            var context=Map.<String,Object>of("sourceId",forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
+            final String title="Choose mana "+(pip+1)+" of "+manaAmount;
+            var selected=BattlePromptContext.with(context,
+                ()->getGui().getChoices(title,1,1,labels));
+            if(selected==null || selected.size()!=1 || !labels.contains(selected.get(0)))
+                throw new IllegalStateException("Incomplete mana combination choice");
+            byte color=available.get(labels.indexOf(selected.get(0))).getColorMask();
+            allocation.merge(color,1,Integer::sum);
         }
-        var context=Map.<String,Object>of("sourceId",forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
-        var selected=BattlePromptContext.with(context,
-            ()->getGui().getChoices("Choose mana to add",1,1,labels));
-        if(selected==null || selected.size()!=1 || !labels.contains(selected.get(0)))
-            throw new IllegalStateException("Incomplete mana combination choice");
-        return allocations.get(labels.indexOf(selected.get(0)));
+        return allocation;
     }
+
     private static void manaCombinations(final List<forge.card.MagicColor.Color> colors, final int index,
             final int remaining, final boolean different, final LinkedHashMap<Byte,Integer> current,
             final List<Map<Byte,Integer>> result) {
@@ -607,7 +755,7 @@ public class BattlePlayerControllerHuman extends PlayerControllerHuman implement
     public byte chooseColor(final String message, final SpellAbility sa, final forge.card.ColorSet colors) {
         if(colors.countColors()<2)return colors.getColor();
         var context=new LinkedHashMap<String,Object>();
-        context.put("sourceId",sa==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
+        context.put("sourceId",sa==null || sa.getHostCard()==null?0:forge.game.ArenaCardIds.id(sa.getHostCard().getId()));
         if(sa!=null && sa.getManaPart()!=null) {
             context.put("nativeKind","manaProduction");
             context.put("manaColors",colors.getOrderedColors().stream().map(c->c.toString()).toList());

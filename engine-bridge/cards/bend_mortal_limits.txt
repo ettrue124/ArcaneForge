@@ -1,0 +1,8 @@
+Name:Bend Mortal Limits
+ManaCost:B
+Types:Sorcery
+A:SP$ RevealHand | ValidTgts$ Player | RevealValid$ Creature,Planeswalker | Look$ True | SubAbility$ ExileCard | SpellDescription$ Look at all creature and planeswalker cards in target player's hand. You may exile one of those cards. If you do, conjure a duplicate of that card into your graveyard.
+SVar:ExileCard:DB$ ChangeZone | Origin$ Hand | Destination$ Exile | DefinedPlayer$ Targeted | Chooser$ You | ChangeType$ Creature,Planeswalker | ChangeNum$ 1 | RememberChanged$ True | SubAbility$ ConjureCopy
+SVar:ConjureCopy:DB$ MakeCard | Conjure$ True | DefinedName$ Remembered | Zone$ Graveyard | SubAbility$ Cleanup
+SVar:Cleanup:DB$ Cleanup | ClearRemembered$ True
+Oracle:Look at all creature and planeswalker cards in target player's hand. You may exile one of those cards. If you do, conjure a duplicate of that card into your graveyard.

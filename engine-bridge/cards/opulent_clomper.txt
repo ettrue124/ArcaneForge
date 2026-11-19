@@ -1,0 +1,10 @@
+Name:Opulent Clomper
+ManaCost:1 G
+Types:Creature Ouphe
+PT:*/*
+S:Mode$ Continuous | Affected$ Card.Self | CharacteristicDefining$ True | SetPower$ X | SetToughness$ X | EffectZone$ All | Description$ Opulent Clomper's power and toughness are each equal to the number of colors among permanents you control.
+SVar:X:Count$Valid Permanent.YouCtrl$Colors
+T:Mode$ Phase | Phase$ Upkeep | ValidPlayer$ You | TriggerZones$ Battlefield | CheckSVar$ Colors | SVarCompare$ LT5 | Execute$ AddColor | TriggerDescription$ At the beginning of your upkeep, if this creature isn't all colors, it becomes a random color that it isn't in addition to its other colors.
+SVar:Colors:Count$CardNumColors
+SVar:AddColor:DB$ RepeatEach | ArenaDigital$ OpulentColor
+Oracle:Vivid — Opulent Clomper's power and toughness are each equal to the number of colors among permanents you control.\nAt the beginning of your upkeep, if this creature isn't all colors, it becomes a random color that it isn't in addition to its other colors.

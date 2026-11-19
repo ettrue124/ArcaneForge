@@ -29,9 +29,10 @@ static class GameModeTests
         var config=fixtures["GetPlayBladeQueueConfig"]!["payload"]!.ToObject<List<Wizards.Unification.Models.PlayBlade.PlayBladeQueueEntry>>()!;
         var hydrate=core.GetType("Wizards.Mtga.PlayBlade.BladeData",true)!.GetMethod("HydrateMockWithRealEvents",BindingFlags.NonPublic|BindingFlags.Static)!;
         var queues=(System.Collections.IDictionary)hydrate.Invoke(null,new object[]{bladeList,config})!;
-        if(queues.Values.Cast<System.Collections.ICollection>().Sum(c=>c.Count)!=3)throw new Exception("Native selector did not hydrate all three modes");
+        int hydrated=queues.Values.Cast<System.Collections.ICollection>().Sum(c=>c.Count);
+        if(hydrated!=bladeList.Count)throw new Exception($"Native selector hydrated {hydrated} of {bladeList.Count} open modes ({config.Count} queue entries)");
         if(LocalStartup.GameMode("CommanderAI4")!="commander4" || LocalStartup.EventName(JObject.Parse("{\"EventName\":\"CommanderAI\"}"),"AIBotMatch")!="CommanderAI")
             throw new Exception("Selected native mode was lost during matchmaking");
-        Console.WriteLine("PASS: installed Arena shows three open game queues and hydrates the game-mode selector.");
+        Console.WriteLine($"PASS: installed Arena shows {bladeList.Count} open game queues and hydrates the game-mode selector.");
     }
 }

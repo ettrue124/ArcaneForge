@@ -256,13 +256,14 @@ static class BattlePlaybackTests
             BattleShockMenuTests.Run(assembly);
             BattleGuiTests.Run(assembly);
             using var numericInput=JsonDocument.Parse("""
-            {"buttonEventId":91,"input":{"type":"InputChooseNumber","min":0,"max":5,"allowed":[],"sourceId":1057,"grpId":94071,"isX":true}}
+            {"buttonEventId":91,"input":{"type":"InputChooseNumber","min":0,"max":12,"allowed":[],"sourceId":1057,"grpId":94071,"isX":true}}
             """);
             var numericMessage=GREToClientMessage.Parser.ParseFrom(BattleRequests.Create(numericInput.RootElement,32,4)!.ToByteArray());
             var numericOption=numericMessage.CastingTimeOptionsReq.CastingTimeOptionReq.Single();
             var numericType=assembly.GetType("GreClient.Rules.CastingTimeOption_NumericInputRequest",true)!;
             var nativeNumeric=Activator.CreateInstance(numericType,new object[]{numericOption,numericMessage})!;
-            Check((uint)numericType.GetProperty("Max")!.GetValue(nativeNumeric)! == 5 && numericOption.CtoId==91
+            // X up to 10 uses labelled buttons (the casting picker failed to open); larger X keeps the native picker.
+            Check((uint)numericType.GetProperty("Max")!.GetValue(nativeNumeric)! == 12 && numericOption.CtoId==91
                 && numericOption.NumericInputReq.SourceId==1057 && numericOption.NumericInputReq.NumericInputType==NumericInputType.ChooseX,
                 "Installed Arena lost X range, source or request identity");
             using var fightInput=JsonDocument.Parse("""

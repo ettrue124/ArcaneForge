@@ -230,7 +230,11 @@ public final class ForgePlayback {
             String from=zone(e.from())>0?e.from().zoneType().name():"None", to=e.to().zoneType().name();
             forge.game.ArenaCardIds.exileZoneChanged(e.card().getId(),from,to);
             if(to.equals("Library") && !from.equals("Library")) {knownTo.remove(id(e.card()));revealed.remove(id(e.card()));}
-            else if(to.equals("Hand") && !from.equals("Library"))knownTo.put(id(e.card()),new HashSet<>(seats.values()));
+            // Only a move from a public zone establishes public knowledge.
+            // Necropotence returns face-down exile cards to hand: that move
+            // does not reveal them. Preserve prior explicit reveals, if any.
+            else if(to.equals("Hand") && (from.equals("Battlefield") || from.equals("Graveyard") || from.equals("Stack")))
+                knownTo.put(id(e.card()),new HashSet<>(seats.values()));
             String category=from.equals("Hand") && to.equals("Stack") ? "CastSpell"
                 : from.equals("Hand") && to.equals("Battlefield") && e.card().getCurrentState().getType().isLand() ? "PlayLand"
                 : from.equals("Library") && to.equals("Hand") ? game.getPhaseHandler().getTurn()==0 ? "OpeningHand" : "Draw"

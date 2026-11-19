@@ -1,0 +1,5 @@
+Name:Enter the Eternities
+ManaCost:G U
+Types:Sorcery
+A:SP$ RepeatEach | ArenaDigital$ EnterEternities | ValidTgts$ Creature.YouCtrl | TgtPrompt$ Select target creature you control | SpellDescription$ Exile target creature you control. Draft a [+1] ability, a [-2] ability, and a [-8] ability. Create a legendary planeswalker token with the exiled creature's name and colors and the drafted abilities. Put a number of loyalty counters on it equal to the exiled creature's power.
+Oracle:Exile target creature you control. Draft a [+1] ability, a [-2] ability, and a [-8] ability. Create a legendary planeswalker token with the exiled creature's name and colors and the drafted abilities. Put a number of loyalty counters on it equal to the exiled creature's power.

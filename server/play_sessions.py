@@ -20,6 +20,7 @@ class Room:
     event: str
     created_at: float
     ready: bool = False
+    result: dict = None
 
 
 class PlaySessions:
@@ -30,6 +31,7 @@ class PlaySessions:
         self.rooms = {}
         self.assignments = {}
         self.waiting = {}
+        self.failures = {}
         self.idle = [prototype] if prototype else []
 
     def _engine(self):
@@ -54,6 +56,7 @@ class PlaySessions:
         for index, uid in enumerate(users):
             self.assignments[uid] = (room.id, index)
             self.waiting.pop(uid, None)
+            self.failures.pop(uid, None)
         return room
 
     def _launch(self, room, decks, human, **options):
@@ -68,7 +71,9 @@ class PlaySessions:
             raise
         with self.lock:
             active=self.rooms.get(room.id) is room
-            if active:room.ready=True
+            if active:
+                room.result=result
+                room.ready=True
         if not active:
             room.engine.close()
             raise StorageError('Match was cancelled while starting',409)
@@ -78,6 +83,28 @@ class PlaySessions:
         with self.lock:
             room=self._reserve((uid,),event)
         return self._launch(room,decks,False,**options)
+
+    def start_bot_background(self, uid, decks, event, **options):
+        with self.lock:
+            room = self._reserve((uid,), event)
+        def launch():
+            try:
+                prepared = decks() if callable(decks) else decks
+                with self.lock:
+                    if self.rooms.get(room.id) is not room:
+                        return
+                self._launch(room, prepared, False, **options)
+            except Exception as error:
+                room.engine.close()
+                with self.lock:
+                    if self.rooms.get(room.id) is room:
+                        self.rooms.pop(room.id, None)
+                    if self.assignments.get(uid, (None,))[0] == room.id:
+                        self.assignments.pop(uid, None)
+                    if uid not in self.assignments:
+                        self.failures[uid] = str(error)
+        threading.Thread(target=launch, name='bot-match-start', daemon=True).start()
+        return {'status': 'starting', 'roomId': room.id, 'event': event}
 
     def join(self, uid, deck, event):
         paired=None
@@ -102,7 +129,10 @@ class PlaySessions:
             if assignment:
                 room = self.rooms[assignment[0]]
                 return {'status': 'matched' if room.ready else 'starting', 'roomId': room.id, 'event': room.event,
-                        'opponentType': 'human' if len(room.users)>1 else 'bot', 'playerCount': 2}
+                        'opponentType': 'human' if len(room.users)>1 else 'bot',
+                        **(room.result or {'playerCount': 2})}
+            if uid in self.failures:
+                return {'status': 'failed', 'error': self.failures[uid]}
             if uid in self.waiting:
                 _,event,deck=self.waiting[uid]
                 self.waiting[uid]=(time.time(),event,deck)
@@ -131,6 +161,7 @@ class PlaySessions:
         room=None
         with self.lock:
             self.waiting.pop(uid, None)
+            self.failures.pop(uid, None)
             assignment = self.assignments.pop(uid, None)
             if not assignment:
                 return {'closed': True}

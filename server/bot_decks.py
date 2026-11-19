@@ -94,8 +94,21 @@ def load_bot_constructed_decks(catalogue, format_name='NoBans60'):
 
 def get_random_bot_deck(catalogue, format_name='Commander', exclude_name=None, exclude_deck=None):
     """Select a random bot deck matching format_name that is not the player's deck."""
+    from .moxfield_decks import random_deck
+    online=random_deck(catalogue,'Commander' if format_name=='Commander4' else format_name,exclude=exclude_deck)
+    if online is not None:return online
     if format_name in commander.FORMATS:
-        pool = load_bot_commander_decks(catalogue)
+        raise StorageError('No complete supported cEDH list is available. Retry after Moxfield access returns.',503)
+    def valid_local(pool):
+        from . import formats
+        valid=[]
+        for deck in pool:
+            try:formats.validate(deck,'Commander' if format_name=='Commander4' else format_name)
+            except StorageError:continue
+            valid.append(deck)
+        return valid
+    if format_name in commander.FORMATS:
+        pool = valid_local(load_bot_commander_decks(catalogue))
         if exclude_name:
             filtered = [d for d in pool if d['name'] != exclude_name and d['commanders'][0]['name'] != exclude_name]
             if filtered:
@@ -103,7 +116,7 @@ def get_random_bot_deck(catalogue, format_name='Commander', exclude_name=None, e
         if pool:
             return random.choice(pool)
     else:
-        pool = load_bot_constructed_decks(catalogue, format_name)
+        pool = valid_local(load_bot_constructed_decks(catalogue, format_name))
         def signature(deck):
             counts = {}
             for c in deck.get('cards', []):
@@ -116,8 +129,20 @@ def get_random_bot_deck(catalogue, format_name='Commander', exclude_name=None, e
     return None
 
 
-def get_multiple_random_bot_decks(catalogue, count=3, format_name='Commander', exclude_name=None):
+def get_multiple_random_bot_decks(catalogue, count=3, format_name='Commander', exclude_name=None, exclude_deck=None):
     """Return count distinct random bot decks for multiplayer matches."""
+    from .moxfield_decks import random_deck, signature
+    online=[]
+    for _ in range(count):
+        deck=random_deck(catalogue,'Commander' if format_name=='Commander4' else format_name,exclude=exclude_deck,
+                         exclude_signatures=tuple(signature(other) for other in online))
+        if deck is not None and all(signature(deck)!=signature(other) for other in online):online.append(deck)
+    if len(online)==count:return online
+    if format_name in commander.FORMATS:
+        if online:
+            while len(online)<count:online.append(random.choice(online))
+            return online
+        raise StorageError('No complete supported cEDH list is available for these bots.',503)
     if format_name in commander.FORMATS:
         pool = load_bot_commander_decks(catalogue)
         if exclude_name:

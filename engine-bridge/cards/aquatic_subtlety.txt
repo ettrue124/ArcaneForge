@@ -1,0 +1,7 @@
+Name:Aquatic Subtlety
+ManaCost:U U U
+Types:Sorcery
+A:SP$ Draw | NumCards$ 2 | SubAbility$ BottomCards | SpellDescription$ Draw two cards, then put two cards from your hand on the bottom of your library in any order. Blue creature cards in your hand perpetually gain "Evoke—Exile a blue card from your hand."
+SVar:BottomCards:DB$ ChangeZone | Origin$ Hand | Destination$ Library | ChangeType$ Card | ChangeNum$ 2 | LibraryPosition$ -1 | Mandatory$ True | SubAbility$ GrantEvoke
+SVar:GrantEvoke:DB$ AnimateAll | ValidCards$ Creature.Blue+YouOwn | Zone$ Hand | Keywords$ Evoke:ExileFromHand<1/Card.Blue+Other/blue card> | Duration$ Perpetual
+Oracle:Draw two cards, then put two cards from your hand on the bottom of your library in any order. Blue creature cards in your hand perpetually gain "Evoke—Exile a blue card from your hand."

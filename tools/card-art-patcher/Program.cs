@@ -77,27 +77,6 @@ void ExpandBranches(MethodDefinition method) {
         Code.Leave_S=>OpCodes.Leave,_=>instruction.OpCode};
 }
 var badgeUtil=module.Types.Single(t=>t.Name=="AbilityBadgeUtil");
-var taxSupport=helper.Types.Single(t=>t.FullName=="ArcaneForge.CommanderTaxDisplay");
-foreach(var pair in new[]{("GetBadgeDataForDesignation","Mark"),("CreateAbilityBadge","Apply")}) {
-    var badgeMethod=badgeUtil.Methods.Single(m=>m.Name==pair.Item1);
-    if(badgeMethod.Body.Instructions.Any(i=>i.Operand is MethodReference m && m.DeclaringType.FullName==taxSupport.FullName))continue;
-    ExpandBranches(badgeMethod);
-    var hook=module.ImportReference(taxSupport.Methods.Single(m=>m.Name==pair.Item2));
-    var il=badgeMethod.Body.GetILProcessor();
-    foreach(var ret in badgeMethod.Body.Instructions.Where(i=>i.OpCode==OpCodes.Ret).ToArray()) {
-        // Preserve incoming branch targets by replacing the return in place.
-        ret.OpCode=pair.Item2=="Mark"?OpCodes.Ldarg_1:OpCodes.Ldarg_0;
-        if(pair.Item2=="Mark") {
-            var box=il.Create(OpCodes.Box,badgeMethod.Parameters[1].ParameterType);il.InsertAfter(ret,box);
-            var call=il.Create(OpCodes.Call,hook);il.InsertAfter(box,call);
-            var cast=il.Create(OpCodes.Castclass,badgeMethod.ReturnType);il.InsertAfter(call,cast);il.InsertAfter(cast,il.Create(OpCodes.Ret));
-        } else {
-            var model=il.Create(OpCodes.Ldarg_1);il.InsertAfter(ret,model);
-            var call=il.Create(OpCodes.Call,hook);il.InsertAfter(model,call);
-            var cast=il.Create(OpCodes.Castclass,badgeMethod.ReturnType);il.InsertAfter(call,cast);il.InsertAfter(cast,il.Create(OpCodes.Ret));
-        }
-    }
-}
 var ruleMatches=module.ImportReference(helper.Types.Single(t=>t.FullName=="ArcaneForge.RulebreakerDecks").Methods.Single(m=>m.Name=="CardMatches"));
 var overrideText=module.Types.Single(t=>t.FullName=="GreClient.CardData.RulesTextOverrider.AbilityTextOverride").Methods.Single(m=>m.Name=="GetOverride");
 if(!overrideText.Body.Instructions.Any(i=>i.Operand is MethodReference m && m.DeclaringType.FullName=="ArcaneForge.RulesTextDisplay")) {
@@ -179,6 +158,19 @@ foreach(var entry in new[]{artPath,acquire,asset.Methods.Single(m=>m.Name=="Have
         Insert(il.Create(OpCodes.Ret));
     }
 }
+// Private server only: sign in automatically with this PC's device token instead of a password.
+var deviceLogin=helper.Types.Single(t=>t.FullName=="ArcaneForge.DeviceLogin");
+var deviceActive=module.ImportReference(deviceLogin.Methods.Single(m=>m.Name=="Active"));
+var accounts=module.Types.Single(t=>t.FullName=="WizardsAccountsClient");
+foreach(var (property,value) in new[]{("RememberMe",(Instruction)Instruction.Create(OpCodes.Ldc_I4_1)),
+    ("SavedRefreshToken",Instruction.Create(OpCodes.Call,module.ImportReference(deviceLogin.Methods.Single(m=>m.Name=="Token"))))}) {
+    var getter=accounts.Properties.Single(p=>p.Name==property).GetMethod;
+    if(getter.Body.Instructions.Any(i=>i.Operand is MethodReference m && m.DeclaringType.FullName=="ArcaneForge.DeviceLogin"))continue;
+    var il=getter.Body.GetILProcessor();var original=getter.Body.Instructions[0];
+    foreach(var instruction in new[]{il.Create(OpCodes.Call,deviceActive),il.Create(OpCodes.Brfalse,original),value,il.Create(OpCodes.Ret)})
+        il.InsertBefore(original,instruction);
+}
+Console.WriteLine("Private-server device sign-in prepared.");
 module.Write(args[2]);
 using(var saved=ModuleDefinition.ReadModule(args[2])) {
     var checkedMethods=saved.Types.Single(t=>t.Name=="AbilityBadgeUtil").Methods

@@ -267,6 +267,7 @@ def write_report(report):
     counts = report['counts']
     labels = {'ready': 'Eligible entries to prepare', 'needs_support': 'Entries needing additional support',
               'arena_existing': 'Entries already in Arena', 'pack_existing': 'Entries in the existing custom pack',
+              'arena_linked': 'Alternate forms already linked to Arena cards',
               'prepared': 'Entries prepared for installation', 'download_failed': 'Artwork downloads needing another attempt'}
     text = ['Magic card import', '', 'Source updated: ' + report['sourceUpdatedAt'],
             'Result: ' + report['phase'], '', *[f'{labels.get(k, k)}: {v:,}' for k, v in counts.items()], '',
@@ -275,7 +276,7 @@ def write_report(report):
             'Unsupported layouts and missing rules are listed below; they are not installed.', '',
             'Next: ' + report['nextStep'], '']
     for row in report['cards']:
-        if row['status'] not in ('arena_existing', 'pack_existing', 'ready', 'prepared'):
+        if row['status'] not in ('arena_existing', 'arena_linked', 'pack_existing', 'ready', 'prepared'):
             text.append(row['name'] + ': ' + '; '.join(row.get('reasons', [row['status']])))
     for name in report.get('unmatchedNames', []):
         text.append('Name not found: ' + name)
@@ -291,7 +292,7 @@ def valid_paper_cache(card):
 
 def paper_printing(card, offline=False):
     """Oracle bulk may select an online-only reprint of a paper card."""
-    if 'paper' in card.get('games', []) or not card.get('oracle_id'):
+    if card.get('digital') or 'paper' in card.get('games', []) or not card.get('oracle_id'):
         return card
     cache=WORK/'paper-printings'/(card['oracle_id']+'.json')
     if cache.exists() and (offline or valid_paper_cache(card)):
@@ -351,6 +352,9 @@ def run(args):
     if args.install and not args.catalog_only:
         require_arena_closed()
     cards, descriptor = bulk_cards(args)
+    if args.arena_only:
+        cards = [c for c in cards if 'arena' in c.get('games', []) and
+                 (c.get('digital') or c['name'].startswith('A-'))]
     native, active, enums, occupied = installed_inventory()
     from tools.install_custom_arena_cards import metadata_support_issues, native_type_key
     selected, unknown = requested_names(args.names, cards)
@@ -366,10 +370,18 @@ def run(args):
             if metadata.get('name'):
                 legacy_names.add(metadata['name'])
     names = [c['name'] for c in cards if selected is None or c['name'] in selected]
+    if args.arena_only:
+        names = sorted(set(names) | {name.split(' // ')[0] for name in names})
     resolutions = resolve_names(names)
+    linked_names = {face: result['forgeName'] for result in resolutions.values()
+                    if result.get('supported') and result.get('forgeName') in native
+                    for face in result.get('rulesFaces', [])} if args.arena_only else {}
+    if args.arena_only:
+        linked_names.update({c['name']: c['name'].split(' // ')[0] for c in cards
+                             if ' // ' in c['name'] and c['name'].split(' // ')[0] in native})
     if not args.offline:
         cache_paper_printings([c for c in cards if (selected is None or c['name'] in selected)
-            and c['name'] not in native and c['name'] not in legacy_names])
+            and not c.get('digital') and c['name'] not in native and c['name'] not in legacy_names])
     rows, eligible = [], []
     for card in sorted(cards, key=lambda c: (c['name'], c.get('oracle_id', ''))):
         if selected is not None and card['name'] not in selected:
@@ -379,6 +391,9 @@ def run(args):
                'source': card.get('scryfall_uri'), 'status': 'ready', 'reasons': []}
         if name in native:
             row.update(status='arena_existing', grpIds=native[name])
+        elif name in linked_names:
+            parent = linked_names[name]
+            row.update(status='arena_linked', linkedName=parent, grpIds=native[parent])
         elif name in legacy_names:
             row['status'] = 'pack_existing'
         else:
@@ -391,7 +406,8 @@ def run(args):
                 reasons.append('Oracle text exceeds the supported 32 ability slots')
             if not card.get('oracle_id'):
                 reasons.append('No Oracle identity')
-            if 'paper' not in card.get('games', []):
+            if 'paper' not in card.get('games', []) and not (
+                    args.arena_only and 'arena' in card.get('games', [])):
                 reasons.append('Not a paper Magic card; requires a digital-card adapter')
             if not card.get('image_uris', {}).get('art_crop'):
                 reasons.append('No single-face artwork crop available')
@@ -510,6 +526,8 @@ def main():
     parser.add_argument('--refresh', action='store_true', help='Check for a newer bulk export now')
     parser.add_argument('--offline', action='store_true', help='Use cached card data and artwork')
     parser.add_argument('--names', type=Path, help='Optional deck list or one card name per line')
+    parser.add_argument('--arena-only', action='store_true',
+                        help='Prepare missing Arena digital/rebalanced cards with exact rules and supported display shapes')
     args = parser.parse_args()
     try:
         with import_lock():

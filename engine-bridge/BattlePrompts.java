@@ -39,6 +39,13 @@ final class BattlePrompts {
     static Map<String,Object> describe(GuiGameEvent event,Map<Player,Integer> seats) {
         Object[] a=event.getObjects();String method=event.getMethod().name();
         Map<String,Object> out=obj("type","InputGuiChoice","method",method,"sourceId",0,"title",String.valueOf(a[0]));
+        var untapRemaining=java.util.regex.Pattern.compile("Remaining cards that can untap: \\{(Permanent|Land)=(\\d+)\\}")
+            .matcher(String.valueOf(a[0]));
+        if(String.valueOf(a[0]).startsWith("Select a card to untap") && untapRemaining.find()) {
+            String kind=untapRemaining.group(1).equals("Land")?"land":"permanent";
+            String count=untapRemaining.group(2);
+            out.put("title","Choose a "+kind+" to untap"+(count.equals("1")?"":" ("+count+" remaining)"));
+        }
         if(method.equals("order") && "Surveil".equals(a[0])) {
             out.putAll(obj("type","InputGuiGroups","surveil",true,"choices",list(a[4]).stream().map(c->id(c,seats)).toList(),
                 "toTop",true,"toBottom",false));
@@ -163,6 +170,15 @@ final class BattlePrompts {
                 data.put("description",effect.getDescription());
             }
         }
+        // A single optional cost needs two explicit native buttons. Arena's
+        // zero-to-one text selection can otherwise leave casting without a
+        // visible way to either accept the cost or continue without it.
+        if(method.equals("getChoices") && "Choose optional costs".equals(String.valueOf(a[0]))
+            && min==0 && max==1 && choices.size()==1 && !entities) {
+            out.put("min",1);
+            ((Map<String,Object>)described.get(0)).put("label","Pay "+labels.get(0));
+            described.add(obj("id",2,"index",1,"label","Cast without "+labels.get(0).split("[\u2013\u2014]",2)[0].trim().toLowerCase(java.util.Locale.ROOT)));
+        }
         out.put("options",described);
         if(entities)out.put("choices",choices.stream().map(c->id(c,seats)).toList());
         // Battlefield choices use native in-place selection; cards in other
@@ -188,6 +204,10 @@ final class BattlePrompts {
             if(selected.isEmpty() && Boolean.TRUE.equals(descriptor.get("finish")))selected.add("[FINISH TARGETING]");
             return selected;
         }
+        if(method.equals("getChoices") && "Choose optional costs".equals(String.valueOf(a[0]))
+            && (Integer)a[1]==0 && (Integer)a[2]==1 && options(event).size()==1
+            && value!=null && value.isJsonArray() && value.getAsJsonArray().size()==1
+            && integer(value.getAsJsonArray().get(0))==2) return new ArrayList<>();
         if(method.equals("showInputDialog")) {
             if(value==null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString())throw new IllegalArgumentException("Text required");
             String text=value.getAsString();

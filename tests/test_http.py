@@ -100,9 +100,13 @@ class HttpTests(unittest.TestCase):
             {'name': 'DeckGetDeck', 'payload': {'DeckId': guid}}, token)
         self.assertEqual(code, 200)
         self.assertEqual(result['result']['MainDeck'], [{'cardId': 1, 'quantity': 60}])
-        code, _ = self.request('/api/arena/command', 'POST',
+        # Idempotent delete: another account's GUID reports success but leaves the deck.
+        code, result = self.request('/api/arena/command', 'POST',
             {'name': 'DeckDeleteDeck', 'payload': {'DeckId': guid}}, other)
-        self.assertEqual(code, 404)
+        self.assertEqual((code, result['result']), (200, 'success'))
+        code, result = self.request('/api/arena/command', 'POST',
+            {'name': 'DeckGetDeck', 'payload': {'DeckId': guid}}, token)
+        self.assertEqual(code, 200)
         code, result = self.request('/api/arena/command', 'POST',
             {'name': 'DeckDeleteDeck', 'payload': {'DeckId': guid}}, token)
         self.assertEqual((code, result['result']), (200, 'success'))

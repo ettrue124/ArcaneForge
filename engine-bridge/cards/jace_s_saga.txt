@@ -1,0 +1,10 @@
+Name:Jace's Saga
+ManaCost:no cost
+Types:Enchantment Land Saga
+K:Chapter:3:First,Second,Third
+SVar:First:DB$ Animate | Defined$ Self | Abilities$ BlueMana | Duration$ Permanent | SpellDescription$ This Saga gains "{T}: Add {U}."
+SVar:BlueMana:AB$ Mana | Cost$ T | Produced$ U | SpellDescription$ Add {U}.
+SVar:Second:DB$ Animate | Defined$ Self | Abilities$ Sentinel | Duration$ Permanent | SpellDescription$ This Saga gains "{U}, {T}: Conjure a card named Jace's Sentinel onto the battlefield."
+SVar:Sentinel:AB$ MakeCard | Cost$ U T | Conjure$ True | Name$ Jace's Sentinel | Zone$ Battlefield | SpellDescription$ Conjure a card named Jace's Sentinel onto the battlefield.
+SVar:Third:DB$ Empower | Type$ Jace | Num$ 3 | SpellDescription$ Empower Jace 3.
+Oracle:I — This Saga gains "{T}: Add {U}."\nII — This Saga gains "{U}, {T}: Conjure a card named Jace's Sentinel onto the battlefield."\nIII — Empower Jace 3.

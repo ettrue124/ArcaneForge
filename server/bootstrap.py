@@ -8,6 +8,7 @@ bound request bodies and avoid logging request headers, bodies or token replies.
 import base64
 import hashlib
 import hmac
+import ipaddress
 import json
 from pathlib import Path
 import re
@@ -21,6 +22,10 @@ from .storage import StorageError
 
 class BootstrapError(StorageError):
     pass
+
+
+# Patched PC clients sign in with this instead of a saved refresh token.
+DEVICE_TOKEN = re.compile(r'local-device-[0-9a-f]{64}')
 
 
 def installed_manifests(downloads):
@@ -39,7 +44,7 @@ class Bootstrap:
     MAX_BODY = 16384
 
     def __init__(self, store, fd_uri='tcp://127.0.0.1:9443', manifests=None,
-                 client_id='arena-local', client_secret='local-only'):
+                 client_id='arena-local', client_secret='local-only', ios_manifests=None):
         parsed = urlsplit(fd_uri)
         if parsed.scheme != 'tcp' or parsed.hostname not in ('127.0.0.1', 'localhost', '::1') or not parsed.port or parsed.path or parsed.username or parsed.password:
             raise ValueError('Bootstrap FrontDoor URI must name a local TCP listener')
@@ -48,12 +53,18 @@ class Bootstrap:
         self.store, self.fd_uri = store, fd_uri
         self.client_id, self.client_secret = client_id, client_secret
         self.manifests = self._manifests(manifests or [])
+        # iPhone Arena needs Wizards' own iOS manifests: the PC manifests above
+        # name Windows bundles (and local edits) that do not exist for iOS.
+        self.ios_manifests = self._manifests(ios_manifests or [])
         with store._db(write=True) as db:
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS bootstrap_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS bootstrap_refresh(
                     token_hash TEXT PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES users(id),
                     access_hash TEXT NOT NULL,expires_at INTEGER NOT NULL);
+                CREATE TABLE IF NOT EXISTS bootstrap_devices(
+                    device_hash TEXT PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES users(id),
+                    created_at INTEGER NOT NULL,last_seen INTEGER NOT NULL);
             ''')
             db.execute('INSERT OR IGNORE INTO bootstrap_settings VALUES (?,?)', ('jwt_key', secrets.token_hex(32)))
             db.execute('INSERT OR IGNORE INTO bootstrap_settings VALUES (?,?)', ('identity_namespace', str(uuid.uuid4())))
@@ -142,6 +153,8 @@ class Bootstrap:
             with self.store._db(write=True) as db:
                 db.execute('DELETE FROM sessions WHERE token_hash=?', (self.store._token_hash(login['token']),))
                 return self._issue(db, login['user'])
+        if grant == 'refresh_token' and DEVICE_TOKEN.fullmatch(form.get('refresh_token', '')):
+            return self._device_login(form['refresh_token'])
         if grant == 'refresh_token':
             token = form.get('refresh_token', '')
             if not isinstance(token, str) or not token.startswith('local-refresh-') or len(token) > 512:
@@ -157,6 +170,37 @@ class Bootstrap:
                 db.execute('DELETE FROM sessions WHERE token_hash=?', (row['access_hash'],))
                 return self._issue(db, {'id': row['user_id'], 'username': row['username']})
         raise BootstrapError('UNSUPPORTED GRANT TYPE', 400)
+
+    def _device_login(self, token):
+        """Sign in a patched PC client by its device token (no password).
+        The patched client sends 'local-device-' + SHA-256 of Unity's
+        deviceUniqueIdentifier; only a hash of that token is stored. A new
+        device gets its own account; tools/device_accounts.py can link a device
+        to an existing account instead."""
+        digest = self.store._token_hash(token)
+        now = int(time.time())
+        with self.store._db(write=True) as db:
+            row = db.execute('SELECT d.user_id,u.username FROM bootstrap_devices d JOIN users u ON u.id=d.user_id WHERE d.device_hash=?',
+                             (digest,)).fetchone()
+            if row:
+                db.execute('UPDATE bootstrap_devices SET last_seen=? WHERE device_hash=?', (now, digest))
+                return self._issue(db, {'id': row['user_id'], 'username': row['username']})
+        for attempt in range(20):
+            name = 'Player ' + digest[:6].upper() + ('' if attempt == 0 else '-' + str(attempt + 1))
+            try:
+                user = self.store.register(name, secrets.token_urlsafe(32))
+                break
+            except StorageError as error:
+                if getattr(error, 'status', None) != 409 and 'exists' not in str(error):
+                    raise
+        else:
+            raise BootstrapError('DEVICE ACCOUNT UNAVAILABLE', 500)
+        with self.store._db(write=True) as db:
+            db.execute('INSERT OR IGNORE INTO bootstrap_devices VALUES (?,?,?,?)', (digest, user['id'], now, now))
+            row = db.execute('SELECT d.user_id,u.username FROM bootstrap_devices d JOIN users u ON u.id=d.user_id WHERE d.device_hash=?',
+                             (digest,)).fetchone()
+            print('New device sign-in: created account ' + row['username'], flush=True)
+            return self._issue(db, {'id': row['user_id'], 'username': row['username']})
 
     def profile(self, bearer):
         try:
@@ -176,22 +220,39 @@ class Bootstrap:
             db.execute('DELETE FROM sessions WHERE token_hash=?', (digest,))
             db.execute('DELETE FROM bootstrap_refresh WHERE access_hash=?', (digest,))
 
-    def ring(self, data, v2=False):
+    def _front_door(self, host):
+        """Point a client that reached us by a non-loopback IP (an iPhone over
+        Tailscale) at that same IP; a hostname is ignored so DNS rebinding cannot
+        redirect it. The TLS certificate must name the address."""
+        try:
+            address = ipaddress.ip_address(urlsplit('//' + (host or '')).hostname or '')
+        except ValueError:
+            return self.fd_uri
+        if address.is_loopback:
+            return self.fd_uri
+        shown = f'[{address}]' if address.version == 6 else str(address)
+        return f'tcp://{shown}:{urlsplit(self.fd_uri).port}'
+
+    def ring(self, data, v2=False, host=None):
         if not isinstance(data, dict):
             raise BootstrapError('INVALID DOORBELL REQUEST', 400)
         expected = ('code', 'environment', 'clientVersion', 'platform', 'playerId') if v2 else (
             'playerId', 'clientVersion', 'environmentKey', 'platformKey')
         if any(not isinstance(data.get(key), str) or len(data[key]) > 512 for key in expected):
             raise BootstrapError('INVALID DOORBELL REQUEST', 400)
-        if not self.manifests or not any(m['category'] == '' and m['priority'] == 50 for m in self.manifests):
+        platform = (data['platform'] if v2 else data['platformKey']).casefold()
+        ios = any(name in platform for name in ('ios', 'iphone', 'ipad'))
+        manifests = self.ios_manifests if ios else self.manifests
+        if not manifests or not any(m['category'] == '' and m['priority'] == 50 for m in manifests):
             raise BootstrapError('LOCAL CONTENT MANIFESTS NOT CONFIGURED', 503)
+        fd_uri = self._front_door(host)
         if v2:
-            return {'FdURI': self.fd_uri, 'BundleManifests': [dict(m) for m in self.manifests]}
-        general = next(m['hash'] for m in self.manifests if m['category'] == '' and m['priority'] == 50)
+            return {'FdURI': fd_uri, 'BundleManifests': [dict(m) for m in manifests]}
+        general = next(m['hash'] for m in manifests if m['category'] == '' and m['priority'] == 50)
         # Legacy client constructs category-less filenames. Category-specific
         # manifests can only be expressed through the recovered V2 contract.
-        future = [m['hash'] for m in self.manifests if m['category'] == '' and m['priority'] == 500]
-        return {'fdURI': self.fd_uri, 'contentHash': general,
+        future = [m['hash'] for m in manifests if m['category'] == '' and m['priority'] == 500]
+        return {'fdURI': fd_uri, 'contentHash': general,
                 'preloadContentHashes': future, 'configurationRoot': {}}
 
     def dispatch(self, method, path, headers, body=b''):
@@ -228,6 +289,6 @@ class Bootstrap:
                 data = json.loads(body)
             except (ValueError, UnicodeError):
                 raise BootstrapError('INVALID DOORBELL REQUEST', 400) from None
-            return 200, self.ring(data, path == '/api/v2/ring')
+            return 200, self.ring(data, path == '/api/v2/ring', headers.get('host'))
         except BootstrapError as exc:
             return exc.status, {'code': exc.status, 'error': str(exc), 'update_token': None}

@@ -66,6 +66,18 @@ for row in connection.execute('SELECT c.GrpId,c.AbilityIds FROM Cards c'):
 definitions = [{'id':row['Id'], 'text':row['Loc'], 'loyalty':row['LoyaltyCost']}
     for row in connection.execute('SELECT a.Id,l.Loc,a.LoyaltyCost FROM Abilities a JOIN Localizations_enUS l ON l.LocId=a.TextId WHERE a.Category IN (1,2,3,4,7,8)')]
 (output_dir / 'arena-granted-ability-definitions.json').write_text(json.dumps(definitions,separators=(',',':')),encoding='utf8')
+# Leveler bands: the host withholds a band's granted abilities below its level,
+# which Arena's native leveler textbox then shows as inactive.
+bands = {}
+for row in connection.execute('SELECT GrpId,AbilityIds FROM Cards'):
+    for item in (row['AbilityIds'] or '').split(','):
+        if not item: continue
+        band = connection.execute('SELECT LevelRequirement,HiddenAbilityIds FROM Abilities WHERE Id=? AND SubCategory=33',
+                                  (int(item.split(':')[0]),)).fetchone()
+        if band and band['LevelRequirement']:
+            low = int(band['LevelRequirement'].split('-')[0].rstrip('+'))
+            bands.setdefault(str(row['GrpId']), []).append({'min': low, 'granted': numbers(band['HiddenAbilityIds'])})
+(output_dir / 'arena-leveler-bands.json').write_text(json.dumps(bands,separators=(',',':')),encoding='utf8')
 connection.close()
 (output_dir / 'arena-activated-abilities.json').write_text(json.dumps(abilities,separators=(',',':')),encoding='utf8')
 (output_dir / 'arena-ability-text.json').write_text(json.dumps(all_abilities,separators=(',',':')),encoding='utf8')

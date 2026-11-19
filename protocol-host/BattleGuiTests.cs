@@ -24,17 +24,18 @@ static class BattleGuiTests
         """);
         Parse("OrderRequest",order.OrderReq,order);
         Check(BattleGuiResponses.TryAnswer(new ClientToGREMessage {OrderResp=new OrderResp {Ordering=OrderingType.OrderAsIndicated,Ids={1003,1002}}},"InputGuiOrder",out var ordered)
-            && ((uint[])ordered!).SequenceEqual(new uint[]{1002,1003}),"Native reversed order was not restored for Forge");
+            && ((uint[])ordered!).SequenceEqual(new uint[]{1003,1002}),"Arena's explicit order was not preserved for Forge");
         var orderBottom=Request("""
         {"input":{"type":"InputGuiOrder","title":"Choose order of cards to put into the library","top":"Closest to bottom","options":[{"id":1002},{"id":1003}]}}
         """);
         Check(orderBottom.Prompt.PromptId==41 && orderBottom.OrderReq.OrderingContext==OrderingContext.OrderingForBottom,
             "Bottom library ordering must use PromptId 41 and OrderingContext.OrderingForBottom");
         var number=Request("""
-        {"buttonEventId":72,"input":{"type":"InputChooseNumber","sourceId":1001,"grpId":1,"isX":false,"min":1,"max":5,"allowed":[1,3,5]}}
+        {"buttonEventId":72,"input":{"type":"InputChooseNumber","sourceId":1001,"grpId":1,"isX":false,"min":1,"max":12,"allowed":[1,3,5]}}
         """);
+        // Ranges up to 10 become a labelled choice menu; larger ones keep the native number picker.
         Parse("NumericInputRequest",number.NumericInputReq,number);
-        Check(number.CastingTimeOptionsReq==null && number.NumericInputReq.DisallowedValues.SequenceEqual(new uint[]{2,4}),"Non-X amounts used casting UI or lost sparse values");
+        Check(number.CastingTimeOptionsReq==null && number.NumericInputReq.DisallowedValues.SequenceEqual(new uint[]{2,4,6,7,8,9,10,11,12}),"Non-X amounts used casting UI or lost sparse values");
         var groups=Request("""
         {"input":{"type":"InputGuiGroups","choices":[1002,1003],"toTop":true,"toBottom":true}}
         """);
@@ -53,8 +54,10 @@ static class BattleGuiTests
         var text=Request("""{"input":{"type":"InputGuiText","sourceId":1001}}""");
         Parse("StringInputRequest",text.StringInputReq,text);
         var stackTargets=Request("""
-        {"cards":[],"input":{"type":"InputGuiStackTargets","sourceId":1001,"min":1,"max":1,"targets":[1002,1000003],"selected":[],"description":"Counter target spell or ability."}}
+        {"cards":[],"input":{"type":"InputGuiStackTargets","sourceId":1001,"min":1,"max":1,"targets":[1002,1000003],"selected":[],"description":"Counter target spell or ability.",
+         "readableStackTargets":true,"entityChoices":false,"options":[{"id":1002,"label":"Lightning Bolt"},{"id":1000003,"label":"Triggered ability"}]}}
         """);
+        // Spell targets use Arena's native stack picker; the host answers Forge on SubmitTargetsReq.
         Parse("SelectTargetsRequest",stackTargets.SelectTargetsReq,stackTargets);
         Check(stackTargets.SelectTargetsReq.Targets.Single().Targets.Select(t=>t.TargetInstanceId).SequenceEqual(new uint[]{1002,1000003}),"Native stack targets lost card/ability identities");
         Check(BattleGuiResponses.TryAnswer(new ClientToGREMessage {SelectTargetsResp=new SelectTargetsResp {Target=new TargetSelection {Targets={new Target {TargetInstanceId=1000003}}}}},"InputGuiStackTargets",out var targetAnswer)
@@ -108,8 +111,9 @@ static class BattleGuiTests
         var readAhead=Request("""
         {"buttonEventId":73,"input":{"type":"InputChooseNumber","sourceId":1001,"grpId":1,"isX":false,"min":1,"max":3,"readAhead":true}}
         """);
-        Parse("NumericInputRequest",readAhead.NumericInputReq,readAhead);
-        Check(readAhead.Prompt?.PromptId==166,"Read ahead did not set promptId 166");
+        // Small number choices (<=10) use the labelled menu, so read ahead shows chapters 1-3 as buttons.
+        Parse("SelectNRequest",readAhead.SelectNReq,readAhead);
+        Check(readAhead.SelectNReq?.MaxSel==1 && readAhead.SelectNReq.Ids.Count==3,"Read ahead did not offer one button per chapter");
         var timerInfo=BattleTimers.CreateTimerInfo(1,TimerType.Decision,30,5,true,TimerBehavior.Timeout,10);
         var timerMsg=BattleTimers.CreateTimerStateMessage(74,9,1,new[]{timerInfo});
         Check(timerMsg.Type==GREMessageType.TimerStateMessage && timerMsg.TimerStateMessage.Timers.Single().DurationSec==30,"TimerStateMessage creation failed");

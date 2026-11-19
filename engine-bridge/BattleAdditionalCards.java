@@ -10,7 +10,8 @@ final class BattleAdditionalCards {
         if(!Files.isDirectory(directory))return;
         try(var paths=Files.list(directory)) {
             for(Path path:paths.filter(p->p.toString().endsWith(".txt")).sorted().toList()) {
-                var rules=CardRules.fromScript(Files.readAllLines(path));
+                var rules=CardRules.fromScript(Files.readAllLines(path).stream()
+                    .map(String::trim).filter(line->!line.isEmpty() && !line.startsWith("#")).toList());
                 if(StaticData.instance().getCommonCards().getCard(rules.getName())==null)
                     StaticData.instance().getCommonCards().getEditor().putCard(rules);
             }

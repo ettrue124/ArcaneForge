@@ -18,6 +18,19 @@ import java.util.concurrent.*;
 
 /** One human-controlled Forge game. Prompts remain pending until explicitly answered. */
 final class ForgeInteractiveSession implements IRemote {
+    private static boolean hasDependentTargetPath(forge.game.spellability.SpellAbility group) {
+        if(group==null)return true;
+        if(!group.usesTargeting())return hasDependentTargetPath(group.getSubAbility());
+        group.clearTargets();
+        for(var candidate:group.getTargetRestrictions().getAllCandidates(group)) {
+            group.getTargets().add(candidate);
+            boolean possible=hasDependentTargetPath(group.getSubAbility());
+            group.clearTargets();
+            if(possible)return true;
+        }
+        return false;
+    }
+
     private HostedMatch match = new HostedMatch();
     private int participantIndex;
     private List<ForgeInteractiveSession> peers=List.of(this);
@@ -26,6 +39,10 @@ final class ForgeInteractiveSession implements IRemote {
         return peers.get(index);
     }
     private final ProtocolGuiGame gui = new ProtocolGuiGame(this) {
+        @Override public void setGameView(forge.game.GameView view) {
+            if(view!=null && match.getGame()!=null)forge.game.arena.ArenaDigitalState.install(match.getGame());
+            super.setGameView(view);
+        }
         @Override public Integer getInteger(String message,int min,int max,boolean descending) { return chooseNumber(message,min,max,null); }
         @Override public Integer getInteger(String message,int min,int max,int cutoff) { return chooseNumber(message,min,max,null); }
     };
@@ -46,6 +63,7 @@ final class ForgeInteractiveSession implements IRemote {
     // snapshot affordability checks can themselves emit game events.
     private final Object eventLock=new Object();
     private volatile long buttonEvent;
+    private volatile Object priorityButtonInput;
     private int mulliganCount;
     private final boolean commanderMode;
     private final int playerCount;
@@ -91,7 +109,7 @@ final class ForgeInteractiveSession implements IRemote {
     private boolean canPayX(forge.game.spellability.SpellAbility source,int value) {
         source.setXManaCostPaid(value);
         var payer=source.getActivatingPlayer();
-        return forge.ai.ComputerUtilMana.canPayManaCost(source,payer,0,false)
+        return BattleManaAffordability.canPay(source,payer)
             && forge.game.cost.CostPayment.canPayAdditionalCosts(source.getPayCosts(),source,false,payer);
     }
     private static Map<String,Object> obj(Object... fields) {
@@ -143,7 +161,7 @@ final class ForgeInteractiveSession implements IRemote {
         for(int i=0;i<decks.size();i++) {
             var participant=commander?RegisteredPlayer.forCommander(decks.get(i)):new RegisteredPlayer(decks.get(i));
             if(brawl)participant.setStartingLife(25);
-            participant.setPlayer(i==0 || humanOpponent?new BattleLobbyPlayerHuman("Player "+(i+1)):new LobbyPlayerAi(decks.size()==2?"Forge AI":"Forge AI "+i,null));
+            participant.setPlayer(i==0 || humanOpponent?new BattleLobbyPlayerHuman("Player "+(i+1)):BattleBotAi.create(decks.size()==2?"Forge AI":"Forge AI "+i));
             registered.add(participant);
         }
         GameType variant=brawl?GameType.Brawl:commander?GameType.Commander:GameType.Constructed;
@@ -160,7 +178,15 @@ final class ForgeInteractiveSession implements IRemote {
         synchronized(eventLock) {
         long id=++sequence;
         Object[] args=event.getObjects();
-        if(event.getMethod().name().equals("updateButtons"))buttonEvent=id;
+        if(event.getMethod().name().equals("updateButtons")) {
+            // Redrawing the same priority buttons must not invalidate an
+            // already published cast. A new input still gets a new token.
+            var controller = decisionController();
+            Object input = controller instanceof forge.player.PlayerControllerHuman hc
+                ? hc.getInputProxy().getInput() : null;
+            if (actionQueued || input == null || input != priorityButtonInput)
+                buttonEvent=id;
+        }
         if(event.getMethod().name().equals("openView") && args[0] instanceof Iterable<?> players)
             for(Object p:players) { human=(PlayerView)p; break; }
         List<Object> values=new ArrayList<>();
@@ -248,6 +274,14 @@ final class ForgeInteractiveSession implements IRemote {
             return 0;
         }
         synchronized(eventLock) {
+            if (activeInput instanceof forge.gamemodes.match.input.InputPassPriority) {
+                if (priorityButtonInput != activeInput) {
+                    priorityButtonInput = activeInput;
+                    buttonEvent = ++sequence;
+                }
+            } else {
+                priorityButtonInput = null;
+            }
             if (buttonEvent == 0) {
                 buttonEvent = ++sequence;
             }
@@ -285,6 +319,7 @@ final class ForgeInteractiveSession implements IRemote {
             for (forge.game.card.Card c : p.getAllCards()) {
                 if (!identities.containsKey(c.getId()) && c.getPaperCard() != null) {
                     Integer gid = map.get(c.getPaperCard().getName());
+                    if(gid==null && !c.getPaperCard().isToken())gid=BattleGeneratedCards.installedPrinting(c.getPaperCard().getName());
                     if (gid == null) gid = fallbackGrpId(c.getPaperCard().getName());
                     if (gid != null && gid > 0) identities.put(c.getId(), gid);
                 }
@@ -415,6 +450,25 @@ final class ForgeInteractiveSession implements IRemote {
                 var abilities=new ArrayList<forge.game.spellability.SpellAbility>(card.getAllPossibleAbilities(controller.getPlayer(),!(inHandOrCommand || permittedOtherZone)));
                 if((inHandOrCommand || permittedOtherZone) && abilities.stream().noneMatch(a->a.isSpell()))
                     for(var printed:card.getSpellAbilities())if(printed.isSpell())abilities.add(printed.copy(controller.getPlayer()));
+                // General enumeration can discard an exile permission's
+                // alternative during upkeep because it is not castable yet.
+                // Retain its real cost for cold previews, and never substitute
+                // an unpermitted printed-cost spell for the granted option.
+                if(permittedOtherZone && card.isInZone(forge.game.zone.ZoneType.Exile)) {
+                    var permitted=new ArrayList<forge.game.spellability.SpellAbility>();
+                    for(var printed:card.getSpellAbilities())if(printed.isSpell())
+                        permitted.addAll(forge.game.GameActionUtil.getMayPlaySpellOptions(printed,card,controller.getPlayer(),false));
+                    if(!permitted.isEmpty()) {
+                        abilities.removeIf(a->a.isSpell() && a.getMayPlay()==null);
+                        for(var option:permitted) {
+                            boolean exists=abilities.stream().anyMatch(a->a.isSpell()
+                                && a.getMayPlay()==option.getMayPlay()
+                                && a.getCardStateName()==option.getCardStateName()
+                                && String.valueOf(a.getPayCosts()).equals(String.valueOf(option.getPayCosts())));
+                            if(!exists)abilities.add(option);
+                        }
+                    }
+                }
                 // Forge's general option enumeration can discard hand
                 // activations before the bridge performs payment checks.
                 // Keep printed hand abilities and validate them below.
@@ -432,13 +486,26 @@ final class ForgeInteractiveSession implements IRemote {
                     if(canCast && !ability.isLandAbility() && (!BattleManaAffordability.canPay(ability,controller.getPlayer())
                         || !forge.game.cost.CostPayment.canPayAdditionalCosts(ability.getPayCosts(),ability,false,controller.getPlayer())))canCast = false;
                     if(canCast) {
+                        boolean dependent=false;
+                        boolean singleTargets=true;
                         for(var group=ability;group!=null;group=group.getSubAbility()) {
+                            if(group.hasParam("TargetsWithDefinedController")
+                                && group.getParam("TargetsWithDefinedController").startsWith("ParentTarget"))dependent=true;
+                            if(group.usesTargeting() && (group.getMinTargets()!=1 || group.getMaxTargets()!=1))singleTargets=false;
+                        }
+                        if(dependent && singleTargets) {
+                            // Later targets depend on the controller of an earlier
+                            // choice. Explore on a disposable ability, so preview
+                            // never chooses targets on the real activation.
+                            canCast=hasDependentTargetPath(ability.copy(controller.getPlayer()));
+                        } else for(var group=ability;group!=null;group=group.getSubAbility()) {
                             if(group.usesTargeting() && group.getMinTargets()>0
                                 && group.getTargetRestrictions().getNumCandidates(group)<group.getMinTargets()) {canCast=false;break;}
                         }
                     }
                     if(canCast && !ability.canPlay(true))canCast = false;
-                    if(!canCast && (!(inHandOrCommand || permittedOtherZone) || !ability.isSpell()))continue;
+                    if(!canCast && (!(inHandOrCommand || permittedOtherZone
+                        || card.isInZone(forge.game.zone.ZoneType.Graveyard) && ability.isFlashback()) || !ability.isSpell()))continue;
                     Integer grp=identities.get(card.getId());
                     if(grp!=null) {
                         String desc=ForgePlayback.abilityDescription(ability);
@@ -461,6 +528,8 @@ final class ForgeInteractiveSession implements IRemote {
                             // chooser; battlefield mana uses Arena's tap workflow.
                             "abilityId",offeredId,"actionType",ability.isManaAbility()
                                 && (card.isInZone(forge.game.zone.ZoneType.Hand)
+                                    || ability.getPayCosts()!=null && ability.getPayCosts().hasManaCost()
+                                        && !ability.getPayCosts().getTotalMana().isZero()
                                     || card.isImmutable() && card.isInZone(forge.game.zone.ZoneType.Command)
                                         && card.getEffectSource()!=null)?2:BattleActionTypes.type(ability),
                             "isLand",ability.isLandAbility(),
@@ -524,8 +593,11 @@ final class ForgeInteractiveSession implements IRemote {
                 for(var ability:payment.getUsefulManaAbilities(card)) {
                     if(!ability.canPlay())continue;
                     offeredAbilities.put(ability.getId(),ability);
+                    boolean paidManaAbility=ability.getPayCosts()!=null && ability.getPayCosts().hasManaCost()
+                        && !ability.getPayCosts().getTotalMana().isZero();
                     var action=obj("instanceId",forge.game.ArenaCardIds.id(card.getId()),"grpId",grp,"abilityId",ability.getId(),
-                        "actionType",4,"isLand",false,"manaCost","{0}","highlight",3,"description",ForgePlayback.abilityDescription(ability),"cardName",card.getName());
+                        "actionType",paidManaAbility?2:4,"isLand",false,"manaCost",paidManaAbility?BattlePlayerControllerHuman.displayManaCost(ability,controller.getPlayer()):"{0}",
+                        "highlight",3,"description",ForgePlayback.abilityDescription(ability),"cardName",card.getName());
                     int lifeCost=0;
                     for(var part:ability.getPayCosts().getCostParts())
                         if(part instanceof forge.game.cost.CostPayLife life)lifeCost+=life.getAbilityAmount(ability);
@@ -549,6 +621,17 @@ final class ForgeInteractiveSession implements IRemote {
             var entry=pending.entrySet().stream().min(Map.Entry.comparingByKey()).orElseThrow();
             var prompt=BattlePrompts.describe(entry.getValue().event(),seats);
             prompt.putAll(entry.getValue().context());
+            if(prompt.get("previewCards") instanceof List<?> previews) {
+                var cards=(List<Object>)snapshot.get("cards");
+                for(var value:previews) {
+                    var preview=new LinkedHashMap<String,Object>((Map<String,Object>)value);
+                    Integer printing=BattleGeneratedCards.installedPrinting((String)preview.get("name"));
+                    if(printing==null)throw new IllegalStateException("Draft preview printing missing: "+preview.get("name"));
+                    preview.put("grpId",printing);preview.put("ownerSeat",1);preview.put("controllerSeat",1);
+                    preview.put("zone","Revealed");preview.put("viewers",List.of(1));
+                    cards.add(preview);
+                }
+            }
             if(prompt.get("type").equals("InputGuiChoice") && Integer.valueOf(0).equals(prompt.get("sourceId"))
                 && String.valueOf(prompt.get("title")).contains("Choose a mode") && castingAbility!=null)
                 prompt.put("sourceId",forge.game.ArenaCardIds.id(castingAbility.getHostCard().getId()));

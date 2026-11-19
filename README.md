@@ -2,7 +2,7 @@
 
 ## VPN multiplayer work
 
-See [MULTIPLAYER-SETUP.md](MULTIPLAYER-SETUP.md) for the new account-owned match rooms, human/bot event queues, format rules, client display-pack export and VPN launchers. The implementation compiles but has not been verified with two Arena clients. VPN access is not active until Tailscale is installed and signed in. Full Arena-only card compatibility remains incomplete; the support inventory currently identifies 32 installed digital cards without exact rules implementations.
+See [MULTIPLAYER-SETUP.md](MULTIPLAYER-SETUP.md) for the new account-owned match rooms, human/bot event queues, format rules, client display-pack export and VPN launchers. The implementation compiles but has not been verified with two Arena clients. VPN access is not active until Tailscale is installed and signed in. All 799 entries in the current Arena-only inventory now have installed displays and available rules. Full gameplay equivalence remains unverified. See [ARENA-ONLY-CARDS.md](ARENA-ONLY-CARDS.md) for coverage and focused checks.
 
 For publication status, confirmed gaps and required visual acceptance, see [RELEASE-READINESS.md](RELEASE-READINESS.md). Full Arena animation parity is not release-ready.
 

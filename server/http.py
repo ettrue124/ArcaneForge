@@ -28,7 +28,7 @@ def client_version():
         return None
 
 
-def resolve_deck(store, catalogue, uid, deck_id):
+def resolve_deck(store, catalogue, uid, deck_id, format_override=None):
     cards = []
     deck_name = "Custom Deck"
     format_name = 'Historic'
@@ -40,7 +40,7 @@ def resolve_deck(store, catalogue, uid, deck_id):
                 summary = json.loads(row["summary_json"])
                 deck_name = summary.get("Name", "Arena Deck")
                 body = json.loads(row["body_json"])
-                format_name = commander.deck_format(summary)
+                format_name = format_override or commander.deck_format(summary)
                 if format_name in commander.FORMATS:
                     commander.validate(body, catalogue, complete=True, format_name=format_name)
                 command_cards = body.get('CommandZone', [])
@@ -101,9 +101,9 @@ def match_decks(player_deck, ai_deck, mode=None, catalogue=None):
         ai_deck = dict(ai_deck, format='CommanderUnbanned')
     count = 4 if mode == 'commander4' or mode is None and player_deck['format'] == 'Commander4' else 2
     if count == 4 and is_commander and catalogue:
-        bot_pool = bot_decks.get_multiple_random_bot_decks(catalogue, count=3, format_name='Commander', exclude_name=player_deck.get('name'))
+        bot_pool = bot_decks.get_multiple_random_bot_decks(catalogue, count=3, format_name='CommanderUnbanned' if player_deck['format']=='CommanderUnbanned' else 'Commander', exclude_name=player_deck.get('name'),exclude_deck=player_deck)
         if len(bot_pool) >= 3:
-            return [player_deck] + [dict(bot_pool[i], name=f'Forge AI {i+1}') for i in range(3)]
+            return [player_deck] + [dict(bot_pool[i], format=player_deck['format'], name=f'Forge AI {i+1}') for i in range(3)]
     return [player_deck] + [dict(ai_deck, name=f'Forge AI {i}' if count > 2 else 'Forge AI') for i in range(1, count)]
 
 
@@ -241,7 +241,8 @@ class Handler(BaseHTTPRequestHandler):
                     deck=dict(deck,format=selected['name'])
                     if selected['opponent']=='human':
                         return self.send_json(200,sessions.join(uid,deck,selected['id']))
-                    bot=formats.bot_deck(self.server.catalogue,selected['name'],exclude=deck)
+                    bot=bot_decks.get_random_bot_deck(self.server.catalogue,format_name=selected['name'],exclude_name=deck.get('name'),exclude_deck=deck)
+                    if bot is None:bot=formats.bot_deck(self.server.catalogue,selected['name'],exclude=deck)
                     formats.validate(bot,selected['name'])
                     return self.send_json(200,sessions.start_bot(uid,[deck,dict(bot,format=selected['name'])],selected['id']))
                 operations={'snapshot':'interactiveSnapshot','poll':'interactivePoll',
@@ -284,28 +285,39 @@ class Handler(BaseHTTPRequestHandler):
                     scenario = None
                     if uid == 1 and self.server.feature_scenario:
                         decks, scenario = feature_lab.prepare(self.server.feature_scenario, self.server.catalogue)
-                    if not decks:
-                        deck_id = data.get("deckId")
-                        if not deck_id:
-                            raise StorageError("deckId or decks required", 400)
-                        player_deck = resolve_deck(store, self.server.catalogue, uid, deck_id)
-                        bot_deck_id = data.get("botDeckId")
-                        is_cmdr = player_deck['format'] in commander.FORMATS or data.get('mode') in ('commander', 'commander4', 'commander-unbanned')
-                        if bot_deck_id:
-                            ai_deck = resolve_deck(store, self.server.catalogue, uid, bot_deck_id)
-                        elif is_cmdr:
-                            ai_deck = bot_decks.get_random_bot_deck(self.server.catalogue, format_name='Commander', exclude_name=player_deck.get('name'))
-                            if not ai_deck:
-                                ai_deck = dict(player_deck, name="Forge AI")
-                        else:
-                            ai_deck = bot_decks.get_random_bot_deck(self.server.catalogue,
-                                format_name='NoBans60' if data.get('mode') == 'no-bans-60' else player_deck['format'],
-                                exclude_name=player_deck.get('name'), exclude_deck=player_deck)
-                            if not ai_deck:
-                                raise StorageError('No complete bot deck is available for this mode')
-                        decks = match_decks(player_deck, ai_deck, data.get('mode'), catalogue=self.server.catalogue)
+                    def prepare_decks():
+                        prepared = decks
+                        if not prepared:
+                            deck_id = data.get("deckId")
+                            if not deck_id:
+                                raise StorageError("deckId or decks required", 400)
+                            selected_format={'commander':'Commander','commander4':'Commander4',
+                                             'commander-unbanned':'CommanderUnbanned'}.get(data.get('mode'))
+                            player_deck = resolve_deck(store, self.server.catalogue, uid, deck_id,selected_format)
+                            bot_deck_id = data.get("botDeckId")
+                            is_cmdr = player_deck['format'] in commander.FORMATS or data.get('mode') in ('commander', 'commander4', 'commander-unbanned')
+                            if bot_deck_id and not is_cmdr:
+                                ai_deck = resolve_deck(store, self.server.catalogue, uid, bot_deck_id)
+                            elif is_cmdr:
+                                ai_deck = bot_decks.get_random_bot_deck(self.server.catalogue, format_name='CommanderUnbanned' if player_deck['format']=='CommanderUnbanned' else 'Commander', exclude_name=player_deck.get('name'),exclude_deck=player_deck)
+                                if not ai_deck:
+                                    ai_deck = dict(player_deck, name="Forge AI")
+                            else:
+                                ai_deck = bot_decks.get_random_bot_deck(self.server.catalogue,
+                                    format_name='NoBans60' if data.get('mode') == 'no-bans-60' else player_deck['format'],
+                                    exclude_name=player_deck.get('name'), exclude_deck=player_deck)
+                                if not ai_deck:
+                                    raise StorageError('No complete bot deck is available for this mode')
+                            prepared = match_decks(player_deck, ai_deck, data.get('mode'), catalogue=self.server.catalogue)
+                        return prepared
+                    if data.get('asyncStart') is True and not scenario:
+                        self.server.play_sessions.leave(uid)
+                        res = self.server.play_sessions.start_bot_background(uid, prepare_decks, data.get('mode') or 'play')
+                        return self.send_json(200, res)
+                    decks = prepare_decks()
                     self.server.play_sessions.leave(uid)
-                    res = self.server.play_sessions.start_bot(uid,decks,data.get('mode') or 'play',
+                    start = self.server.play_sessions.start_bot_background if data.get('asyncStart') is True and not scenario else self.server.play_sessions.start_bot
+                    res = start(uid,decks,data.get('mode') or 'play',
                         **({'featureScenario': scenario} if scenario else {}))
                     if scenario:
                         res['featureScenario'] = scenario['id']

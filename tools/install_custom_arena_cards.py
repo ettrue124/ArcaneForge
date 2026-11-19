@@ -19,7 +19,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK = ROOT / 'data/custom-arena-cards'
-PACK_VERSION = 30
+PACK_VERSION = 32
 SUPPORTED_LAYOUTS = frozenset({'normal', 'leveler'})
 SUPPORTED_CARD_TYPES = frozenset({'Artifact', 'Creature', 'Enchantment', 'Instant', 'Land', 'Sorcery', 'Kindred', 'Planeswalker'})
 COLOR_NAMES = {'W': 'White', 'U': 'Blue', 'B': 'Black', 'R': 'Red', 'G': 'Green'}
@@ -65,6 +65,24 @@ def native_mana_cost(text):
     """Use Arena's installed o(B/R), o(U/P), o(2/G) symbol grammar."""
     return re.sub(r'\{([^}]+)\}', lambda m: 'o' + ('Si' if m[1] == 'S' else 'X' if m[1] in ('Y', 'Z')
         else '(' + m[1] + ')' if '/' in m[1] else m[1]), text)
+
+
+def mana_ability_fields(text):
+    """Native fields marking an activated mana ability, or {} when it is not one.
+
+    Arena only lets players tap a permanent for mana when its ability record is
+    Category 1 / SubCategory 1 / PaymentType 1 (as Command Tower). CostTypes
+    follows native records: 2 for {T}, 4 for other non-mana costs (sacrifice,
+    life, counters, exile). Abilities that target or draw stay ordinary, as in
+    the native database.
+    """
+    cost, separator, effect = text.partition(': ')
+    if not separator or not effect.startswith('Add ') or 'target' in effect or 'Draw' in effect:
+        return {}
+    parts = [part.strip() for part in cost.split(',')]
+    cost_types = (['2'] if '{T}' in parts else []) + (
+        ['4'] if any(part != '{T}' and not re.fullmatch(r'(\{[^}]+\})+', part) for part in parts) else [])
+    return {'Category': 1, 'SubCategory': 1, 'PaymentType': 1, 'CostTypes': ','.join(cost_types) or None}
 
 
 def native_rules_text(text):
@@ -237,6 +255,10 @@ def normalize_record(record):
         for key, minimum in (('localizationBase', 30_000_000), ('abilityBase', 3_000_000)):
             if not isinstance(result.get(key), int) or isinstance(result[key], bool) or not minimum <= result[key] <= 2_147_483_547:
                 raise ValueError('New records require an explicit stable ' + key + ' >= ' + str(minimum))
+    if 'linkedFace' in result:
+        link = result['linkedFace']
+        if not isinstance(link, dict) or link.get('role') not in ('front', 'back') or not isinstance(link.get('grpId'), int) or link['grpId'] == result['grpId'] or link.get('family', 'transform') not in ('flip', 'transform', 'modal_dfc', 'adventure'):
+            raise ValueError('Invalid linked face record')
     return result
 
 
@@ -245,6 +267,35 @@ def oracle_lines(metadata, record):
     if metadata['name'] != record['name'] and ',' in metadata['name']:
         oracle = oracle.replace(metadata['name'].split(',')[0], record['name'].split(',')[0])
     return oracle.split('\n') if oracle else []
+
+
+LEVEL_HEADER = re.compile(r'LEVEL (\d+(?:[-–]\d+|\+))')
+
+
+def leveler_bands(lines):
+    """Split leveler rules into prefix lines and (range, power, toughness, texts) bands.
+
+    Returns None unless every band grants text: the native leveler textbox
+    draws a band only from its granted (hidden) abilities.
+    """
+    prefix, bands, index = [], [], 0
+    while index < len(lines) and not LEVEL_HEADER.fullmatch(lines[index].strip()):
+        prefix.append(lines[index]); index += 1
+    while index < len(lines):
+        header = LEVEL_HEADER.fullmatch(lines[index].strip())
+        stats = re.fullmatch(r'(\S+)/(\S+)', lines[index + 1].strip()) if index + 1 < len(lines) else None
+        if not header or not stats:
+            return None
+        index += 2
+        texts = []
+        while index < len(lines) and not LEVEL_HEADER.fullmatch(lines[index].strip()):
+            texts.append(lines[index]); index += 1
+        if not texts:
+            return None
+        bands.append((header.group(1).replace('–', '-'), stats.group(1), stats.group(2), texts))
+    if not bands or not any(line.startswith('Level up') for line in prefix):
+        return None
+    return prefix, bands
 
 
 def id_blocks(record):
@@ -270,6 +321,14 @@ def overlapping_block(blocks, start, stop, owner):
 
 def prepare_pack(records, db, previous):
     """Classify every entry before staging or writing installed files."""
+    # Linked custom faces must exist as a reciprocal pair in the same pack.
+    by_id = {r.get('grpId'): r for r in records if isinstance(r, dict)}
+    for record in records:
+        if 'linkedFace' not in record: continue
+        link = record['linkedFace']; peer = by_id.get(link.get('grpId'), {})
+        reverse = peer.get('linkedFace', {})
+        if reverse.get('grpId') != record['grpId'] or {link.get('role'), reverse.get('role')} != {'front', 'back'} or link.get('family', 'transform') != reverse.get('family', 'transform'):
+            raise ValueError('Linked face pair is incomplete: ' + record.get('name', ''))
     enums = read_native_enums(db)
     native_cards = {row[0]: row[1:] for row in db.execute('SELECT GrpId,Order_Title,ArtId FROM Cards')}
     native_abilities = {row[0] for row in db.execute('SELECT Id FROM Abilities')}
@@ -481,6 +540,52 @@ def stage_database(database, staged, prepared):
             # rules must not leave old child definitions behind.
             ability_block = id_blocks(record)[1]
             db.execute('DELETE FROM Abilities WHERE Id>=? AND Id<?', (ability_block.start, ability_block.stop))
+            hidden = []
+            leveler = leveler_bands(lines) if metadata.get('layout') == 'leveler' else None
+            if leveler:
+                # Native leveler shape (as Hexdrinker): a Level up keyword, then
+                # one band per range holding its stats and granted abilities.
+                # Granted abilities stay in AbilityIds for text/action lookups.
+                def add_ability(number, text, category, **fields):
+                    if number >= len(ability_block):
+                        raise ValueError('Leveler rules exceed the reserved ability block')
+                    ability_id, locid = record['abilityBase'] + number, base + 10 + number
+                    localize(locid, mana(text))
+                    ability = dict(ability_template)
+                    ability.update({key: None for key in ability if key not in (
+                        'Id', 'BaseId', 'FakeBaseIdNumeral', 'TextId', 'Category', 'SubCategory', 'AbilityWord',
+                        'NumericAid', 'RequiresConfirmation', 'PaymentType', 'FullyParsed', 'IsIntrinsicAbility')})
+                    ability.update(Id=ability_id, BaseId=0, BaseIdNumeral=0, FakeBaseIdNumeral=0, TextId=locid,
+                                   Category=category, SubCategory=0, AbilityWord=0, NumericAid=0, RequiresConfirmation=0,
+                                   PaymentType=0, FullyParsed=1, IsIntrinsicAbility=0)
+                    ability.update(mana_ability_fields(text))
+                    ability.update(fields)
+                    names = list(ability)
+                    db.execute('INSERT OR REPLACE INTO Abilities (' + ','.join(names) + ') VALUES (' +
+                               ','.join('?' for _ in names) + ')', [ability[key] for key in names])
+                    return str(ability_id) + ':' + str(locid)
+                prefix, bands = leveler
+                number = 0
+                for text in prefix:
+                    level_up = text.startswith('Level up')
+                    abilities.append(add_ability(number, text, 1 if level_up or ': ' in text
+                                                 else 2 if text.startswith(('When ', 'Whenever ', 'At ')) else 3,
+                                                 **({'BaseId': 88} if level_up else {})))
+                    number += 1
+                for requirement, power, toughness, texts in bands:
+                    band_number = number
+                    granted = [add_ability(band_number + 1 + offset, text,
+                                           1 if ': ' in text else 2 if text.startswith(('When ', 'Whenever ', 'At ')) else 3)
+                               for offset, text in enumerate(texts)]
+                    granted_ids = ','.join(entry.split(':')[0] for entry in granted)
+                    abilities.append(add_ability(band_number, 'LEVEL [' + requirement + '] [' + power + '/' + toughness + '] ['
+                                                 + '] ['.join(texts) + ']', 3, SubCategory=33, IsIntrinsicAbility=1,
+                                                 LevelRequirement=requirement, Power=power, Toughness=toughness,
+                                                 HiddenAbilityIds=granted_ids, ReferencedAbilityIds=granted_ids,
+                                                 ReferencedAbilityTypes=granted_ids))
+                    abilities.extend(granted); hidden.extend(granted)
+                    number = band_number + 1 + len(texts)
+                lines = []
             for number, text in enumerate(lines):
                 ability_id, locid = record['abilityBase'] + number, base + 10 + number
                 loyalty_match=re.fullmatch(r'([+\-\u2212]?(?:\d+|X)):\s*(.+)',text) if 'Planeswalker' in types else None
@@ -495,6 +600,8 @@ def stage_database(database, staged, prepared):
                 ability.update(Id=ability_id, BaseId=0, BaseIdNumeral=0, FakeBaseIdNumeral=0, TextId=locid,
                                Category=category, SubCategory=0, AbilityWord=0, NumericAid=0, RequiresConfirmation=0,
                                PaymentType=0, FullyParsed=1, IsIntrinsicAbility=0)
+                if not loyalty_match:
+                    ability.update(mana_ability_fields(text))
                 if loyalty_match:
                     loyalty_cost=loyalty_match.group(1).replace('\u2212','-')
                     ability.update(Category=1,PaymentType=2,LoyaltyCost=loyalty_cost,CostTypes='5',
@@ -529,6 +636,14 @@ def stage_database(database, staged, prepared):
                         AbilityIdToLinkedConjurations='', KnownSupportedStyles='', AdditionalFrameDetails='',
                         ExtraFrameDetails='', Tags='', PromoLabel='', Order_Title=record['name'],
                         Order_CMCWithXLast=int(metadata['cmc']), Order_ManaCostDifficulty=len(colors))
+            if hidden:
+                card['HiddenAbilityIds'] = ','.join(hidden)
+            if 'linkedFace' in record:
+                link = record['linkedFace']
+                family=link.get('family', 'transform')
+                front_type,back_type={'flip':(2,1),'transform':(2,1),'modal_dfc':(10,9),'adventure':(8,7)}[family]
+                card.update(LinkedFaceType=front_type if link['role']=='front' else back_type,
+                            LinkedFaceGrpIds=str(link['grpId']), IsPrimaryCard=int(link['role']=='front'))
             db.execute('INSERT OR REPLACE INTO Cards (' + ','.join(columns) + ') VALUES (' +
                        ','.join('?' for _ in columns) + ')', [card[key] for key in columns])
         # Live, display-only progress for Y'shtola's end-step condition.
@@ -706,6 +821,7 @@ def run(argv=None):
                       digest_file(ROOT/'client-card-extension/CommanderTaxDisplay.cs'),
                       digest_file(ROOT/'client-card-extension/RulesTextDisplay.cs'),
                       digest_file(ROOT/'client-card-extension/RulebreakerDecks.cs'),digest_file(ROOT/'client-card-extension/LoyaltyDisplay.cs'),
+                     digest_file(ROOT/'client-card-extension/DeviceLogin.cs'),
                       digest_file(ROOT/'tools/card-art-patcher/Program.cs')]),
                   rulebreakerSha256=digest_file(rulebreaker_table))
     write_json(report_path, report)
@@ -797,6 +913,22 @@ def run(argv=None):
     replace_copy(staged_validation,validation)
     replace_copy(staged_validation_client,validation_client)
     replace_copy(staged, database)
+    # Commander tax belongs in the native cost preview/hanger, not as a
+    # numeric overlay on the battlefield's commander badge.
+    for badge_path in (managed.parent/'Downloads/ALT').glob('ALT_Card_*.mtga'):
+        badge_data=read_json(badge_path)
+        changed=False
+        for node in badge_data.get('ALT_Card.BadgeEntry',{}).get('Nodes',[]):
+            payload=node.get('Payload',{})
+            if payload.get('Layers')==['Commander'] and 'Data' in payload:
+                calculator={'$type':'Wotc.Mtga.DuelScene.NumericBadgeCalculators.NullNumericBadgeCalculator'}
+                if payload['Data'].get('NumberCalculator')!=calculator:
+                    payload['Data']['NumberCalculator']=calculator
+                    changed=True
+        if changed:
+            original=PACK/('commander-badge-original-'+digest_file(badge_path)+'.json')
+            if not original.exists():replace_copy(badge_path,original)
+            write_json(badge_path,badge_data)
     write_json(PACK/'emblem-display-abilities.json',emblem_definitions)
     # Omitting a printing is not removal; decks can still reference its IDs.
     installed_report = dict(pending_report, phase='installed',

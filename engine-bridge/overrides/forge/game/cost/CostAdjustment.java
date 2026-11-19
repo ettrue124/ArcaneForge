@@ -113,6 +113,20 @@ public class CostAdjustment {
             return;
         }
 
+        if (st.hasParam("ArenaLoyaltyAdd")) {
+            int adjustment=AbilityUtils.calculateAmount(hostCard,st.getParam("ArenaLoyaltyAdd"),st);
+            CostPart base=null;int current=0;
+            for(CostPart part:cost.getCostParts()){
+                if(part instanceof CostPutCounter add && add.getCounter().equals(CounterEnumType.LOYALTY) && "CARDNAME".equals(add.getType())){base=part;current=AbilityUtils.calculateAmount(sa.getHostCard(),part.getAmount(),sa);break;}
+                if(part instanceof CostRemoveCounter remove && remove.counter.equals(CounterEnumType.LOYALTY) && "CARDNAME".equals(remove.getType())){base=part;current=-AbilityUtils.calculateAmount(sa.getHostCard(),part.getAmount(),sa);break;}
+            }
+            if(base!=null){
+                int changed=current+adjustment;cost.getCostParts().remove(base);
+                String replacement=(changed>=0?"AddCounter<":"SubCounter<")+Math.abs(changed)+"/LOYALTY>";
+                cost.getCostParts().addAll(new Cost(replacement,true).getCostParts());cost.sort();
+            }
+            return;
+        }
         final String scost = st.getParamOrDefault("Cost", "1");
         int count = 0;
 
@@ -172,6 +186,9 @@ public class CostAdjustment {
     // If cardsToDelveOut is null, will immediately exile the delved cards and remember them on the host card.
     // Otherwise, will return them in cardsToDelveOut and the caller is responsible for doing the above.
     public static boolean adjust(ManaCostBeingPaid cost, final SpellAbility sa, final Player payer, CardCollection cardsToDelveOut, boolean test, boolean effect) {
+        // One rollback ledger for every real tap-based payment reduction.
+        // Preview calculations must never erase an in-progress payment.
+        if (!test) sa.clearTappedForConvoke();
         if (effect) {
             adjustCostByWaterbend(cost, sa, payer, test);
         }
@@ -335,9 +352,6 @@ public class CostAdjustment {
     }
 
     private static void adjustCostByConvokeOrImprovise(ManaCostBeingPaid cost, final SpellAbility sa, final Player payer, boolean artifacts, boolean creatures, boolean test) {
-        if (creatures && !artifacts) {
-            sa.clearTappedForConvoke();
-        }
 
         CardCollectionView untappedCards = CardLists.filter(payer.getCardsIn(ZoneType.Battlefield),
                 CardPredicates.CAN_TAP);
@@ -370,12 +384,12 @@ public class CostAdjustment {
         CardCollection tapped = new CardCollection();
         for (final Entry<Card, ManaCostShard> conv : convokedCards.entrySet()) {
             Card c = conv.getKey();
-            if (creatures && !artifacts) {
-                sa.addTappedForConvoke(c);
-            }
             cost.decreaseShard(conv.getValue(), 1);
             if (!test) {
-                if (c.tap(true, sa, payer)) tapped.add(c);
+                if (c.tap(true, sa, payer)) {
+                    tapped.add(c);
+                    sa.addTappedForConvoke(c);
+                }
             }
         }
         if (!tapped.isEmpty()) {

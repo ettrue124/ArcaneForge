@@ -1,0 +1,9 @@
+Name:Limitless Rekindling
+ManaCost:3 R R
+Types:Kindred Sorcery Elemental
+K:Storm
+A:SP$ RepeatEach | ArenaDigital$ RandomConjure | RandomType$ Instant,Sorcery | RandomSet$ ecl | Zone$ Exile | Conjure$ True | RememberMade$ True | SubAbility$ MayCast | SpellDescription$ Conjure a random instant or sorcery card from the Lorwyn Eclipsed expansion into exile. Until end of turn, you may cast that card without paying its mana cost.
+SVar:MayCast:DB$ Effect | RememberObjects$ Remembered | StaticAbilities$ CastFree | ForgetOnMoved$ Exile | SubAbility$ Cleanup
+SVar:CastFree:Mode$ Continuous | MayPlay$ True | MayPlayWithoutManaCost$ True | Affected$ Card.IsRemembered | AffectedZone$ Exile | Description$ You may cast that card this turn without paying its mana cost.
+SVar:Cleanup:DB$ Cleanup | ClearRemembered$ True
+Oracle:Conjure a random instant or sorcery card from the Lorwyn Eclipsed expansion into exile. Until end of turn, you may cast that card without paying its mana cost.\nStorm

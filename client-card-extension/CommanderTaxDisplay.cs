@@ -9,6 +9,22 @@ namespace ArcaneForge {
     public static class CommanderTaxDisplay {
         static readonly ConditionalWeakTable<object,object> commanderBadges=new ConditionalWeakTable<object,object>();
         static bool reported;
+        public static bool HasTax(object input) => Number(input,out int number,out string modifier);
+        public static bool Number(object input,out int number,out string modifier) {
+            number=0;modifier=null;
+            try {
+                var model=input.GetType().GetField("CardData").GetValue(input);
+                var instance=model?.GetType().GetProperty("Instance")?.GetValue(model);
+                var designations=instance?.GetType().GetField("Designations")?.GetValue(instance) as IEnumerable;
+                if(designations!=null)foreach(var designation in designations) {
+                    var type=designation.GetType();
+                    if(type.GetField("Type")?.GetValue(designation)?.ToString()!="Commander")continue;
+                    number=Convert.ToInt32(type.GetField("CostIncrease").GetValue(designation));
+                    modifier="+";return number>0;
+                }
+            } catch(Exception) { }
+            return false;
+        }
         public static object Mark(object badge,object designation) {
             if(badge!=null && designation?.ToString()=="Commander")
                 commanderBadges.GetValue(badge,_=>new object());

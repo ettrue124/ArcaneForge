@@ -6,17 +6,33 @@ static class BattlePresentation
 {
     public static void BatchMillAnimations(GameStateMessage state) {
         AnnotationInfo? batch=null;
+        AnnotationInfo? replacementBatch=null;
         foreach(var annotation in state.Annotations.ToArray()) {
-            bool mill=annotation.Type.Contains(AnnotationType.ZoneTransfer)
-                && annotation.Details.Any(d=>d.Key=="category" && d.ValueString.Contains("Mill"));
-            if(!mill) {batch=null;continue;}
-            // Keep player zones, effect attribution and intervening events separate.
-            // One ZoneTransfer with multiple affected cards is one mill animation.
+            bool transfer=annotation.Type.Contains(AnnotationType.ZoneTransfer);
+            bool mill=transfer && annotation.Details.Any(d=>d.Key=="category" && d.ValueString.Contains("Mill"));
+            bool libraryExile=transfer
+                && annotation.Details.Any(d=>d.Key=="category" && d.ValueString.Contains("Exile"))
+                && annotation.Details.Any(d=>d.Key=="zone_src" && d.ValueInt32.Any(id=>
+                    state.Zones.Any(z=>z.ZoneId==(uint)id && z.Type==ZoneType.Library)));
+            // A replacement effect can accompany each milled/exiled card.
+            // Retain its attribution and affected IDs, but play one batch.
+            if(annotation.Type.Contains(AnnotationType.ReplacementEffectApplied) && batch!=null
+                && annotation.AffectedIds.All(id=>batch.AffectedIds.Contains(id))) {
+                if(replacementBatch!=null && replacementBatch.AffectorId==annotation.AffectorId
+                    && replacementBatch.Details.SequenceEqual(annotation.Details)) {
+                    replacementBatch.AffectedIds.AddRange(annotation.AffectedIds.Where(id=>!replacementBatch.AffectedIds.Contains(id)));
+                    state.Annotations.Remove(annotation);
+                } else replacementBatch=annotation;
+                continue;
+            }
+            if(!mill && !libraryExile) {batch=null;replacementBatch=null;continue;}
+            // Keep distinct zones, categories, effect sources and intervening
+            // actions separate. Only presentation is batched; rules stay intact.
             if(batch!=null && batch.AffectorId==annotation.AffectorId
                 && batch.Details.SequenceEqual(annotation.Details)) {
                 batch.AffectedIds.AddRange(annotation.AffectedIds.Where(id=>!batch.AffectedIds.Contains(id)));
                 state.Annotations.Remove(annotation);
-            } else batch=annotation;
+            } else {batch=annotation;replacementBatch=null;}
         }
     }
     public static void StatePlayerProtection(JsonElement snapshot,GameStateMessage current) {
@@ -27,6 +43,29 @@ static class BattlePresentation
             foreach(uint ability in protections.EnumerateArray().Select(p=>ProtectionAbilityId(p.GetString()??"")).Where(id=>id!=0).Distinct())
                 current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(3_900_000_000u+seat*200000+ability),
                     Type={AnnotationType.AddAbility},AffectorId=seat,AffectedIds={seat},Details={IntDetail("grpid",checked((int)ability))}});
+        }
+    }
+    public static void StateGrantedAbilityStyles(JsonElement snapshot,GameStateMessage current) {
+        foreach(var card in snapshot.GetProperty("cards").EnumerateArray()) {
+            uint id=card.GetProperty("instanceId").GetUInt32();
+            var displayed=current.GameObjects.FirstOrDefault(c=>c.InstanceId==id && c.GrpId!=0 && c.Visibility!=Visibility.Hidden);
+            if(displayed==null)continue;
+            var added=new HashSet<uint>();
+            if(card.TryGetProperty("grantedKeywords",out var keywords))
+                foreach(var keyword in keywords.EnumerateArray())added.Add(KeywordAbilityId(keyword.GetString()!));
+            if(card.TryGetProperty("grantedAbilities",out var abilities))
+                foreach(var ability in abilities.EnumerateArray())added.Add(GrantedAbilityId(ability));
+            added.Remove(0);
+            // The object's current ability list supplies rules; AddAbility tells
+            // Arena that an ability was granted, enabling its native blue style.
+            added.IntersectWith(displayed.UniqueAbilities.Select(a=>a.GrpId));
+            if(AllAbilityText.Value.TryGetValue(displayed.GrpId.ToString(),out var printed))
+                added.ExceptWith(printed.EnumerateArray().Select(a=>a.GetProperty("id").GetUInt32()));
+            if(added.Count==0)continue;
+            var detail=new KeyValuePairInfo {Key="grpid",Type=KeyValuePairValueType.Int32};
+            detail.ValueInt32.AddRange(added.Order().Select(a=>checked((int)a)));
+            current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(2_470_000_000u+id),
+                Type={AnnotationType.AddAbility},AffectedIds={id},Details={detail}});
         }
     }
     static readonly Dictionary<string,uint> ProtectionIds=new(StringComparer.OrdinalIgnoreCase) {
@@ -83,6 +122,10 @@ static class BattlePresentation
             return (Text:g.Key,Ids:native.Length>0?native:new[]{ids.Min()});
         })
         .Where(g=>g.Ids.Length==1).ToDictionary(g=>g.Text,g=>g.Ids[0],StringComparer.OrdinalIgnoreCase));
+    internal static uint PrintedKeywordId(uint ability) {
+        var definition=GrantedDefinitions.Value.EnumerateArray().FirstOrDefault(d=>d.GetProperty("id").GetUInt32()==ability);
+        return definition.ValueKind==JsonValueKind.Object?KeywordAbilityId(definition.GetProperty("text").GetString()??""):0;
+    }
     public static uint KeywordAbilityId(string keyword) {
         uint protection=ProtectionAbilityId(keyword);
         return protection!=0?protection:SharedKeywordIds.Value.GetValueOrDefault(KeywordKey(keyword));
@@ -368,6 +411,19 @@ static class BattlePresentation
             .Select(p=>p.TryGetProperty("lifeLostThisTurn",out var loss)?loss.GetInt32():-1).ToArray();
         foreach(var card in snapshot.GetProperty("cards").EnumerateArray()) {
             uint id=card.GetProperty("instanceId").GetUInt32();
+            if(visible.Contains(id) && card.TryGetProperty("manaPreviews",out var manaPreviews)) {
+                uint slot=0;
+                foreach(var preview in manaPreviews.EnumerateArray()) {
+                    uint ability=AbilityId(card.GetProperty("grpId").GetUInt32(),preview.GetProperty("description").GetString()!,card.GetProperty("name").GetString()!,true);
+                    if(ability==0)continue;
+                    current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(2_460_000_000u+id*32+slot++),
+                        Type={AnnotationType.AbilityWordActive},AffectorId=id,AffectedIds={id},Details={
+                            new KeyValuePairInfo {Key="AbilityWordName",Type=KeyValuePairValueType.String,ValueString={preview.GetProperty("word").GetString()!}},
+                            IntDetail("value",preview.GetProperty("amount").GetInt32()),IntDetail("AbilityGrpId",checked((int)ability)),
+                            new KeyValuePairInfo {Key="choice",Type=KeyValuePairValueType.String,ValueString={preview.GetProperty("color").GetString()!}},
+                            IntDetail("isActive",1),new KeyValuePairInfo {Key="ShowOnMiniCDC",Type=KeyValuePairValueType.String,ValueString={"true"}}}});
+                }
+            }
             if(card.GetProperty("zone").GetString()=="Battlefield" && lifeLosses.Length>0 && lifeLosses.All(n=>n>=0)
                 && current.GameObjects.Any(c=>c.InstanceId==id && c.UniqueAbilities.Any(a=>a.GrpId==192435)))
                 current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(4_150_000_000u+id),
@@ -454,6 +510,95 @@ static class BattlePresentation
             }
         }
     }
+    // Arena's CantUntap badge: the client reads its tooltip from the causing
+    // ability, so a badge is sent only when that ability can be identified.
+    internal const uint TriggerOrderBase=8_000_000u;
+    internal sealed record PendingTrigger(uint Id,uint Key,uint Option,uint Parent,uint Source,uint Ability,uint Controller);
+    /// Waiting triggers from a Forge trigger-order prompt (bridge nativeKind "triggerOrder"), as temporary
+    /// ability objects for Arena's native "Order Triggers" browser. Null unless every trigger maps to a
+    /// visible source card and a known Arena ability; then the labelled menu is used instead.
+    internal static List<PendingTrigger>? TriggerOrderObjects(JsonElement snapshot) {
+        if(!snapshot.TryGetProperty("input",out var input) || !input.TryGetProperty("nativeKind",out var kind)
+            || kind.GetString()!="triggerOrder" || !input.TryGetProperty("triggers",out var triggers))return null;
+        var cards=new Dictionary<uint,JsonElement>();
+        foreach(var card in snapshot.GetProperty("cards").EnumerateArray())cards[card.GetProperty("instanceId").GetUInt32()]=card;
+        var list=new List<PendingTrigger>();
+        foreach(var trigger in triggers.EnumerateArray()) {
+            uint parent=trigger.GetProperty("parentId").GetUInt32();
+            if(!cards.TryGetValue(parent,out var source))return null;
+            uint sourceGrp=source.GetProperty("grpId").GetUInt32();
+            uint ability=AbilityId(sourceGrp,trigger.GetProperty("description").GetString()??"",trigger.GetProperty("cardName").GetString()??"");
+            if(sourceGrp==0 || ability==0)return null;
+            uint key=trigger.GetProperty("key").GetUInt32();
+            list.Add(new PendingTrigger(TriggerOrderBase+key,key,trigger.GetProperty("option").GetUInt32(),parent,sourceGrp,ability,
+                source.GetProperty("controllerSeat").GetUInt32()));
+        }
+        return list.Count>1?list:null;
+    }
+    /// Lasting indicators Arena reads from persistent annotations: TemporaryPermanent ("leaves at end of turn"),
+    /// SuspendLike (suspended card in exile) and GamewideHistoryCount (Storm count badge on the controller).
+    public static void StateTemporaryAndSuspend(JsonElement snapshot,GameStateMessage current) {
+        var objects=current.GameObjects.Where(c=>c.GrpId!=0).ToDictionary(c=>c.InstanceId);
+        var temporary=new AnnotationInfo {Id=4_060_000_000u,Type={AnnotationType.TemporaryPermanent}};
+        uint suspendAbility=KeywordAbilityId("Suspend");
+        foreach(var card in snapshot.GetProperty("cards").EnumerateArray()) {
+            uint id=card.GetProperty("instanceId").GetUInt32();
+            if(!objects.TryGetValue(id,out var shown))continue;
+            if(card.TryGetProperty("temporary",out var temp) && temp.GetBoolean() && shown.ZoneId==30)
+                temporary.AffectedIds.Add(id);
+            if(suspendAbility!=0 && card.TryGetProperty("suspended",out var suspended) && suspended.GetBoolean())
+                current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(4_050_000_000u+id),AffectorId=id,AffectedIds={id},
+                    Type={AnnotationType.SuspendLike},Details={IntDetail("abilityGrpid",checked((int)suspendAbility))}});
+        }
+        if(temporary.AffectedIds.Count>0)current.PersistentAnnotations.Add(temporary);
+        uint stormAbility=KeywordAbilityId("Storm");
+        if(stormAbility==0 || !snapshot.TryGetProperty("players",out var players))return;
+        foreach(var player in players.EnumerateArray()) {
+            if(!player.TryGetProperty("stormCount",out var storm) || storm.GetInt32()<=0)continue;
+            uint seat=player.GetProperty("seat").GetUInt32();
+            current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(4_070_000_000u+seat),AffectorId=seat,AffectedIds={seat},
+                Type={AnnotationType.GamewideHistoryCount},
+                Details={IntDetail("AbilityGrpId",checked((int)stormAbility)),IntDetail("count",storm.GetInt32())}});
+        }
+    }
+    public static void StateUntapRestrictions(JsonElement snapshot,GameStateMessage current) {
+        var objects=current.GameObjects.Where(c=>c.GrpId!=0).ToDictionary(c=>c.InstanceId);
+        foreach(var card in snapshot.GetProperty("cards").EnumerateArray()) {
+            uint target=card.GetProperty("instanceId").GetUInt32();
+            if(!objects.TryGetValue(target,out var targetObject) || targetObject.ZoneId!=30 || !card.TryGetProperty("cantUntap",out var untap))continue;
+            // The chain badge only matters while the permanent is tapped (user request 2026-11-17).
+            if(!targetObject.IsTapped)continue;
+            uint sourceId=0,sourceGrp=0,ability=0;
+            switch(untap.GetProperty("reason").GetString()) {
+                case "static" when untap.TryGetProperty("sourceGrpId",out var grp):
+                    sourceId=untap.GetProperty("sourceId").GetUInt32();sourceGrp=grp.GetUInt32();
+                    ability=AbilityId(sourceGrp,untap.GetProperty("description").GetString()!,untap.GetProperty("cardName").GetString()!);
+                    break;
+                case "exerted":
+                    sourceId=target;sourceGrp=targetObject.GrpId;
+                    ability=PrintedAbility(sourceGrp,t=>t.Contains("exert",StringComparison.OrdinalIgnoreCase));
+                    break;
+                case "next":
+                    // Forge keeps no source for this keyword. Credit a visible card
+                    // whose own text causes it (Vorinclex, Frost Titan, Frost Breath).
+                    foreach(var candidate in objects.Values.OrderBy(o=>o.ZoneId==30?0:1)) {
+                        uint found=PrintedAbility(candidate.GrpId,t=>t.Contains("untap during",StringComparison.OrdinalIgnoreCase)
+                            && t.Contains("next untap step",StringComparison.OrdinalIgnoreCase)
+                            && (t.Contains("doesn't untap",StringComparison.OrdinalIgnoreCase) || t.Contains("don't untap",StringComparison.OrdinalIgnoreCase)));
+                        if(found==0)continue;
+                        sourceId=candidate.InstanceId;sourceGrp=candidate.GrpId;ability=found;break;
+                    }
+                    break;
+            }
+            if(ability==0)continue;
+            current.PersistentAnnotations.Add(new AnnotationInfo {Id=checked(4_200_000_000u+target),AffectorId=sourceId,AffectedIds={target},
+                Type={AnnotationType.Qualification},Details={IntDetail("QualificationType",(int)QualificationType.CantUntap),
+                    IntDetail("grpid",checked((int)ability)),IntDetail("parent_grpid",checked((int)sourceGrp)),IntDetail("SourceParent",checked((int)sourceId))}});
+        }
+    }
+    static uint PrintedAbility(uint cardGrp,Func<string,bool> matches) =>
+        AllAbilityText.Value.TryGetValue(cardGrp.ToString(),out var abilities)
+            ? abilities.EnumerateArray().Where(a=>matches(a.GetProperty("text").GetString()??"")).Select(a=>a.GetProperty("id").GetUInt32()).FirstOrDefault() : 0;
     public static void StateCostModifications(JsonElement snapshot, GameStateMessage current) {
         if (!snapshot.TryGetProperty("cards", out var cards) || !snapshot.TryGetProperty("legalActions", out var actions)) return;
         var printedCosts = new Dictionary<uint, string>();
@@ -634,6 +779,15 @@ static class BattlePresentation
                 if(rule.GrpId==ability)rule.GrpId=adjusted.Value.Id;
         }
     }
+    internal static IEnumerable<uint> BasicLandManaAbilities(JsonElement card) {
+        if(!card.TryGetProperty("cardTypes",out var types) || !types.EnumerateArray().Any(t=>t.GetString()=="Land")
+            || card.TryGetProperty("hasNoAbilities",out var noAbilities) && noAbilities.GetBoolean()
+            || !card.TryGetProperty("subtypes",out var subtypes))yield break;
+        foreach(var subtype in subtypes.EnumerateArray()) {
+            uint id=subtype.GetString() switch {"Plains"=>1001u,"Island"=>1002u,"Swamp"=>1003u,"Mountain"=>1004u,"Forest"=>1005u,_=>0u};
+            if(id!=0)yield return id;
+        }
+    }
     public static List<Action> Actions(JsonElement snapshot)
     {
         var result = new List<Action>();
@@ -660,7 +814,8 @@ static class BattlePresentation
                 if (c.TryGetProperty("abilityIdentity", out var identity) && identity.TryGetProperty("loyaltyCost", out var lcProp))
                     loyaltyCost = lcProp.GetString() ?? "";
                 action.AbilityGrpId=AbilityId(action.GrpId,description.GetString()!,c.TryGetProperty("cardName",out var name)?name.GetString()!:"",true,loyaltyCost);
-                var manaEffectCard=snapshot.GetProperty("cards").EnumerateArray().FirstOrDefault(card=>card.GetProperty("instanceId").GetUInt32()==action.InstanceId
+                var manaEffectCard=!snapshot.TryGetProperty("cards",out var snapshotCards) ? default
+                    : snapshotCards.EnumerateArray().FirstOrDefault(card=>card.GetProperty("instanceId").GetUInt32()==action.InstanceId
                     && card.TryGetProperty("manaEffect",out var effect) && effect.GetBoolean());
                 if(manaEffectCard.ValueKind==JsonValueKind.Object) {
                     var rules=JsonSerializer.SerializeToElement(EmblemAbilities(manaEffectCard));
@@ -677,6 +832,12 @@ static class BattlePresentation
                     || identity.TryGetProperty("granted",out var granted) && granted.GetBoolean())) {
                     uint grantedId = GrantedAbilityId(identity);
                     if (grantedId != 0) action.AbilityGrpId = grantedId;
+                }
+                if(action.AbilityGrpId==0 && action.ActionType==ActionType.ActivateMana) {
+                    uint basic=description.GetString() switch {"Add {W}."=>1001u,"Add {U}."=>1002u,"Add {B}."=>1003u,"Add {R}."=>1004u,"Add {G}."=>1005u,_=>0u};
+                    var source=snapshot.GetProperty("cards").EnumerateArray().FirstOrDefault(card=>card.GetProperty("instanceId").GetUInt32()==action.InstanceId);
+                    if(basic!=0 && source.ValueKind==JsonValueKind.Object && BasicLandManaAbilities(source).Contains(basic))
+                        action.AbilityGrpId=basic;
                 }
                 if(action.AbilityGrpId!=0)action.SourceId=action.InstanceId;
                 if(action.ActionType==ActionType.Activate && AdjustedActivation(action.GrpId,action.AbilityGrpId,c.GetProperty("manaCost").GetString()!) is {} adjusted)
@@ -838,6 +999,13 @@ static class BattlePresentation
             uint id=card.GetProperty("instanceId").GetUInt32();
             if(!visible.TryGetValue(id,out var native) || !card.TryGetProperty("commander",out var commander) || !commander.GetBoolean())continue;
             int casts=card.TryGetProperty("commanderCastCount",out var count)?count.GetInt32():0;
+            if(card.TryGetProperty("commanderCastCost",out var commandCost)
+                && !current.Actions.Any(a=>a.Action?.InstanceId==id)) {
+                var preview=new Action {ActionType=ActionType.Cast,InstanceId=id,GrpId=native.GrpId,
+                    Visibility=Visibility.Public,Highlight=HighlightType.Cold};
+                if(MatchDoorHost.TryManaCost(commandCost.GetString()!,preview))
+                    current.Actions.Add(new ActionInfo {ActionId=checked(9_000_000u+id),SeatId=native.ControllerSeatId,Action=preview});
+            }
             current.PersistentAnnotations.Add(new AnnotationInfo {
                 Id=checked(2_000_000_000u+id),Type={AnnotationType.Designation},AffectedIds={id},
                 Details={IntDetail("DesignationType",(int)Designation.Commander),IntDetail("CostIncrease",checked(casts*2)),
@@ -1106,9 +1274,23 @@ static class BattlePresentation
                 case "zoneTransfer":
                     uint from=e.GetProperty("fromZone").GetUInt32(), to=e.GetProperty("toZone").GetUInt32();
                     if(!cards.ContainsKey(target) || !zones.Contains(from) || !zones.Contains(to) || from==to)continue;
+                    string movementCategory=e.GetProperty("category").GetString()!;
+                    // Some resolving effects briefly move a sought card through
+                    // hand before putting it into play. If no published state
+                    // contained that hand object, animate from its last known
+                    // zone instead of leaving an unresolved draw placeholder.
+                    if(e.TryGetProperty("oldId",out var oldObject)) {
+                        uint oldId=oldObject.GetUInt32();
+                        var prior=previous.GameObjects.FirstOrDefault(c=>c.InstanceId==oldId);
+                        if(prior!=null && prior.ZoneId!=from && !previous.GameObjects.Any(c=>c.InstanceId==target && c.ZoneId==from)) {
+                            from=prior.ZoneId;
+                            movementCategory="ZoneTransferWithoutIdChange";
+                        }
+                    }
+                    if(from==to || !zones.Contains(from))continue;
                     annotation.Type.Add(AnnotationType.ZoneTransfer); annotation.AffectedIds.Add(target);
                     annotation.Details.Add(IntDetail("zone_src",checked((int)from))); annotation.Details.Add(IntDetail("zone_dest",checked((int)to)));
-                    annotation.Details.Add(new KeyValuePairInfo { Key="category",Type=(KeyValuePairValueType)6,ValueString={e.GetProperty("category").GetString()!} });
+                    annotation.Details.Add(new KeyValuePairInfo { Key="category",Type=(KeyValuePairValueType)6,ValueString={movementCategory} });
                     result.Zones.Add(target);
                     break;
                 default: continue;
@@ -1180,6 +1362,27 @@ static class BattlePresentation
         }
         foreach(var token in previous.GameObjects.Where(c=>c.Type==GameObjectType.Token && !currentIds.Contains(c.InstanceId)))
             current.Annotations.Add(new AnnotationInfo {Id=nextId++,Type={AnnotationType.TokenDeleted},AffectedIds={token.InstanceId}});
+        // Gain/lose animations for designations (monarch, initiative, city's blessing, monstrous...).
+        // The persistent Designation annotations only show the current state; Arena animates the change
+        // from GainDesignation/LoseDesignation events (DesignationUtils reads "DesignationType").
+        static (uint Target,int Kind)? DesignationKey(AnnotationInfo a) =>
+            a.Type.Contains(AnnotationType.Designation) && a.AffectedIds.Count>0
+            && a.Details.FirstOrDefault(d=>d.Key=="DesignationType") is {} kind && kind.ValueInt32.Count>0
+                ? (a.AffectedIds[0],kind.ValueInt32[0]) : null;
+        var oldDesignations=previous.PersistentAnnotations.Select(a=>(Key:DesignationKey(a),Note:a)).Where(p=>p.Key!=null)
+            .GroupBy(p=>p.Key!.Value).ToDictionary(g=>g.Key,g=>g.First().Note);
+        var newDesignations=current.PersistentAnnotations.Select(a=>(Key:DesignationKey(a),Note:a)).Where(p=>p.Key!=null)
+            .GroupBy(p=>p.Key!.Value).ToDictionary(g=>g.Key,g=>g.First().Note);
+        foreach(var (key,note) in newDesignations.Where(d=>!oldDesignations.ContainsKey(d.Key))) {
+            var gain=new AnnotationInfo {Id=nextId++,Type={AnnotationType.GainDesignation},AffectorId=note.AffectorId};
+            gain.AffectedIds.AddRange(note.AffectedIds);gain.Details.AddRange(note.Details.Select(d=>d.Clone()));
+            current.Annotations.Add(gain);
+        }
+        foreach(var (key,note) in oldDesignations.Where(d=>!newDesignations.ContainsKey(d.Key) && currentIds.Contains(d.Key.Target))) {
+            var lose=new AnnotationInfo {Id=nextId++,Type={AnnotationType.LoseDesignation},AffectorId=note.AffectorId};
+            lose.AffectedIds.AddRange(note.AffectedIds);lose.Details.AddRange(note.Details.Select(d=>d.Clone()));
+            current.Annotations.Add(lose);
+        }
         foreach (var card in current.GameObjects) {
             // Native facets belong to their parent's display. They are
             // absorbed from the card lookup and cannot animate independently.

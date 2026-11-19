@@ -17,7 +17,12 @@ from .storage import StorageError
 
 class Arena:
     COMMANDS = frozenset(('DeckGetDeckSummariesV3', 'DeckGetDeck', 'DeckUpsertDeckV3',
-                          'DeckDeleteDeck', 'CardGetAllCards', 'CardGetCardSet'))
+                          'DeckDeleteDeck', 'CardGetAllCards', 'CardGetCardSet',
+                          'GetPlayerPreferences', 'SetPlayerPreferences'))
+    # Arena's server-side settings (DTO_PlayerPreferences: string -> string).
+    # Default matches the previous startup fixture.
+    DEFAULT_PREFERENCES = {'Experience': 'Advanced'}
+    MAX_PREFERENCES, MAX_PREFERENCE_TEXT = 256, 65536
     PILES = ('MainDeck', 'Sideboard', 'CommandZone', 'Companions')
 
     def __init__(self, store, catalogue=None):
@@ -202,6 +207,8 @@ class Arena:
         uid = user['id']
         if not isinstance(name, str) or name not in self.COMMANDS:
             raise StorageError('Arena command is not implemented', 501)
+        if name in ('GetPlayerPreferences', 'SetPlayerPreferences'):
+            return self._preferences(uid, name, payload)
         if not isinstance(payload, dict):
             raise StorageError('Arena command payload must be an object')
         with self.store._db(write=True) as db:
@@ -270,6 +277,32 @@ class Arena:
             db.execute('INSERT INTO arena_decks VALUES (?,?,?,?,?) ON CONFLICT(arena_id) DO UPDATE SET deck_id=excluded.deck_id,summary_json=excluded.summary_json,body_json=excluded.body_json',
                 (summary['DeckId'], uid, deck_id, json.dumps(summary), json.dumps(body)))
             return summary
+
+    def _preferences(self, uid, name, payload):
+        """Get or merge-update the player's saved Arena settings; returns them all."""
+        with self.store._db(write=True) as db:
+            db.execute('CREATE TABLE IF NOT EXISTS arena_preferences(user_id INTEGER NOT NULL REFERENCES users(id),'
+                       'key TEXT NOT NULL,value TEXT NOT NULL,PRIMARY KEY(user_id,key))')
+            if name == 'SetPlayerPreferences':
+                # SetPlayerPreferencesReq { Preferences: DTO_PlayerPreferences { Preferences: {k: v} } }
+                outer = payload.get('Preferences') if isinstance(payload, dict) else None
+                values = outer.get('Preferences') if isinstance(outer, dict) else None
+                if not isinstance(values, dict):
+                    raise StorageError('Invalid player preferences')
+                for key, value in values.items():
+                    if not isinstance(key, str) or not 1 <= len(key) <= 200 or not (value is None or isinstance(value, str)) \
+                            or (value is not None and len(value) > self.MAX_PREFERENCE_TEXT):
+                        raise StorageError('Invalid player preference')
+                    if value is None:
+                        db.execute('DELETE FROM arena_preferences WHERE user_id=? AND key=?', (uid, key))
+                    else:
+                        db.execute('INSERT INTO arena_preferences VALUES (?,?,?) ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value',
+                                   (uid, key, value))
+                count = db.execute('SELECT COUNT(*) FROM arena_preferences WHERE user_id=?', (uid,)).fetchone()[0]
+                if count > self.MAX_PREFERENCES:
+                    raise StorageError('Too many player preferences')
+            saved = {r['key']: r['value'] for r in db.execute('SELECT key,value FROM arena_preferences WHERE user_id=?', (uid,))}
+        return {'Preferences': {**self.DEFAULT_PREFERENCES, **saved}}
 
     def dispatch(self, body, bearer):
         if not isinstance(body, dict):

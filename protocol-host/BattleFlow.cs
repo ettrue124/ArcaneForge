@@ -83,7 +83,12 @@ sealed class BattleFlow
         // Floating mana represents an unfinished player decision. Do not
         // advance priority/phase merely because affordability sees no play.
         // Explicit Pass actions still go directly to Forge.
-        if(type=="InputPassPriority" && snapshot.TryGetProperty("players",out var manaPlayers)
+        // ...except under Resolve All while the stack is busy: storm turns float mana constantly and the
+        // hold made every stack item stop for a click (trace local-20261118-050500-46fe5477).
+        bool resolvingAll=stackMode==AutoPassOption.ResolveAll
+            && (snapshot.TryGetProperty("stack",out var busyStack) && busyStack.GetArrayLength()>0
+                || snapshot.GetProperty("cards").EnumerateArray().Any(c=>c.GetProperty("zone").GetString()=="Stack"));
+        if(type=="InputPassPriority" && !resolvingAll && snapshot.TryGetProperty("players",out var manaPlayers)
             && manaPlayers.EnumerateArray().Any(p=>p.GetProperty("seat").GetUInt32()==1
                 && p.TryGetProperty("manaPool",out var pool)
                 && pool.EnumerateArray().Any(m=>m.GetProperty("count").GetUInt32()>0))) {
@@ -119,13 +124,18 @@ sealed class BattleFlow
             (!a.TryGetProperty("highlight",out var highlight) || highlight.GetInt32()==3)
             && (!a.TryGetProperty("cycling",out var cycling) || !cycling.GetBoolean() || onStack
                 || active==1 && phase is "MAIN1" or "MAIN2")
+            // Mana abilities alone are not a play: holding priority for them stopped on every
+            // opponent spell/trigger. Only a castable spell, activated ability or land drop counts.
             && (!a.TryGetProperty("actionType",out var availableType) || availableType.GetInt32() is 1 or 2
-                || availableType.GetInt32()==4 && onStack
                 || availableType.GetInt32()==3 && active==1 && phase is "MAIN1" or "MAIN2")
             && (!a.TryGetProperty("isLand",out var land) || !land.GetBoolean()
                 || a.TryGetProperty("actionType",out var landAction) && (landAction.GetInt32()==2
-                    || landAction.GetInt32()==4 && onStack
                     || landAction.GetInt32()==3 && active==1 && phase is "MAIN1" or "MAIN2")));
+        // Forge affordability misses variable mana sources such as Vivi
+        // Ornitier's "X mana in any combination", so in your own main phase a
+        // spell that fits your untapped mana sources still keeps priority.
+        if(!hasPlay && type=="InputPassPriority" && !onStack && active==1 && phase is "MAIN1" or "MAIN2")
+            hasPlay=PossiblyAffordable(snapshot);
         // Normal play should not require a click at a phase stop when all
         // spells/abilities are unusable. Full control is handled above.
         bool annihilatorTrigger=stack.Any(e=>e.TryGetProperty("isAbility",out var isAbility) && isAbility.GetBoolean()
@@ -154,6 +164,44 @@ sealed class BattleFlow
         // represent an advanced cost. Do not skip that response opportunity.
         return !hasPlay;
     }
+    // True when a cast Forge marked unaffordable has a mana value no larger
+    // than the mana your untapped sources could make. Each source counts 1,
+    // or its power for "X mana ... where X is CARDNAME's power" abilities.
+    static bool PossiblyAffordable(JsonElement snapshot)
+    {
+        if(!snapshot.TryGetProperty("legalActions",out var actions))return false;
+        var power=new Dictionary<uint,int>();
+        foreach(var card in snapshot.GetProperty("cards").EnumerateArray())
+            if(card.TryGetProperty("power",out var p) && p.ValueKind==JsonValueKind.Number)
+                power[card.GetProperty("instanceId").GetUInt32()]=p.GetInt32();
+        var sources=new Dictionary<uint,int>();
+        foreach(var a in actions.EnumerateArray()) {
+            if(!a.TryGetProperty("actionType",out var t) || t.GetInt32()!=4 || !a.TryGetProperty("instanceId",out var id))continue;
+            uint source=id.GetUInt32();
+            string text=a.TryGetProperty("description",out var d)?d.GetString()??"":"";
+            int amount=text.Contains("where X is CARDNAME's power",StringComparison.Ordinal)
+                ?Math.Max(1,power.GetValueOrDefault(source)):1;
+            sources[source]=Math.Max(sources.GetValueOrDefault(source),amount);
+        }
+        int available=sources.Values.Sum();
+        if(available==0)return false;
+        // Only second-guess Forge when a variable-mana source (Vivi's "X mana in any combination")
+        // is present; otherwise Forge's affordability is trusted and nothing castable means no stop.
+        bool variableSource=actions.EnumerateArray().Any(a=>a.TryGetProperty("actionType",out var vt) && vt.GetInt32()==4
+            && a.TryGetProperty("description",out var vd) && (vd.GetString()??"").Contains("where X is CARDNAME's power",StringComparison.Ordinal));
+        if(!variableSource)return false;
+        return actions.EnumerateArray().Any(a=>a.TryGetProperty("actionType",out var t) && t.GetInt32()==1
+            && a.TryGetProperty("highlight",out var h) && h.GetInt32()==1
+            && a.TryGetProperty("manaCost",out var cost) && ManaValue(cost.GetString()) is int value
+            && value>0 && value<=available);
+    }
+    static int ManaValue(string? cost)
+    {
+        int total=0;
+        foreach(System.Text.RegularExpressions.Match symbol in System.Text.RegularExpressions.Regex.Matches(cost??"",@"\{([^}]+)\}"))
+            total+=int.TryParse(symbol.Groups[1].Value,out var generic)?generic:symbol.Groups[1].Value=="X"?0:1;
+        return total;
+    }
     public static void Test()
     {
         using var noAction = JsonDocument.Parse("""
@@ -161,7 +209,8 @@ sealed class BattleFlow
         """);
         var flow = new BattleFlow();
         if (!flow.ShouldPass(noAction.RootElement)) throw new Exception("Empty priority should auto-pass");
-        using var reversibleMana=JsonDocument.Parse(noAction.RootElement.GetRawText().Replace("\"legalActions\":[]","\"canUndo\":true,\"players\":[{\"seat\":1,\"manaPool\":[{\"count\":1}]}],\"legalActions\":[]"));
+        // Undo history alone must not hold priority. (Floating mana deliberately does; see Evaluate.)
+        using var reversibleMana=JsonDocument.Parse(noAction.RootElement.GetRawText().Replace("\"legalActions\":[]","\"canUndo\":true,\"players\":[{\"seat\":1,\"manaPool\":[{\"count\":0}]}],\"legalActions\":[]"));
         if(!flow.ShouldPass(reversibleMana.RootElement))throw new Exception("Undo history held empty priority without a playable action");
         var yielded=new BattleFlow {Mode=(AutoPassOption)1};
         if(!yielded.ShouldPass(reversibleMana.RootElement))throw new Exception("Undo opportunity overrode explicit yield");
@@ -203,10 +252,11 @@ sealed class BattleFlow
         using var threatenedRockOnOpponentTurn=JsonDocument.Parse(threatenedRock.RootElement.GetRawText().Replace("\"activeSeat\":1","\"activeSeat\":2"));
         using var ownSpellMana=JsonDocument.Parse(threatenedRock.RootElement.GetRawText().Replace("\"controllerSeat\":2","\"controllerSeat\":1"));
         var manaResponse=new BattleFlow();manaResponse.ManualPass(manaOnly.RootElement);
-        if(manaResponse.ShouldPass(threatenedRock.RootElement) || new BattleFlow().ShouldPass(threatenedRockOnOpponentTurn.RootElement)
+        // Mana abilities alone are not a play (user preference 2026-11-17): no stop over any spell.
+        if(!manaResponse.ShouldPass(threatenedRock.RootElement) || !new BattleFlow().ShouldPass(threatenedRockOnOpponentTurn.RootElement)
             || !new BattleFlow().ShouldPass(ownSpellMana.RootElement)
-            || new BattleFlow {PassAfterAction=true}.ShouldPass(threatenedRock.RootElement))
-            throw new Exception("Mana-only response to an opponent spell was skipped or empty mana held own resolution");
+            || !new BattleFlow {PassAfterAction=true}.ShouldPass(threatenedRock.RootElement))
+            throw new Exception("Mana abilities alone held priority over a spell");
         using var landAbility=JsonDocument.Parse(spell.RootElement.GetRawText().Replace("\"actionType\":1,\"isLand\":false","\"actionType\":2,\"isLand\":true"));
         using var unpayable=JsonDocument.Parse(spell.RootElement.GetRawText().Replace("\"actionType\":1","\"actionType\":1,\"highlight\":1"));
         using var opponentLand=JsonDocument.Parse(landOnly.RootElement.GetRawText().Replace("\"activeSeat\":1","\"activeSeat\":2"));
@@ -219,7 +269,7 @@ sealed class BattleFlow
             throw new Exception("Land play opportunity skipped or mana actions held response priority");
         if(flow.ShouldPass(spell.RootElement))throw new Exception("Phase stop skipped an available play");
         using var payment = JsonDocument.Parse("""
-        {"input":{"type":"InputPayMana"},"turn":{"number":1,"phase":"MAIN1","activeSeat":1},"cards":[],"legalActions":[]}
+        {"input":{"type":"InputPayMana","autoTapSources":[1001]},"turn":{"number":1,"phase":"MAIN1","activeSeat":1},"cards":[],"legalActions":[]}
         """);
         var paymentFlow = new BattleFlow();
         if (!paymentFlow.ShouldPass(payment.RootElement)) throw new Exception("Normal mana payment should auto-pay");
@@ -236,7 +286,8 @@ sealed class BattleFlow
         using var ownAbility=JsonDocument.Parse("""
         {"input":{"type":"InputPassPriority"},"turn":{"number":1,"phase":"MAIN1","activeSeat":1},"cards":[],"stack":[{"controllerSeat":1,"isAbility":true},{"controllerSeat":2,"isAbility":true}],"legalActions":[{"instanceId":1001,"grpId":7,"actionType":1,"isLand":false,"manaCost":"{0}"}]}
         """);
-        if(!new BattleFlow().ShouldPass(ownAbility.RootElement))throw new Exception("Own ability on a mixed stack did not auto-resolve");
+        // Your own ability on top is a response window when you have a play (e.g. Tainted Pact over Thassa's Oracle).
+        if(new BattleFlow().ShouldPass(ownAbility.RootElement))throw new Exception("Own ability on a mixed stack skipped the response window");
         using var ownSpellColdPlay=JsonDocument.Parse("""
         {"input":{"type":"InputPassPriority"},"turn":{"number":5,"phase":"MAIN1","activeSeat":1},"cards":[],
          "stack":[{"instanceId":1074,"controllerSeat":1,"cardName":"Platinum Angel"}],
@@ -245,7 +296,9 @@ sealed class BattleFlow
         if(!new BattleFlow().ShouldPass(ownSpellColdPlay.RootElement))throw new Exception("Own spell on stack with unpayable actions did not auto-pass");
         var intent=new BattleFlow { Mode=(AutoPassOption)2,PassAfterAction=true };
         if(intent.ShouldPass(spell.RootElement) || !intent.PassAfterAction)throw new Exception("Pass intent was lost before casting finished");
-        if(!intent.ShouldPass(ownAbility.RootElement) || !intent.PassAfterAction)throw new Exception("Pass intent was consumed before priority actually passed");
+        // Cast pass intent applies over your own spell (not an ability, which is a response window).
+        using var ownSpellTop=JsonDocument.Parse(ownAbility.RootElement.GetRawText().Replace("{\"controllerSeat\":1,\"isAbility\":true}","{\"controllerSeat\":1,\"isAbility\":false}"));
+        if(!intent.ShouldPass(ownSpellTop.RootElement) || !intent.PassAfterAction)throw new Exception("Pass intent was consumed before priority actually passed");
         intent.PriorityPassed();if(intent.PassAfterAction)throw new Exception("Passed priority did not clear the cast pass intent");
         var held=new BattleFlow(); held.Settings(new SettingsMessage {AutoPassOption=(AutoPassOption)7},1);
         if(held.ShouldPass(ownAbility.RootElement))throw new Exception("Full control skipped an ability response window");

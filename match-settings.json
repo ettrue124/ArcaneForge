@@ -1,0 +1,8 @@
+{
+  "decisionTimer": {
+    "enabled": false,
+    "seconds": 30,
+    "warningSeconds": 10,
+    "timeoutsToLose": 3
+  }
+}

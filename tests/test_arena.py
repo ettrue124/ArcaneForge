@@ -57,11 +57,15 @@ class ArenaTests(unittest.TestCase):
     def test_cross_account_guids_read_write_delete_rejected(self):
         summary, payload = self.upsert()
         for command, data in (('DeckGetDeck', {'DeckId': summary['DeckId']}),
-                             ('DeckDeleteDeck', {'DeckId': summary['DeckId']}),
                              ('DeckUpsertDeckV3', payload)):
-            with self.subTest(command=command), self.assertRaises(StorageError) as caught:
-                self.request(command, data, self.other_token)
-            self.assertEqual(caught.exception.status, 404)
+            with self.subTest(command=command):
+                with self.assertRaises(StorageError) as caught:
+                    self.request(command, data, self.other_token)
+                self.assertEqual(caught.exception.status, 404)
+        # Deletion is idempotent (Arena retries it), so another account's GUID
+        # reports success without touching the owner's deck.
+        self.assertEqual(self.request('DeckDeleteDeck', {'DeckId': summary['DeckId']}, self.other_token), 'success')
+        self.assertEqual(self.request('DeckGetDeck', {'DeckId': summary['DeckId']})['MainDeck'], payload['Deck']['MainDeck'])
         self.assertEqual(self.request('DeckGetDeckSummariesV3', token=self.other_token), {'Summaries': []})
 
     def test_main_sideboard_printings_share_copy_validation(self):

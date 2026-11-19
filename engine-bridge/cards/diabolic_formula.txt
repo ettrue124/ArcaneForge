@@ -1,0 +1,7 @@
+Name:Diabolic Formula
+ManaCost:U B
+Types:Enchantment
+T:Mode$ ChangesZoneAll | Origin$ Graveyard | Destination$ Any | ValidCards$ Instant.YouOwn,Sorcery.YouOwn | TriggerZones$ Battlefield | Execute$ Conjure | TriggerDescription$ Whenever one or more instant and/or sorcery cards leave your graveyard, conjure a random creature card with mana value X onto the battlefield, where X is the greatest mana value among those cards.
+SVar:Conjure:DB$ RepeatEach | ArenaDigital$ RandomConjure | RandomType$ Creature | RandomManaValue$ X | Conjure$ True | Zone$ Battlefield
+SVar:X:TriggeredCards$GreatestCardManaCost
+Oracle:Whenever one or more instant and/or sorcery cards leave your graveyard, conjure a random creature card with mana value X onto the battlefield, where X is the greatest mana value among those cards.

@@ -15,6 +15,10 @@ def main():
     database=args.database.resolve()
     with sqlite3.connect(database.as_uri()+'?mode=ro',uri=True) as db:
         names=dict(db.execute('SELECT LocId,Loc FROM Localizations_enUS'))
+        card_printings={}
+        for gid,title in db.execute('SELECT GrpId,TitleId FROM Cards WHERE IsToken=0 ORDER BY GrpId'):
+            name=names.get(title,'')
+            if name:card_printings.setdefault(name,gid)
         ability_text={aid:names.get(tid,'') for aid,tid in db.execute('SELECT Id,TextId FROM Abilities')}
         color_names={str(value):names.get(loc,'') for value,loc in db.execute("SELECT Value,LocId FROM Enums WHERE Type='CardColor'")}
         type_names={str(value):names.get(loc,'') for value,loc in db.execute("SELECT Value,LocId FROM Enums WHERE Type='CardType'")}
@@ -62,7 +66,7 @@ def main():
                 key=row['key'].replace('\u2014','-').replace('\u2013','-').replace('\ufffd','-')
                 keys[key]=row['grpId']
     output=args.output
-    output.write_text(json.dumps({'tokens':tokens,'links':links,'keys':keys},ensure_ascii=False,separators=(',',':'))+'\n',encoding='utf8')
+    output.write_text(json.dumps({'tokens':tokens,'links':links,'keys':keys,'cardPrintings':card_printings},ensure_ascii=False,separators=(',',':'))+'\n',encoding='utf8')
     print(f'Exported {len(tokens)} token printings and {len(links)} source links')
 
 if __name__=='__main__':main()

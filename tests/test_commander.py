@@ -72,8 +72,9 @@ class CommanderTests(unittest.TestCase):
         for fmt in fixture['GetFormatsResponse']['formats']:
             if fmt['name'] not in commander.FORMATS:
                 continue
-            for bound in ('min', 'max'):
-                self.assertEqual(fmt['mainDeckQuota'][bound] + fmt['commandZoneQuota'][bound], 100)
+            # Partner commanders: one fewer main-deck card per extra commander, always 100 total.
+            self.assertEqual(fmt['mainDeckQuota']['max'] + fmt['commandZoneQuota']['min'], 100)
+            self.assertEqual(fmt['mainDeckQuota']['min'] + fmt['commandZoneQuota']['max'], 100)
             for name in ('Forest', 'Island', 'Mountain', 'Plains', 'Swamp', 'Wastes'):
                 self.assertNotIn(self.by_name[name]['arenaMetadata']['TitleId'], fmt['bannedTitleIds'])
         digital_forest = next(c for c in self.catalogue.values() if c['name'] == 'Forest'
@@ -121,6 +122,8 @@ class CommanderTests(unittest.TestCase):
                 self.assertEqual(resolved['format'], format_name)
                 self.assertEqual(resolved['commanders'][0]['name'], 'Bristly Bill, Spine Sower')
                 self.assertEqual(resolved['cards'][0]['quantity'], 99)
+                if format_name == 'CommanderUnbanned':
+                    continue  # No banned list by design.
                 invalid = copy.deepcopy(payload)
                 invalid['Deck']['MainDeck'] = [self.entry('Mana Crypt')]
                 with self.assertRaisesRegex(StorageError, 'banned'):

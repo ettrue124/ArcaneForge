@@ -54,7 +54,13 @@ def validate(body, catalogue, complete=False, format_name='Commander'):
     if command_count > 2 or any(c['quantity'] != 1 for c in commanders):
         raise StorageError('Commander needs one commander or a legal pair of two commanders')
     for entry in commanders:
-        if catalogue[entry['cardId']]['name'] not in eligible_commanders():
+        card=catalogue[entry['cardId']]
+        eligible=card['name'] in eligible_commanders()
+        if unbanned:
+            from . import formats
+            policy_card=formats.policies()['cards'].get(card['name'],{})
+            eligible=formats.commander_is_eligible(formats.definition('CommanderUnbanned'),card['name'],policy_card)
+        if not eligible:
             raise StorageError(catalogue[entry['cardId']]['name'] + ' cannot be a Commander')
     companions = body.get('Companions', [])
     if len(companions) > 1 or any(c['quantity'] != 1 for c in companions):

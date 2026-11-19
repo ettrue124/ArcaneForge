@@ -1,0 +1,13 @@
+Name:Dina, Flesh Sower
+ManaCost:G W
+Types:Legendary Creature Dryad Cleric
+PT:1/1
+K:Lifelink
+T:Mode$ LifeGained | ValidPlayer$ You | TriggerZones$ Battlefield | Execute$ Grow | TriggerDescription$ Whenever you gain life, Dina perpetually gets +1/+1.
+SVar:Grow:DB$ Pump | Defined$ Self | NumAtt$ 1 | NumDef$ 1 | Duration$ Perpetual
+T:Mode$ ChangesZone | Origin$ Battlefield | Destination$ Graveyard | ValidCard$ Card.Self | Execute$ ChooseCreature | TriggerDescription$ When Dina dies, choose a creature card in your hand. It perpetually gains trample and gets +X/+X, where X is Dina's power.
+SVar:ChooseCreature:DB$ ChooseCard | ChoiceZone$ Hand | Choices$ Creature.YouOwn | Mandatory$ True | SubAbility$ Gift
+SVar:Gift:DB$ Pump | Defined$ ChosenCard | KW$ Trample | NumAtt$ X | NumDef$ X | Duration$ Perpetual | SubAbility$ Cleanup
+SVar:X:TriggeredCard$CardPower
+SVar:Cleanup:DB$ Cleanup | ClearChosenCard$ True
+Oracle:Lifelink\nWhenever you gain life, Dina perpetually gets +1/+1.\nWhen Dina dies, choose a creature card in your hand. It perpetually gains trample and gets +X/+X, where X is Dina's power.

@@ -67,10 +67,12 @@ def main():
                     'server/formats.py',
                     'engine-bridge/export_arena_metadata.py', 'tools/export_generated_cards.py', 'tools/export_linked_faces.py')]
     sync_inputs += list((ROOT / 'engine-bridge/cards').glob('*.txt'))
+    sync_inputs += list((ROOT / 'engine-bridge').glob('*-pool.json'))
+    sync_inputs += list((ROOT / 'engine-bridge').glob('*-abilities.json'))
     sync_outputs = [ROOT / 'data' / n for n in ('card-sync-report.json', 'catalogue.json', 'catalogue-metadata.json',
         'forge-coverage.json', 'commander-eligible.json', 'arena-card-metadata.json', 'arena-ability-text.json',
         'arena-activated-abilities.json', 'arena-granted-ability-definitions.json', 'arena-generated-cards.json',
-        'arena-linked-faces.json')]
+        'arena-linked-faces.json', 'arena-leveler-bands.json')]
     sync_outputs += [ROOT / 'analysis/deckbuilder-formats.json', ROOT / 'analysis/startup-fixtures.json']
     cache = read(STATE)
     if cache.get('version') != 1:

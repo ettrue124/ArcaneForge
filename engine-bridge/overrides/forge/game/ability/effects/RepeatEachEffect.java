@@ -32,6 +32,7 @@ public class RepeatEachEffect extends SpellAbilityEffect {
     @SuppressWarnings("serial")
     @Override
     public void resolve(SpellAbility sa) {
+        if (sa.hasParam("ArenaDigital")) { ArenaDigitalCards.resolve(sa); return; }
         // Things to loop over: Cards, Players, or SAs
         final Card source = sa.getHostCard();
 

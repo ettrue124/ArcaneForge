@@ -35,8 +35,10 @@ final class BattleExilePresentation {
                 for(Card exiled:game.getCardsIn(ZoneType.Exile)) {
                     Card source=exiled.getExiledWith();
                     boolean linked=source!=null && source.equalsWithGameTimestamp(parent);
-                    if(source==null)linked=forge.game.ArenaCardIds.exileSource(exiled.getId())
-                        ==forge.game.ArenaCardIds.id(parent.getId());
+                    if(source==null) {
+                        Integer recordedSource=forge.game.ArenaCardIds.exileSource(exiled.getId());
+                        linked=recordedSource!=null && recordedSource==forge.game.ArenaCardIds.id(parent.getId());
+                    }
                     if(linked)links.put(exiled.getId(),forge.game.ArenaCardIds.id(parent.getId()));
                 }
             }
@@ -46,6 +48,20 @@ final class BattleExilePresentation {
         }
         for (Card effect : game.getCardsIn(ZoneType.Command)) {
             if (effect.getImprintedCards().isEmpty() || effect.getEffectSource() == null) continue;
+            // Ugin-style delayed returns store the Spirit as an imprinted
+            // object on a command-zone effect and the exiled card as remembered.
+            // The token itself has no remembered objects or printed abilities.
+            boolean returnsWhenImprintedLeaves=effect.getTriggers().stream().anyMatch(t ->
+                "Battlefield".equals(t.getParamOrDefault("Origin",""))
+                && t.getParamOrDefault("ValidCard","").contains("IsImprinted"));
+            if(returnsWhenImprintedLeaves && effect.getImprintedCards().size()==1) {
+                Card token=effect.getImprintedCards().get(0);
+                Card current=game.getCardState(token,null);
+                if(current!=null && current.isToken() && current.isInPlay() && !current.isPhasedOut()
+                    && current.equalsWithGameTimestamp(token))
+                    for(Object remembered:effect.getRemembered())
+                        if(remembered instanceof Card exiled)link(game,links,current,exiled);
+            }
             boolean grantsRemembered = effect.getStaticAbilities().stream().anyMatch(a ->
                 a.hasParam("AddAbility") && a.getParamOrDefault("Affected", "").contains("IsRemembered")
                 && a.getParamOrDefault("Affected", "").contains("!IsImprinted"));
